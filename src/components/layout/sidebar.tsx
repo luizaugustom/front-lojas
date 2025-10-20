@@ -1,0 +1,211 @@
+'use client';
+
+import Link from 'next/link';
+import Image from 'next/image';
+import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Users,
+  UserCheck,
+  FileBarChart,
+  Receipt,
+  FileDown,
+  CreditCard,
+  DollarSign,
+  Settings,
+  Menu,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Building2,
+  TestTube,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useUIStore } from '@/store/ui-store';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+
+const navigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'empresa'] },
+  { name: 'Produtos', href: '/products', icon: Package, roles: ['admin', 'empresa', 'vendedor'] },
+  { name: 'Vendas', href: '/sales', icon: ShoppingCart, roles: ['admin', 'empresa', 'vendedor'] },
+  { name: 'Clientes', href: '/customers', icon: Users, roles: ['admin', 'empresa', 'vendedor'] },
+  { name: 'Vendedores', href: '/sellers', icon: UserCheck, roles: ['admin', 'empresa'] },
+  { name: 'Contas a Pagar', href: '/bills', icon: CreditCard, roles: ['admin', 'empresa'] },
+  { name: 'Fechamento de Caixa', href: '/cash-closure', icon: DollarSign, roles: ['admin', 'empresa', 'vendedor'] },
+  { name: 'Relatórios', href: '/reports', icon: FileBarChart, roles: ['admin', 'empresa'] },
+  // Visível apenas para empresas: Notas Fiscais
+  { name: 'Notas Fiscais', href: '/invoices', icon: Receipt, roles: ['empresa'] },
+  // Visível apenas para empresas: Notas de Entrada
+  { name: 'Notas de Entrada', href: '/inbound-invoices', icon: FileDown, roles: ['empresa'] },
+  // Visível apenas para admin: Gerenciar Empresas
+  { name: 'Empresas', href: '/companies', icon: Building2, roles: ['admin'] },
+  // Testes da API - visível para todos os roles
+  { name: 'Testes da API', href: '/test-api', icon: TestTube, roles: ['admin', 'empresa', 'vendedor'] },
+  { name: 'Configurações', href: '/settings', icon: Settings, roles: ['admin', 'empresa'] },
+];
+
+export function Sidebar() {
+  const pathname = usePathname();
+  const { sidebarOpen, setSidebarOpen, sidebarCollapsed, toggleSidebarCollapsed } = useUIStore();
+  const { user } = useAuth();
+
+  const filteredNavigation = navigation.filter((item) => {
+    if (!user) {
+      console.log('No user found, filtering out all items');
+      return false;
+    }
+    // Se for admin, ocultar itens sensíveis conforme solicitado
+    const adminExcluded = new Set([
+      'Dashboard',
+      'Produtos',
+      'Vendas',
+      'Clientes',
+      'Vendedores',
+      'Contas a Pagar',
+      'Relatórios',
+      'Fechamento de Caixa',
+    ]);
+
+    if (user.role === 'admin' && adminExcluded.has(item.name)) {
+      return false;
+    }
+
+    // O role já foi normalizado na API (company -> empresa)
+    return item.roles.includes(user.role);
+  });
+  
+
+  return (
+    <>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 transform border-r bg-card transition-all duration-300 ease-in-out lg:translate-x-0',
+          // Largura dinâmica no desktop
+          sidebarCollapsed ? 'w-16' : 'w-64',
+          // Drawer no mobile
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+        role="navigation"
+        aria-label="Menu principal"
+      >
+        <div className="flex h-full flex-col">
+          {/* Header */}
+          <div className="flex h-16 items-center justify-between border-b px-3">
+            <Link href="/dashboard" className="flex items-center gap-3">
+              <Image 
+                src="/logo.png" 
+                alt="MontShop Logo" 
+                width={24} 
+                height={24} 
+                className="h-6 w-6"
+              />
+              {!sidebarCollapsed && <span className="text-lg font-bold">MontShop</span>}
+            </Link>
+            <div className="flex items-center gap-1">
+              {/* Toggle collapse (desktop) */}
+              <button
+                onClick={toggleSidebarCollapsed}
+                title={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
+                className="hidden lg:inline-flex items-center justify-center p-1 text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-md"
+                aria-label={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
+              >
+                {sidebarCollapsed ? (
+                  <ChevronRight className="h-5 w-5" />
+                ) : (
+                  <ChevronLeft className="h-5 w-5" />
+                )}
+              </button>
+
+              {/* Fechar drawer (mobile) */}
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="inline-flex lg:hidden items-center justify-center p-1 text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-md"
+                title="Fechar menu"
+                aria-label="Fechar menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Company Brand Area */}
+          {!sidebarCollapsed && (
+            <div className="mx-3 mt-3 rounded-lg bg-muted/50 p-3 border border-border">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-primary"></div>
+                <span className="text-xs font-medium text-primary">Sua Empresa</span>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation */}
+          <nav className={cn('flex-1 space-y-1 overflow-y-auto', sidebarCollapsed ? 'p-2' : 'p-4')} role="navigation" aria-label="Menu de navegação">
+            {filteredNavigation.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    'flex items-center rounded-lg py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
+                    sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3',
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  )}
+                  onClick={() => {
+                    if (window.innerWidth < 1024) {
+                      setSidebarOpen(false);
+                    }
+                  }}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <item.icon className="h-5 w-5" aria-hidden="true" />
+                  {!sidebarCollapsed && <span className="truncate">{item.name}</span>}
+                  {sidebarCollapsed && (
+                    <span className="sr-only">{item.name}</span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* User info */}
+          {user && (
+            <div className={cn('border-t', sidebarCollapsed ? 'p-2' : 'p-4')}>
+              <div className={cn('flex items-center', sidebarCollapsed ? 'justify-center' : 'gap-3')}>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  {(
+                    (user.name && user.name.length > 0 && user.name.charAt(0)) ||
+                    (user.email && user.email.length > 0 && user.email.charAt(0)) ||
+                    (user.login && user.login.length > 0 && user.login.charAt(0)) ||
+                    '?'
+                  ).toString().toUpperCase()}
+                </div>
+                {!sidebarCollapsed && (
+                  <div className="flex-1 overflow-hidden">
+                    <p className="truncate text-sm font-medium">{user.name || user.email || user.login || 'Usuário'}</p>
+                    <p className="truncate text-xs text-muted-foreground capitalize">{user.role}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </aside>
+    </>
+  );
+}
