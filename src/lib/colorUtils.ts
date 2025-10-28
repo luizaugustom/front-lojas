@@ -58,7 +58,7 @@ export function hexToTailwindHsl(hex: string): string | null {
 }
 
 /**
- * Aplica uma cor da empresa com 10% de opacidade
+ * Aplica uma cor da empresa com intensidade adequada
  * Retorna a cor no formato HSL para uso em variáveis CSS
  */
 export function applyCompanyColor(brandColor: string | null): string {
@@ -73,9 +73,9 @@ export function applyCompanyColor(brandColor: string | null): string {
     return '221.2 83.2% 53.3%';
   }
 
-  // Aplica 10% de opacidade (reduz a saturação e aumenta a luminosidade)
-  const adjustedS = Math.max(hsl.s * 0.1, 5); // Mínimo 5% de saturação
-  const adjustedL = Math.min(hsl.l + (100 - hsl.l) * 0.9, 95); // Máximo 95% de luminosidade
+  // Mantém a cor com boa intensidade (70% da saturação e ajuste suave de luminosidade)
+  const adjustedS = Math.max(hsl.s * 0.7, 20); // Mínimo 20% de saturação
+  const adjustedL = Math.max(Math.min(hsl.l, 60), 40); // Entre 40-60% de luminosidade
 
   return `${hsl.h} ${adjustedS}% ${adjustedL}%`;
 }

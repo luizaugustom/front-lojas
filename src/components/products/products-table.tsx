@@ -14,9 +14,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { ImageViewer } from '@/components/ui/image-viewer';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDate, generateUUID, ensureUUID } from '@/lib/utils';
+import { getImageUrl } from '@/lib/image-utils';
 import { ProductImage } from './product-image';
 import type { Product } from '@/types';
 
@@ -31,6 +33,7 @@ interface ProductsTableProps {
 export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManage = true }: ProductsTableProps) {
   const { api } = useAuth();
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<{ images: string[], index: number } | null>(null);
   const [confirmationModal, setConfirmationModal] = useState<{
     open: boolean;
     product: Product | null;
@@ -44,6 +47,18 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
     description: '',
     onConfirm: () => {},
   });
+
+  const handleImageClick = (product: Product) => {
+    if (product.photos && product.photos.length > 0) {
+      const validImages = product.photos
+        .map(photo => getImageUrl(photo))
+        .filter(Boolean);
+      
+      if (validImages.length > 0) {
+        setSelectedImage({ images: validImages, index: 0 });
+      }
+    }
+  };
 
   const handleDeleteClick = (product: Product) => {
     if (!canManage) {
@@ -130,7 +145,7 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
           {products.map((product) => {
             const stockNum = Number(product.stockQuantity ?? 0);
             const minNum = Number(product.minStockQuantity ?? 0);
-            const isLowStock = !Number.isNaN(stockNum) && stockNum < 5;
+            const isLowStock = !Number.isNaN(stockNum) && stockNum <= 3;
             const isExpiringSoon = product.expirationDate && 
               new Date(product.expirationDate) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
             const isExpired = product.expirationDate && 
@@ -143,6 +158,7 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
                     photos={product.photos} 
                     name={product.name} 
                     size="md"
+                    onClick={() => handleImageClick(product)}
                   />
                 </TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
@@ -208,6 +224,17 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
         cancelText="Cancelar"
         loading={deleting === confirmationModal.product?.id}
       />
+
+      {/* Modal de Visualização de Imagem */}
+      {selectedImage && (
+        <ImageViewer
+          open={!!selectedImage}
+          onClose={() => setSelectedImage(null)}
+          images={selectedImage.images}
+          initialIndex={selectedImage.index}
+          alt="Imagem do produto"
+        />
+      )}
     </Card>
   );
 }

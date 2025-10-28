@@ -18,7 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 // Mock data
 const mockUsers = {
   admin: {
-    id: 'cmgty5s880006ww3b8bup77v5',
+    id: '550e8400-e29b-41d4-a716-446655440005',
     login: 'admin@lojas.com',
     password: 'admin123',
     name: 'Administrador',
@@ -28,24 +28,24 @@ const mockUsers = {
     updatedAt: new Date().toISOString(),
   },
   empresa: {
-    id: 'cmgty5s880006ww3b8bup77v6',
+    id: '550e8400-e29b-41d4-a716-446655440006',
     login: 'empresa@lojas.com',
     password: 'empresa123',
     name: 'Empresa Demo',
     email: 'empresa@lojas.com',
     role: 'empresa',
-    companyId: 'cmgty5s880006ww3b8bup77v7',
+    companyId: '550e8400-e29b-41d4-a716-446655440007',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
   vendedor: {
-    id: 'cmgty5s880006ww3b8bup77v8',
+    id: '550e8400-e29b-41d4-a716-446655440008',
     login: 'vendedor@lojas.com',
     password: 'vendedor123',
     name: 'Vendedor Demo',
     email: 'vendedor@lojas.com',
     role: 'vendedor',
-    companyId: 'cmgty5s880006ww3b8bup77v7',
+    companyId: '550e8400-e29b-41d4-a716-446655440007',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -53,7 +53,7 @@ const mockUsers = {
 
 const mockProducts = [
   {
-    id: 'cmgty5s880006ww3b8bup77v9',
+    id: '550e8400-e29b-41d4-a716-446655440000',
     name: 'Smartphone Samsung Galaxy',
     barcode: '7891234567890',
     price: 1299.99,
@@ -64,12 +64,12 @@ const mockProducts = [
     description: 'Smartphone com tela de 6.5 polegadas',
     photos: ['https://example.com/phone1.jpg'],
     expirationDate: '2025-12-31',
-    companyId: 'cmgty5s880006ww3b8bup77v7',
+    companyId: '550e8400-e29b-41d4-a716-446655440007',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 'cmgty5s880006ww3b8bup77va',
+    id: '550e8400-e29b-41d4-a716-446655440002',
     name: 'Notebook Dell Inspiron',
     barcode: '7891234567891',
     price: 2499.99,
@@ -79,7 +79,22 @@ const mockProducts = [
     category: 'Informática',
     description: 'Notebook com processador Intel i5',
     photos: ['https://example.com/laptop1.jpg'],
-    companyId: 'cmgty5s880006ww3b8bup77v7',
+    companyId: '550e8400-e29b-41d4-a716-446655440007',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440001',
+    name: 'Ferro 40x40',
+    barcode: '7891234567893',
+    price: 45.90,
+    costPrice: 25.00,
+    stockQuantity: 75,
+    minStockQuantity: 15,
+    category: 'Construção',
+    description: 'Ferro de construção 40x40mm',
+    photos: ['https://example.com/iron1.jpg'],
+    companyId: '550e8400-e29b-41d4-a716-446655440007',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -87,7 +102,7 @@ const mockProducts = [
 
 const mockCustomers = [
   {
-    id: 'cmgty5s880006ww3b8bup77vc',
+    id: '550e8400-e29b-41d4-a716-446655440010',
     name: 'João Silva',
     email: 'joao@email.com',
     phone: '(11) 99999-9999',
@@ -101,7 +116,7 @@ const mockCustomers = [
       state: 'SP',
       zipCode: '01234-567',
     },
-    companyId: 'cmgty5s880006ww3b8bup77v7',
+    companyId: '550e8400-e29b-41d4-a716-446655440007',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -109,14 +124,14 @@ const mockCustomers = [
 
 const mockSellers = [
   {
-    id: 'cmgty5s880006ww3b8bup77ve',
+    id: '550e8400-e29b-41d4-a716-446655440012',
     login: 'vendedor1@lojas.com',
     name: 'Carlos Vendedor',
     cpf: '111.222.333-44',
     birthDate: '1990-05-15',
     email: 'carlos@lojas.com',
     phone: '(11) 77777-7777',
-    companyId: 'cmgty5s880006ww3b8bup77v7',
+    companyId: '550e8400-e29b-41d4-a716-446655440007',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     totalSales: 150,
@@ -127,12 +142,12 @@ const mockSellers = [
 
 const mockSales = [
   {
-    id: 'cmgty5s880006ww3b8bup77vg',
+    id: '550e8400-e29b-41d4-a716-446655440015',
     saleNumber: 'V001',
     items: [
       {
         id: '1',
-        productId: 'cmgty5s880006ww3b8bup77v9',
+        productId: '550e8400-e29b-41d4-a716-446655440000',
         product: mockProducts[0],
         quantity: 1,
         unitPrice: 1299.99,
@@ -148,11 +163,11 @@ const mockSales = [
     totalPaid: 1299.99,
     change: 0,
     clientName: 'João Silva',
-    customerId: 'cmgty5s880006ww3b8bup77vc',
-    sellerId: 'cmgty5s880006ww3b8bup77ve',
+    customerId: '550e8400-e29b-41d4-a716-446655440010',
+    sellerId: '550e8400-e29b-41d4-a716-446655440012',
     seller: mockSellers[0],
-    companyId: 'cmgty5s880006ww3b8bup77v7',
-    cashClosureId: 'cmgty5s880006ww3b8bup77vh',
+    companyId: '550e8400-e29b-41d4-a716-446655440007',
+    cashClosureId: '550e8400-e29b-41d4-a716-446655440020',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -160,13 +175,13 @@ const mockSales = [
 
 const mockBills = [
   {
-    id: 'cmgty5s880006ww3b8bup77vi',
+    id: '550e8400-e29b-41d4-a716-446655440016',
     description: 'Conta de luz - Janeiro 2024',
     amount: 150.75,
     dueDate: '2024-02-15',
     isPaid: false,
     barcode: '12345678901234567890',
-    companyId: 'cmgty5s880006ww3b8bup77v7',
+    companyId: '550e8400-e29b-41d4-a716-446655440007',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -174,7 +189,7 @@ const mockBills = [
 
 const mockCashClosures = [
   {
-    id: 'cmgty5s880006ww3b8bup77vh',
+    id: '550e8400-e29b-41d4-a716-446655440020',
     openedAt: '2024-01-15T08:00:00.000Z',
     closedAt: '2024-01-15T18:00:00.000Z',
     openingBalance: 100.00,
@@ -183,9 +198,9 @@ const mockCashClosures = [
     totalCash: 1200.00,
     totalCard: 200.00,
     totalPix: 0,
-    sellerId: 'cmgty5s880006ww3b8bup77ve',
+    sellerId: '550e8400-e29b-41d4-a716-446655440012',
     seller: mockSellers[0],
-    companyId: 'cmgty5s880006ww3b8bup77v7',
+    companyId: '550e8400-e29b-41d4-a716-446655440007',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -629,7 +644,7 @@ app.get('/api/fiscal/stats', (req, res) => {
 
 app.get('/api/company/my-company', (req, res) => {
   res.json({
-    id: 'cmgty5s880006ww3b8bup77v7',
+    id: '550e8400-e29b-41d4-a716-446655440007',
     name: 'Empresa Demo',
     cnpj: '12.345.678/0001-90',
     email: 'empresa@lojas.com',
@@ -660,7 +675,7 @@ app.get('/api/company/stats', (req, res) => {
 app.get('/api/company', (req, res) => {
   res.json({
     data: [{
-      id: 'cmgty5s880006ww3b8bup77v7',
+      id: '550e8400-e29b-41d4-a716-446655440007',
       name: 'Empresa Demo',
       cnpj: '12.345.678/0001-90',
       isActive: true,

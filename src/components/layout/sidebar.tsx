@@ -21,6 +21,10 @@ import {
   ChevronRight,
   Building2,
   TestTube,
+  CalendarClock,
+  ClipboardList,
+  Printer,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui-store';
@@ -31,8 +35,11 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'empresa'] },
   { name: 'Produtos', href: '/products', icon: Package, roles: ['admin', 'empresa', 'vendedor'] },
   { name: 'Vendas', href: '/sales', icon: ShoppingCart, roles: ['admin', 'empresa', 'vendedor'] },
+  { name: 'Orçamentos', href: '/budgets', icon: FileText, roles: ['empresa', 'vendedor'] },
+  { name: 'Histórico de Vendas', href: '/sales-history', icon: ClipboardList, roles: ['empresa', 'vendedor'] },
   { name: 'Clientes', href: '/customers', icon: Users, roles: ['admin', 'empresa', 'vendedor'] },
   { name: 'Vendedores', href: '/sellers', icon: UserCheck, roles: ['admin', 'empresa'] },
+  { name: 'Pagamentos a Prazo', href: '/installments', icon: CalendarClock, roles: ['empresa', 'vendedor'] },
   { name: 'Contas a Pagar', href: '/bills', icon: CreditCard, roles: ['admin', 'empresa'] },
   { name: 'Fechamento de Caixa', href: '/cash-closure', icon: DollarSign, roles: ['admin', 'empresa', 'vendedor'] },
   { name: 'Relatórios', href: '/reports', icon: FileBarChart, roles: ['admin', 'empresa'] },
@@ -42,8 +49,9 @@ const navigation = [
   { name: 'Notas de Entrada', href: '/inbound-invoices', icon: FileDown, roles: ['empresa'] },
   // Visível apenas para admin: Gerenciar Empresas
   { name: 'Empresas', href: '/companies', icon: Building2, roles: ['admin'] },
-  // Testes da API - visível para todos os roles
-  { name: 'Testes da API', href: '/test-api', icon: TestTube, roles: ['admin', 'empresa', 'vendedor'] },
+  // Testes da API - visível apenas para admin
+  { name: 'Testes da API', href: '/test-api', icon: TestTube, roles: ['admin'] },
+  { name: 'Impressoras', href: '/printers', icon: Printer, roles: ['empresa'] },
   { name: 'Configurações', href: '/settings', icon: Settings, roles: ['admin', 'empresa'] },
 ];
 
@@ -105,14 +113,16 @@ export function Sidebar() {
           {/* Header */}
           <div className="flex h-16 items-center justify-between border-b px-3">
             <Link href="/dashboard" className="flex items-center gap-3">
-              <Image 
-                src="/logo.png" 
-                alt="MontShop Logo" 
-                width={24} 
-                height={24} 
-                className="h-6 w-6"
-              />
-              {!sidebarCollapsed && <span className="text-lg font-bold">MontShop</span>}
+              {!sidebarCollapsed && (
+                <Image 
+                  src="/logo.png" 
+                  alt="MontShop Logo" 
+                  width={24} 
+                  height={24} 
+                  className="h-6 w-6"
+                />
+              )}
+              {!sidebarCollapsed && <span className="text-lg font-bold dark:text-white">MontShop</span>}
             </Link>
             <div className="flex items-center gap-1">
               {/* Toggle collapse (desktop) */}
@@ -140,16 +150,6 @@ export function Sidebar() {
               </button>
             </div>
           </div>
-
-          {/* Company Brand Area */}
-          {!sidebarCollapsed && (
-            <div className="mx-3 mt-3 rounded-lg bg-muted/50 p-3 border border-border">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-primary"></div>
-                <span className="text-xs font-medium text-primary">Sua Empresa</span>
-              </div>
-            </div>
-          )}
 
           {/* Navigation */}
           <nav className={cn('flex-1 space-y-1 overflow-y-auto', sidebarCollapsed ? 'p-2' : 'p-4')} role="navigation" aria-label="Menu de navegação">
@@ -197,8 +197,8 @@ export function Sidebar() {
                 </div>
                 {!sidebarCollapsed && (
                   <div className="flex-1 overflow-hidden">
-                    <p className="truncate text-sm font-medium">{user.name || user.email || user.login || 'Usuário'}</p>
-                    <p className="truncate text-xs text-muted-foreground capitalize">{user.role}</p>
+                    <p className="truncate text-sm font-medium dark:text-white">{user.name || user.email || user.login || 'Usuário'}</p>
+                    <p className="truncate text-xs text-muted-foreground dark:text-gray-300 capitalize">{user.role}</p>
                   </div>
                 )}
               </div>

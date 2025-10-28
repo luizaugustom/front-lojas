@@ -70,14 +70,14 @@ export function CompanyStatusModal({
               </div>
               <div className="flex items-center gap-2">
                 {company.isActive ? (
-                  <div className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-1">
+                  <div className="flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-1">
                     <div className="h-2 w-2 rounded-full bg-green-600"></div>
-                    <span className="text-xs font-medium text-green-700">Ativo</span>
+                    <span className="text-xs font-medium text-green-700 dark:text-green-400">Ativo</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1">
+                  <div className="flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-1">
                     <XCircle className="h-3 w-3 text-gray-500" />
-                    <span className="text-xs font-medium text-gray-700">Inativo</span>
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Inativo</span>
                   </div>
                 )}
               </div>

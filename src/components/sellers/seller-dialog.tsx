@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
-import { X, User, Mail, Phone, Calendar, CreditCard } from 'lucide-react';
+import { X, User, Mail, Phone, Calendar, CreditCard, Wallet, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/handleApiError';
@@ -33,16 +35,20 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
     formState: { errors },
     reset,
     watch,
+    control,
   } = useForm<CreateSellerDto | UpdateSellerDto>({
     resolver: zodResolver(isEditing ? updateSellerSchema : createSellerSchema),
     defaultValues: {
       login: '',
       password: '',
+      confirmPassword: '',
       name: '',
       cpf: '',
       birthDate: '',
       email: '',
       phone: '',
+      commissionRate: 0,
+      hasIndividualCash: false,
     },
   });
 
@@ -55,16 +61,23 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
         birthDate: seller.birthDate || '',
         email: seller.email || '',
         phone: seller.phone || '',
+        password: '',
+        confirmPassword: '',
+        commissionRate: seller.commissionRate || 0,
+        hasIndividualCash: seller.hasIndividualCash || false,
       });
     } else if (!seller && isOpen) {
       reset({
         login: '',
         password: '',
+        confirmPassword: '',
         name: '',
         cpf: '',
         birthDate: '',
         email: '',
         phone: '',
+        commissionRate: 0,
+        hasIndividualCash: false,
       });
     }
   }, [seller, isOpen, reset]);
@@ -74,10 +87,22 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
     try {
       const payload = { ...data };
       
-      // Converter data para ISO 8601 se preenchida
+      // Remover confirmPassword do payload (não é enviado para o backend)
+      delete (payload as any).confirmPassword;
+      
+      // Se estiver editando e a senha estiver vazia, remove do payload
+      if (isEditing && (!payload.password || payload.password === '')) {
+        delete payload.password;
+      }
+      
+      // Tratar data de nascimento
       if (payload.birthDate && payload.birthDate !== '') {
+        // Converter data para ISO 8601 se preenchida
         const date = new Date(payload.birthDate);
         payload.birthDate = date.toISOString();
+      } else if (isEditing && (!payload.birthDate || payload.birthDate === '')) {
+        // Se estiver editando e a data estiver vazia, não enviar o campo
+        delete payload.birthDate;
       }
 
       if (isEditing) {
@@ -222,15 +247,49 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
                 <Calendar className="h-4 w-4" />
                 Data de Nascimento
               </Label>
-              <Input
-                id="birthDate"
-                type="date"
-                {...register('birthDate')}
-                className={`text-foreground ${errors.birthDate ? 'border-destructive' : ''}`}
+              <Controller
+                name="birthDate"
+                control={control}
+                render={({ field }) => (
+                  <DatePicker
+                    date={field.value ? new Date(field.value) : undefined}
+                    onSelect={(date) => field.onChange(date?.toISOString().split('T')[0] || '')}
+                    placeholder="Selecione a data de nascimento"
+                  />
+                )}
               />
               {errors.birthDate && (
                 <p className="text-sm text-destructive mt-1">{errors.birthDate.message}</p>
               )}
+            </div>
+
+            {/* Comissão */}
+            <div>
+              <Label htmlFor="commissionRate" className="flex items-center gap-2 text-foreground">
+                <CreditCard className="h-4 w-4" />
+                Comissão (%)
+              </Label>
+              <Input
+                id="commissionRate"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                placeholder="0.00"
+                {...register('commissionRate', { valueAsNumber: true })}
+                onFocus={(e) => {
+                  if (Number(e.target.value) === 0) {
+                    e.target.value = '';
+                  }
+                }}
+                className={`text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors.commissionRate ? 'border-destructive' : ''}`}
+              />
+              {errors.commissionRate && (
+                <p className="text-sm text-destructive mt-1">{errors.commissionRate?.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Taxa de comissão sobre vendas (0-100%)
+              </p>
             </div>
 
             {/* Email */}
@@ -271,6 +330,76 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
               {errors.phone && (
                 <p className="text-sm text-destructive mt-1">{errors.phone.message}</p>
               )}
+            </div>
+
+            {/* Senha (apenas na edição - opcional) */}
+            {isEditing && (
+              <>
+                <div className="md:col-span-2">
+                  <Label htmlFor="password" className="flex items-center gap-2 text-foreground">
+                    <Lock className="h-4 w-4" />
+                    Nova Senha (opcional)
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Deixe em branco para não alterar"
+                    {...register('password')}
+                    className={`text-foreground ${errors.password ? 'border-destructive' : ''}`}
+                  />
+                  {errors.password && (
+                    <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Deixe em branco se não quiser alterar a senha
+                  </p>
+                </div>
+
+                <div className="md:col-span-2">
+                  <Label htmlFor="confirmPassword" className="flex items-center gap-2 text-foreground">
+                    <Lock className="h-4 w-4" />
+                    Confirmar Nova Senha
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Digite a senha novamente"
+                    {...register('confirmPassword')}
+                    className={`text-foreground ${errors.confirmPassword ? 'border-destructive' : ''}`}
+                  />
+                  {errors.confirmPassword && (
+                    <p className="text-sm text-destructive mt-1">{errors.confirmPassword.message}</p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Caixa Individual */}
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30">
+                <div className="flex items-start gap-3 flex-1">
+                  <Wallet className="h-5 w-5 text-primary mt-0.5" />
+                  <div className="flex-1">
+                    <Label htmlFor="hasIndividualCash" className="text-foreground font-medium cursor-pointer">
+                      Caixa Individual
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Se ativado, este vendedor terá seu próprio caixa separado. Se desativado, usará o caixa compartilhado da empresa.
+                    </p>
+                  </div>
+                </div>
+                <Controller
+                  name="hasIndividualCash"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch
+                      id="hasIndividualCash"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
             </div>
           </div>
 

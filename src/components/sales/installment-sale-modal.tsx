@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,14 +29,14 @@ import type { Customer } from '@/types';
 interface InstallmentSaleModalProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (customerId: string, installmentData: InstallmentData) => void;
+  onConfirm: (customerId: string, installmentData: InstallmentData, customerInfo: { name: string; cpfCnpj?: string }) => void;
   totalAmount: number;
 }
 
 interface InstallmentData {
   installments: number;
   installmentValue: number;
-  firstDueDate: string;
+  firstDueDate: Date;
   description?: string;
 }
 
@@ -57,7 +58,7 @@ export function InstallmentSaleModal({
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithDebt | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [installments, setInstallments] = useState(1);
-  const [firstDueDate, setFirstDueDate] = useState('');
+  const [firstDueDate, setFirstDueDate] = useState<Date | null>(null);
   const [minSearchLength] = useState(3); // Mínimo de 3 caracteres para buscar
   const [lastSearchTerm, setLastSearchTerm] = useState(''); // Controle de busca duplicada
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Controle de carregamento inicial
@@ -77,10 +78,12 @@ export function InstallmentSaleModal({
     if (open && isAuthenticated && isInitialLoad) {
       console.log('[DEBUG] Carregamento inicial do modal');
       loadCustomers();
-      // Definir data padrão (próximo mês)
-      const nextMonth = new Date();
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-      setFirstDueDate(nextMonth.toISOString().split('T')[0]);
+      // Definir data padrão (próximo mês) - garantir que seja no formato correto
+      const now = new Date();
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+      // Criar data em UTC para evitar problemas de timezone
+      const utcDate = new Date(Date.UTC(nextMonth.getFullYear(), nextMonth.getMonth(), nextMonth.getDate(), 0, 0, 0, 0));
+      setFirstDueDate(utcDate);
     }
   }, [open, isAuthenticated, isInitialLoad]);
 
@@ -210,7 +213,7 @@ export function InstallmentSaleModal({
             const installments = installmentsResponse.data.data || [];
             
             const unpaidInstallments = installments.filter((inst: any) => !inst.isPaid);
-            const totalDebt = unpaidInstallments.reduce((sum: number, inst: any) => sum + (inst.amount || 0), 0);
+            const totalDebt = unpaidInstallments.reduce((sum: number, inst: any) => sum + Number(inst.amount || 0), 0);
             
             return {
               ...customer,
@@ -238,7 +241,7 @@ export function InstallmentSaleModal({
         console.log('[DEBUG] Carregamento inicial concluído');
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar clientes:', error);
       
       // Se for erro de autenticação, mostrar mensagem específica
@@ -319,11 +322,11 @@ export function InstallmentSaleModal({
     const installmentData: InstallmentData = {
       installments,
       installmentValue: calculateInstallmentValue(),
-      firstDueDate,
+      firstDueDate: firstDueDate!,
       description: data.description,
     };
 
-    onConfirm(selectedCustomer.id, installmentData);
+    onConfirm(selectedCustomer.id, installmentData, { name: selectedCustomer.name, cpfCnpj: selectedCustomer.cpfCnpj });
   };
 
   const getDebtStatus = (customer: CustomerWithDebt) => {
@@ -350,7 +353,7 @@ export function InstallmentSaleModal({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Verificação de Autenticação */}
           {!isAuthenticated && (
-            <div className="text-center py-8 text-red-600">
+            <div className="text-center py-8 text-red-600 dark:text-red-400">
               <p>Você precisa estar logado para acessar os clientes</p>
               <p className="text-sm text-muted-foreground">Faça login para continuar</p>
             </div>
@@ -361,7 +364,7 @@ export function InstallmentSaleModal({
             <div className="space-y-4">
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder={`Buscar cliente por nome, CPF/CNPJ ou email... (mín. ${minSearchLength} caracteres)`}
                   value={searchTerm}
@@ -400,7 +403,7 @@ export function InstallmentSaleModal({
              )}
 
              {searchTerm && searchTerm.length >= minSearchLength && !loading && (
-               <div className="text-sm text-green-600">
+               <div className="text-sm text-green-600 dark:text-green-400">
                  Busca local + API concluída
                </div>
              )}
@@ -473,7 +476,7 @@ export function InstallmentSaleModal({
                               {debtStatus.label}
                             </Badge>
                             {customer.totalDebt && customer.totalDebt > 0 && (
-                              <span className="text-sm font-medium text-red-600">
+                              <span className="text-sm font-medium text-red-600 dark:text-red-400">
                                 Dívida: {formatCurrency(customer.totalDebt)}
                               </span>
                             )}
@@ -504,7 +507,7 @@ export function InstallmentSaleModal({
                     onValueChange={(value) => setInstallments(Number(value))}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
                       {Array.from({ length: 24 }, (_, i) => i + 1).map((num) => (
@@ -528,12 +531,10 @@ export function InstallmentSaleModal({
 
                 <div className="space-y-2">
                   <Label htmlFor="firstDueDate">Primeiro Vencimento</Label>
-                  <Input
-                    id="firstDueDate"
-                    type="date"
-                    value={firstDueDate}
-                    onChange={(e) => setFirstDueDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
+                  <DatePicker
+                    date={firstDueDate || undefined}
+                    onSelect={(date) => setFirstDueDate(date || null)}
+                    placeholder="Selecione a data do primeiro vencimento"
                   />
                 </div>
               </div>
@@ -565,7 +566,7 @@ export function InstallmentSaleModal({
                   </div>
                   <div>
                     <span className="text-muted-foreground">Primeiro vencimento:</span>
-                    <p className="font-medium">{formatDate(firstDueDate)}</p>
+                    <p className="font-medium">{firstDueDate ? formatDate(firstDueDate.toISOString().split('T')[0]) : 'Não selecionado'}</p>
                   </div>
                 </div>
               </div>

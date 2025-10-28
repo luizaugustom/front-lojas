@@ -6,10 +6,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/layout/sidebar';
 import { useUIStore } from '@/store/ui-store';
 import { Header } from '@/components/layout/header';
+import { PrinterStatusMonitor } from '@/components/printer/printer-status-monitor';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const { sidebarCollapsed } = useUIStore();
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -21,8 +23,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isAuthenticated) {
     return null;
   }
-
-  const { sidebarCollapsed } = useUIStore();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -37,6 +37,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+      {/* Monitor de Status de Impressoras */}
+      <PrinterStatusMonitor />
     </div>
   );
 }

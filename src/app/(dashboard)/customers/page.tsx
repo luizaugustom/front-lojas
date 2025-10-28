@@ -24,9 +24,9 @@ export default function CustomersPage() {
       console.log('[CustomersPage] Buscando clientes com search:', search, 'companyId:', user?.companyId);
       console.log('[CustomersPage] Usuário completo:', user);
       try {
-        const response = await customerApi.list({ 
+        const response = await customerApi.list({
           search,
-          companyId: user?.companyId 
+          companyId: user?.companyId ?? undefined
         });
         console.log('[CustomersPage] Resposta da API:', response);
         return response;
@@ -48,7 +48,7 @@ export default function CustomersPage() {
     enabled: !!user?.companyId
   });
 
-  const customers = customersResponse?.customers || [];
+  const customers = (customersResponse?.data?.customers || customersResponse?.data || []) as any[];
 
   const handleEdit = (customer: Customer) => {
     setSelectedCustomer(customer);

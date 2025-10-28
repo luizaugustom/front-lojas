@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
 import {
@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/handleApiError';
 import { billSchema } from '@/lib/validations';
@@ -36,6 +37,7 @@ export function BillDialog({ open, onClose }: BillDialogProps) {
     handleSubmit,
     formState: { errors },
     reset,
+    control,
   } = useForm<CreateBillDto>({
     resolver: zodResolver(billSchema),
   });
@@ -102,7 +104,18 @@ export function BillDialog({ open, onClose }: BillDialogProps) {
 
           <div className="space-y-2">
             <Label htmlFor="dueDate" className="text-foreground">Data de Vencimento *</Label>
-            <Input id="dueDate" type="date" {...register('dueDate')} disabled={loading} className="text-foreground" />
+            <Controller
+              name="dueDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  date={field.value ? new Date(field.value) : undefined}
+                  onSelect={(date) => field.onChange(date?.toISOString().split('T')[0] || '')}
+                  placeholder="Selecione a data de vencimento"
+                  disabled={loading}
+                />
+              )}
+            />
             {errors.dueDate && (
               <p className="text-sm text-destructive">{errors.dueDate.message}</p>
             )}

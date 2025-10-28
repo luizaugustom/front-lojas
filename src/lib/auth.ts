@@ -74,6 +74,7 @@ export function canAccessRoute(route: string): boolean {
     '/products': ['admin', 'empresa', 'vendedor'],
     '/sales': ['admin', 'empresa', 'vendedor'],
     '/customers': ['admin', 'empresa', 'vendedor'],
+    '/installments': ['admin', 'empresa', 'vendedor'],
     '/bills': ['admin', 'empresa'],
     '/cash-closure': ['admin', 'empresa', 'vendedor'],
     '/reports': ['admin', 'empresa'],

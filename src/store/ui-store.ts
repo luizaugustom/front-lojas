@@ -73,6 +73,23 @@ export const useUIStore = create<UIState>((set, get) => ({
       
       // Atualiza a variável CSS --primary
       document.documentElement.style.setProperty('--primary', primaryColor);
+      
+      // Atualiza também a cor da scrollbar para usar a mesma cor da empresa
+      document.documentElement.style.setProperty('--scrollbar-color', primaryColor);
+      
+      // Cria uma versão mais escura para o hover da scrollbar
+      if (companyColor) {
+        const hsl = primaryColor.split(' ');
+        if (hsl.length === 3) {
+          const [h, s, l] = hsl;
+          const lValue = parseFloat(l.replace('%', ''));
+          const darkerL = Math.max(lValue - 8, 30); // 8% mais escuro, mínimo 30%
+          document.documentElement.style.setProperty('--scrollbar-color-hover', `${h} ${s} ${darkerL}%`);
+        }
+      } else {
+        // Cor padrão para hover (azul mais escuro)
+        document.documentElement.style.setProperty('--scrollbar-color-hover', '221.2 83.2% 45%');
+      }
     }
   },
 }));

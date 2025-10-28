@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ProductImage } from '@/components/products/product-image';
+import { ImageViewer } from '@/components/ui/image-viewer';
 import { formatCurrency } from '@/lib/utils';
+import { getImageUrl } from '@/lib/image-utils';
 import type { Product } from '@/types';
 
 interface ProductListProps {
@@ -14,6 +17,19 @@ interface ProductListProps {
 }
 
 export function ProductList({ products, isLoading, onAddToCart }: ProductListProps) {
+  const [selectedImage, setSelectedImage] = useState<{ images: string[], index: number } | null>(null);
+
+  const handleImageClick = (product: Product) => {
+    if (product.photos && product.photos.length > 0) {
+      const validImages = product.photos
+        .map(photo => getImageUrl(photo))
+        .filter(Boolean);
+      
+      if (validImages.length > 0) {
+        setSelectedImage({ images: validImages, index: 0 });
+      }
+    }
+  };
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -46,38 +62,51 @@ export function ProductList({ products, isLoading, onAddToCart }: ProductListPro
   }
 
     return (
-      <div className="space-y-1">
-        {products.map((product) => (
-          <Card key={product.id} className="p-1">
-            <CardContent className="flex items-center gap-3 py-2">
-              <ProductImage 
-                photos={product.photos} 
-                name={product.name} 
-                size="md"
-                className="flex-none"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium truncate">{product.name}</h3>
-                  <div className="text-sm font-semibold">{formatCurrency(product.price)}</div>
+      <>
+        <div className="space-y-1">
+          {products.map((product) => (
+            <Card key={product.id} className="p-1">
+              <CardContent className="flex items-center gap-3 py-2">
+                <ProductImage 
+                  photos={product.photos} 
+                  name={product.name} 
+                  size="md"
+                  className="flex-none"
+                  onClick={() => handleImageClick(product)}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium truncate">{product.name}</h3>
+                    <div className="text-sm font-semibold">{formatCurrency(product.price)}</div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">Estoque: {product.stockQuantity}</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">Estoque: {product.stockQuantity}</p>
-              </div>
-                     <div className="flex-shrink-0">
-                <Button
-                  variant="ghost"
-                         className="h-7 w-7 p-0"
-                  onClick={() => onAddToCart(product, 1)}
-                  disabled={product.stockQuantity <= 0}
-                  aria-label={`Adicionar ${product.name}`}
-                  title={`Adicionar ${product.name}`}
-                >
-                  <Plus className="h-4 w-4 text-blue-600" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                       <div className="flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                           className="h-7 w-7 p-0"
+                    onClick={() => onAddToCart(product, 1)}
+                    disabled={product.stockQuantity <= 0}
+                    aria-label={`Adicionar ${product.name}`}
+                    title={`Adicionar ${product.name}`}
+                  >
+                    <Plus className="h-4 w-4 text-blue-600" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {selectedImage && (
+          <ImageViewer
+            open={!!selectedImage}
+            onClose={() => setSelectedImage(null)}
+            images={selectedImage.images}
+            initialIndex={selectedImage.index}
+            alt="Imagem do produto"
+          />
+        )}
+      </>
     );
 }

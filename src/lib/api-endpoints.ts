@@ -196,6 +196,27 @@ export const companyApi = {
    * Roles: ADMIN - Desativar empresa
    */
   deactivate: (id: string) => api.patch(`/company/${id}/deactivate`),
+
+  /**
+   * POST /company/my-company/upload-logo
+   * Roles: COMPANY - Upload do logo da empresa
+   * Body: FormData com campo 'logo'
+   */
+  uploadLogo: (file: File) => {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return api.post('/company/my-company/upload-logo', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  /**
+   * DELETE /company/my-company/logo
+   * Roles: COMPANY - Remover logo da empresa
+   */
+  removeLogo: () => api.delete('/company/my-company/logo'),
 };
 
 // ============================================================================
@@ -451,6 +472,24 @@ export const printerApi = {
   list: () => api.get('/printer'),
 
   /**
+   * GET /printer/available
+   * Roles: ADMIN, COMPANY - Lista impressoras disponíveis no sistema
+   */
+  available: () => api.get('/printer/available'),
+
+  /**
+   * GET /printer/check-drivers
+   * Roles: ADMIN, COMPANY - Verifica drivers instalados
+   */
+  checkDrivers: () => api.get('/printer/check-drivers'),
+
+  /**
+   * POST /printer/install-drivers
+   * Roles: ADMIN, COMPANY - Instala drivers automaticamente
+   */
+  installDrivers: () => api.post('/printer/install-drivers'),
+
+  /**
    * GET /printer/:id/status
    * Roles: ADMIN, COMPANY
    */
@@ -461,6 +500,30 @@ export const printerApi = {
    * Roles: ADMIN, COMPANY
    */
   test: (id: string) => api.post(`/printer/${id}/test`),
+
+  /**
+   * POST /printer/:id/open-drawer
+   * Roles: COMPANY - Abre gaveta de dinheiro
+   */
+  openDrawer: (id: string) => api.post(`/printer/${id}/open-drawer`),
+
+  /**
+   * GET /printer/:id/queue
+   * Roles: ADMIN, COMPANY - Obtém fila de impressão
+   */
+  queue: (id: string) => api.get(`/printer/${id}/queue`),
+
+  /**
+   * POST /printer/custom-footer
+   * Roles: COMPANY - Atualiza footer personalizado
+   */
+  updateFooter: (data: { customFooter: string }) => api.post('/printer/custom-footer', data),
+
+  /**
+   * GET /printer/custom-footer
+   * Roles: COMPANY - Obtém footer personalizado
+   */
+  getFooter: () => api.get('/printer/custom-footer'),
 };
 
 // ============================================================================

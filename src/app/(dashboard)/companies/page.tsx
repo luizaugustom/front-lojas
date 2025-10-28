@@ -12,7 +12,7 @@ import { CompanyStatusModal } from '@/components/companies/company-status-modal'
 import { Company, CreateCompanyDto } from '@/types';
 import { companyApi } from '@/lib/api-endpoints';
 import { toast } from 'react-hot-toast';
-import { convertPrismaIdToUUID } from '@/lib/utils';
+import { convertPrismaIdToUUID, isValidId } from '@/lib/utils';
 
 export default function CompaniesPage() {
   const { user } = useAuth();
@@ -95,9 +95,8 @@ export default function CompaniesPage() {
       // Debug: verificar se o ID é válido
       console.log('[handleDeleteCompany] Tentando excluir empresa:', {
         id,
-        isValidUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id),
-        idLength: id?.length,
-        isPrismaId: /^[a-z0-9]{21}$/i.test(id) // Formato típico do Prisma
+        isValidId: isValidId(id),
+        idLength: id?.length
       });
       
       // Primeiro, verificar se a empresa existe fazendo uma busca

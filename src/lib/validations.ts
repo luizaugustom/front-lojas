@@ -16,7 +16,7 @@ export const productSchema = z.object({
   minStockQuantity: z.number().min(0, 'Quantidade mínima não pode ser negativa').optional(),
   category: z.string().optional(),
   description: z.string().optional(),
-  expirationDate: z.string().optional(),
+  expirationDate: z.string().optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
 });
 
 // Schema para formulário de produto (inclui campos opcionais para edição)
@@ -30,7 +30,7 @@ export const productFormSchema = z.object({
   minStockQuantity: z.number().min(0, 'Quantidade mínima não pode ser negativa').optional(),
   category: z.string().optional(),
   description: z.string().optional(),
-  expirationDate: z.string().optional(),
+  expirationDate: z.string().optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
   activityId: z.any().optional(), // Aceita qualquer tipo para evitar validação de UUID
   companyId: z.any().optional(), // Aceita qualquer tipo para evitar validação de UUID
 });
@@ -49,7 +49,7 @@ export const paymentMethodDetailSchema = z.object({
 export const installmentDataSchema = z.object({
   installments: z.number().min(1, 'Mínimo 1 parcela').max(24, 'Máximo 24 parcelas'),
   installmentValue: z.number().positive('Valor da parcela deve ser positivo'),
-  firstDueDate: z.string().min(1, 'Data do primeiro vencimento é obrigatória'),
+  firstDueDate: z.date({ required_error: 'Data do primeiro vencimento é obrigatória' }),
   description: z.string().optional(),
 });
 
@@ -147,6 +147,7 @@ export const createSellerSchema = z.object({
       message: 'Telefone deve estar no formato (XX) XXXXX-XXXX'
     })
     .optional(),
+  hasIndividualCash: z.boolean().optional(),
 });
 
 export const updateSellerSchema = z.object({
@@ -180,6 +181,22 @@ export const updateSellerSchema = z.object({
       message: 'Telefone deve estar no formato (XX) XXXXX-XXXX'
     })
     .optional(),
+  password: z.string()
+    .refine((val) => val === '' || val.length >= 6, {
+      message: 'Senha deve ter no mínimo 6 caracteres'
+    })
+    .optional(),
+  confirmPassword: z.string().optional(),
+  hasIndividualCash: z.boolean().optional(),
+  commissionRate: z.number().min(0).max(100).optional(),
+}).refine((data) => {
+  if (data.password && data.password !== '') {
+    return data.password === data.confirmPassword;
+  }
+  return true;
+}, {
+  message: 'As senhas não coincidem',
+  path: ['confirmPassword'],
 });
 
 export const updateSellerProfileSchema = z.object({

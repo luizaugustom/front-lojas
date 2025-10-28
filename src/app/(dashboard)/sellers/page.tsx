@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Filter, Users, TrendingUp, DollarSign, ShoppingCart } from 'lucide-react';
+import { Plus, Search, Filter, Users, TrendingUp, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InputWithIcon } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -29,7 +29,7 @@ export default function SellersPage() {
       try {
         const response = await sellerApi.list({ 
           search,
-          companyId: user?.companyId 
+          companyId: user?.companyId || undefined
         });
         console.log('[SellersPage] Resposta da API:', response);
         return response;
@@ -46,17 +46,23 @@ export default function SellersPage() {
     ? sellersResponse 
     : sellersResponse?.data 
     ? sellersResponse.data 
-    : sellersResponse?.sellers 
-    ? sellersResponse.sellers 
+    : (sellersResponse as any)?.sellers 
+    ? (sellersResponse as any).sellers 
     : sellersResponse 
     ? [sellersResponse] 
     : [];
 
   // Calcular estatísticas gerais
   const totalSellers = sellers.length;
-  const totalSales = sellers.reduce((sum, seller) => sum + (seller.totalSales || 0), 0);
-  const totalRevenue = sellers.reduce((sum, seller) => sum + (seller.totalRevenue || 0), 0);
-  const averageRevenue = totalSellers > 0 ? totalRevenue / totalSellers : 0;
+  
+  // Calcular vendedor com melhor e pior performance (baseado nas vendas do mês)
+  const topSeller = sellers.length > 0 ? sellers.reduce((prev: Seller, current: Seller) => 
+    Number((prev as any).monthlySalesValue || 0) > Number((current as any).monthlySalesValue || 0) ? prev : current
+  ) : null;
+  
+  const bottomSeller = sellers.length > 0 ? sellers.reduce((prev: Seller, current: Seller) => 
+    Number((prev as any).monthlySalesValue || 0) < Number((current as any).monthlySalesValue || 0) ? prev : current
+  ) : null;
 
   const handleEdit = (seller: Seller) => {
     setSelectedSeller(seller);
@@ -99,56 +105,62 @@ export default function SellersPage() {
       </div>
 
       {/* Estatísticas Gerais */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-6 bg-card border-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Users className="h-6 w-6 text-primary" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="p-4 bg-card border-border">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-primary/10 rounded-lg">
+              <Users className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-primary">{totalSellers}</p>
-              <p className="text-sm text-muted-foreground">Total de Vendedores</p>
+              <p className="text-lg font-bold text-primary">{totalSellers}</p>
+              <p className="text-xs text-muted-foreground">Total de Vendedores</p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-6 bg-card border-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-500/10 rounded-lg">
-              <ShoppingCart className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-green-600">{totalSales}</p>
-              <p className="text-sm text-muted-foreground">Total de Vendas</p>
-            </div>
-          </div>
-        </Card>
+        <Card className="p-4 bg-card border-border">
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-foreground">Performance dos Vendedores (Mês Atual)</h3>
+            
+            {topSeller && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-green-500/10 rounded">
+                    <TrendingUp className="h-3 w-3 text-green-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-green-600 truncate">
+                      {topSeller.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency((topSeller as any).monthlySalesValue || 0)} este mês
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
-        <Card className="p-6 bg-card border-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/10 rounded-lg">
-              <DollarSign className="h-6 w-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-purple-600">
-                {formatCurrency(totalRevenue)}
-              </p>
-              <p className="text-sm text-muted-foreground">Faturamento Total</p>
-            </div>
-          </div>
-        </Card>
+            {bottomSeller && topSeller !== bottomSeller && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-red-500/10 rounded">
+                    <TrendingDown className="h-3 w-3 text-red-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-red-600 truncate">
+                      {bottomSeller.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency((bottomSeller as any).monthlySalesValue || 0)} este mês
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
-        <Card className="p-6 bg-card border-border">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-500/10 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-orange-600">
-                {formatCurrency(averageRevenue)}
-              </p>
-              <p className="text-sm text-muted-foreground">Média por Vendedor</p>
-            </div>
+            {(!topSeller || sellers.length === 0) && (
+              <p className="text-xs text-muted-foreground">Nenhum vendedor encontrado</p>
+            )}
           </div>
         </Card>
       </div>

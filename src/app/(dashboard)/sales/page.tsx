@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Barcode } from 'lucide-react';
+import { Plus, Search, Barcode, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { Input, InputWithIcon } from '@/components/ui/input';
 import { handleApiError } from '@/lib/handleApiError';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,8 +16,10 @@ import { ProductGrid } from '@/components/sales/product-grid';
 import { ProductList } from '@/components/sales/product-list';
 import { Cart } from '@/components/sales/cart';
 import { CheckoutDialog } from '@/components/sales/checkout-dialog';
+import { BudgetDialog } from '@/components/sales/budget-dialog';
 import { BarcodeScanner } from '@/components/sales/barcode-scanner';
-import { handleNumberInputChange } from '@/lib/utils';
+import { handleNumberInputChange, isValidId } from '@/lib/utils-clean';
+import { useDeviceStore } from '@/store/device-store';
 import type { Product } from '@/types';
 
 export default function SalesPage() {
@@ -25,9 +27,20 @@ export default function SalesPage() {
   const [search, setSearch] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [budgetOpen, setBudgetOpen] = useState(false);
   const { addItem, items } = useCartStore();
-  const [barcodeBuffer, setBarcodeBuffer] = useState('');
   const [lastScanned, setLastScanned] = useState(0);
+  
+  // Device status from store
+  const { 
+    barcodeBuffer, 
+    setBarcodeBuffer, 
+    scanSuccess, 
+    setScanSuccess,
+    setPrinterStatus,
+    setPrinterName,
+    setScannerActive
+  } = useDeviceStore();
 
   // Abrir caixa: estado e lógica
   const [openingDialogOpen, setOpeningDialogOpen] = useState(false);
@@ -45,6 +58,9 @@ export default function SalesPage() {
   const products = productsResponse?.products || [];
 
   const handleBarcodeScanned = async (barcode: string) => {
+    setScanSuccess(true);
+    setTimeout(() => setScanSuccess(false), 1500);
+    
     try {
       const product = (await api.get(`/product/barcode/${barcode}`)).data;
       // Manter ID original do produto
@@ -61,10 +77,12 @@ export default function SalesPage() {
       } catch (addError) {
         console.error('[DEBUG] Erro ao adicionar produto escaneado ao carrinho:', addError);
         toast.error(addError instanceof Error ? addError.message : 'Erro ao adicionar produto ao carrinho');
+        setScanSuccess(false);
       }
     } catch (error) {
       console.error('Product not found');
       toast.error('Produto não encontrado');
+      setScanSuccess(false);
     }
   };
 
@@ -79,7 +97,50 @@ export default function SalesPage() {
     }
   }, [barcodeBuffer]);
 
-  // Keyboard barcode scanner support: collect numeric input and submit on Enter
+  // Verificar status da impressora apenas ao montar o componente (não periodicamente)
+  useEffect(() => {
+    const checkPrinterStatus = async () => {
+      try {
+        // Buscar impressoras cadastradas
+        const response = await api.get('/printer');
+        const printers = response.data?.printers || response.data || [];
+        
+        // Encontrar impressora padrão
+        const printer = printers.find((p: any) => p.isDefault) || printers[0];
+        
+        if (!printer) {
+          setPrinterStatus('disconnected');
+          setPrinterName(null);
+          return;
+        }
+
+        setPrinterName(printer.name);
+
+        // Verificar status da impressora
+        try {
+          const statusResponse = await api.get(`/printer/${printer.id}/status`);
+          const status = statusResponse.data;
+          
+          if (status.connected || status.status === 'online' || status.status === 'ready') {
+            setPrinterStatus('connected');
+          } else {
+            setPrinterStatus('error');
+          }
+        } catch (statusError) {
+          setPrinterStatus('error');
+        }
+      } catch (error) {
+        // Se não houver impressoras cadastradas
+        setPrinterStatus('disconnected');
+        setPrinterName(null);
+      }
+    };
+
+    // Verificar apenas uma vez ao montar
+    checkPrinterStatus();
+  }, [api, setPrinterStatus, setPrinterName]);
+
+  // Keyboard barcode scanner support: collect input globally and submit on Enter
   useEffect(() => {
     // Ao montar, verificar se existe fechamento de caixa atual. Se não, pedir saldo inicial.
     (async () => {
@@ -105,28 +166,42 @@ export default function SalesPage() {
       }
     })();
 
-    const onKey = (e: KeyboardEvent) => {
-      const active = document.activeElement;
-      // Ignore when typing in inputs/textareas/selects so user typing isn't captured
-      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) {
-        return;
-      }
+    // Ativar status do leitor enquanto a página estiver montada
+    setScannerActive(true);
 
-      // Only accept printable characters and Enter
+    // Temporizador para medir velocidade de digitação (detectar leitor vs digitação humana)
+    const scanStartedAtRef = { current: null as number | null };
+
+    const onKey = (e: KeyboardEvent) => {
+      // Verificar se e.key existe
+      if (!e.key) return;
+
+      // Aceitar caracteres imprimíveis e Enter, mesmo com foco em inputs (sempre ativo)
       if (e.key === 'Enter') {
         const code = barcodeBuffer.trim();
         if (code.length >= 3) {
+          // Heurística: considerar leitor se velocidade média < 80ms por caractere
+          const startedAt = (scanStartedAtRef.current ?? Date.now());
+          const duration = Date.now() - startedAt;
+          const avgPerChar = duration / Math.max(1, code.length);
+          const isLikelyScanner = avgPerChar < 80;
+
           // Simple debounce: ignore if scanned too recently
           const now = Date.now();
-          if (now - lastScanned > 500) {
-            console.log('[Barcode Scanner] Código escaneado:', code);
+          if (isLikelyScanner && now - lastScanned > 500) {
+            console.log('[Barcode Scanner] Código escaneado:', code, { avgPerCharMs: Math.round(avgPerChar) });
             handleBarcodeScanned(code);
             setLastScanned(now);
           }
         }
         setBarcodeBuffer('');
+        scanStartedAtRef.current = null;
       } else if (e.key.length === 1) {
-        // append typical barcode characters (digits and letters)
+        // Acumular caracteres típicos de leitores (rápidos e sequenciais)
+        if (!barcodeBuffer) {
+          // Primeiro caractere da sequência
+          scanStartedAtRef.current = Date.now();
+        }
         setBarcodeBuffer((s) => {
           const newBuffer = s + e.key;
           // Limit buffer size to prevent memory issues
@@ -136,12 +211,25 @@ export default function SalesPage() {
     };
 
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [barcodeBuffer, lastScanned]);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      setScannerActive(false);
+    };
+  }, [barcodeBuffer, lastScanned, setScannerActive, setBarcodeBuffer]);
 
   const handleCheckout = () => {
     if (items.length === 0) return;
     setCheckoutOpen(true);
+  };
+
+  const handleBudget = () => {
+    if (items.length === 0) return;
+    setBudgetOpen(true);
+  };
+
+  const handleBudgetSuccess = () => {
+    // Carrinho será mantido ou limpo conforme a necessidade do usuário
+    toast.success('Orçamento criado com sucesso!');
   };
 
   const submitOpening = async () => {
@@ -164,33 +252,19 @@ export default function SalesPage() {
 
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-4 relative">
-      {/* Barcode Scanner Indicator */}
-      <div className="absolute top-2 right-2 z-10">
-        <div className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-2">
-          <span>📱</span>
-          <span>Scanner Ativo</span>
-          {barcodeBuffer && (
-            <span className="bg-primary-foreground/20 px-2 py-0.5 rounded text-xs">
-              {barcodeBuffer.length} chars
-            </span>
-          )}
-        </div>
-      </div>
-      
       {/* Products Section */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="mb-4">
           <h1 className="text-2xl font-bold tracking-tight mb-2">Vendas</h1>
           <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar produtos..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <InputWithIcon
+              placeholder="Buscar produtos..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              icon={<Search className="h-4 w-4" />}
+              iconPosition="left"
+              className="flex-1"
+            />
             <Button onClick={() => setScannerOpen(true)}>
               <Barcode className="mr-2 h-4 w-4" />
               Escanear
@@ -223,7 +297,7 @@ export default function SalesPage() {
 
       {/* Cart Section */}
       <div className="w-96 flex flex-col">
-        <Cart onCheckout={handleCheckout} />
+        <Cart onCheckout={handleCheckout} onBudget={handleBudget} />
       </div>
 
       {/* Dialogs */}
@@ -236,6 +310,12 @@ export default function SalesPage() {
       <CheckoutDialog
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
+      />
+
+      <BudgetDialog
+        open={budgetOpen}
+        onClose={() => setBudgetOpen(false)}
+        onSuccess={handleBudgetSuccess}
       />
 
       {/* Dialog para abertura de caixa (aparece se não houver caixa atual) */}

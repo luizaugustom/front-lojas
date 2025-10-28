@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Edit, Trash2, Users, Eye, TrendingUp, DollarSign } from 'lucide-react';
+import { Edit, Trash2, Users, Eye, DollarSign } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -71,7 +71,8 @@ export function SellersTable({ sellers, isLoading, onEdit, onView, onRefetch }: 
               <TableHead className="text-foreground">Email</TableHead>
               <TableHead className="text-foreground">Telefone</TableHead>
               <TableHead className="text-foreground">CPF</TableHead>
-              <TableHead className="text-foreground">Estatísticas</TableHead>
+              <TableHead className="text-foreground">Comissão</TableHead>
+              <TableHead className="text-foreground">Vendas do Mês</TableHead>
               <TableHead className="text-foreground">Cadastrado em</TableHead>
               <TableHead className="text-right text-foreground">Ações</TableHead>
             </TableRow>
@@ -103,20 +104,28 @@ export function SellersTable({ sellers, isLoading, onEdit, onView, onRefetch }: 
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    {seller.totalSales !== undefined && (
-                      <Badge variant="secondary" className="text-xs">
-                        <TrendingUp className="h-3 w-3 mr-1" />
-                        {seller.totalSales} vendas
-                      </Badge>
-                    )}
-                    {seller.totalRevenue !== undefined && (
-                      <Badge variant="outline" className="text-xs">
-                        <DollarSign className="h-3 w-3 mr-1" />
-                        {formatCurrency(seller.totalRevenue)}
-                      </Badge>
-                    )}
-                  </div>
+                  {seller.commissionRate && seller.commissionRate > 0 ? (
+                    <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                      <DollarSign className="h-3 w-3 mr-1" />
+                      {seller.commissionRate}%
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground text-xs">Sem comissão</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {(seller as any).monthlySalesValue ? (
+                    <div className="flex flex-col">
+                      <span className="text-foreground font-medium">
+                        {formatCurrency((seller as any).monthlySalesValue)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {(seller as any).monthlySalesCount || 0} venda(s)
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">R$ 0,00</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-foreground">{formatDate(seller.createdAt)}</TableCell>
                 <TableCell className="text-right">

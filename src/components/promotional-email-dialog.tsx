@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import { Mail, Send } from 'lucide-react';
@@ -123,13 +124,10 @@ export function PromotionalEmailDialog({ children }: PromotionalEmailDialogProps
 
           <div className="space-y-2">
             <Label htmlFor="validUntil" className="text-foreground">Válido Até</Label>
-            <Input
-              id="validUntil"
-              type="date"
-              value={formData.validUntil}
-              onChange={(e) => handleInputChange('validUntil', e.target.value)}
-              required
-              className="text-foreground"
+            <DatePicker
+              date={formData.validUntil ? new Date(formData.validUntil) : undefined}
+              onSelect={(date) => handleInputChange('validUntil', date?.toISOString().split('T')[0] || '')}
+              placeholder="Selecione a data de validade"
             />
           </div>
 

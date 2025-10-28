@@ -1,20 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { Minus, Plus, Trash2, ShoppingCart } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingCart, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProductImage } from '@/components/products/product-image';
 import { useCartStore } from '@/store/cart-store';
-import { formatCurrency, handleNumberInputChange } from '@/lib/utils';
+import { formatCurrency, handleNumberInputChange } from '@/lib/utils-clean';
 
 interface CartProps {
   onCheckout: () => void;
+  onBudget?: () => void;
 }
 
-export function Cart({ onCheckout }: CartProps) {
+export function Cart({ onCheckout, onBudget }: CartProps) {
   const { items, discount, updateQuantity, removeItem, setDiscount, getSubtotal, getTotal, clearCart } = useCartStore();
   const [discountInput, setDiscountInput] = useState(discount.toString());
 
@@ -97,7 +98,7 @@ export function Cart({ onCheckout }: CartProps) {
               <span>{formatCurrency(subtotal)}</span>
             </div>
             {discount > 0 && (
-              <div className="flex justify-between text-green-600">
+              <div className="flex justify-between text-green-600 dark:text-green-400">
                 <span>Desconto:</span>
                 <span>-{formatCurrency(discount)}</span>
               </div>
@@ -131,7 +132,7 @@ export function Cart({ onCheckout }: CartProps) {
         </div>
 
         {/* Botões fixos na parte inferior */}
-        <div className="p-4 pt-0">
+        <div className="p-4 pt-0 space-y-2">
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={clearCart} disabled={items.length === 0}>
               Limpar
@@ -140,6 +141,17 @@ export function Cart({ onCheckout }: CartProps) {
               Finalizar
             </Button>
           </div>
+          {onBudget && (
+            <Button 
+              variant="secondary" 
+              className="w-full" 
+              onClick={onBudget} 
+              disabled={items.length === 0}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Criar Orçamento
+            </Button>
+          )}
         </div>
       </div>
     </Card>

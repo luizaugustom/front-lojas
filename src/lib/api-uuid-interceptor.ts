@@ -6,13 +6,13 @@
 import { isValidUUID, validateUUID } from './uuid-validator';
 
 /**
- * Valida parâmetros UUID em URLs de API
+ * Valida parâmetros UUID v4 em URLs de API
  * @param url - URL da API
  * @throws Error se encontrar UUID inválido
  */
 export function validateUUIDsInURL(url: string): void {
   // Regex para encontrar possíveis UUIDs na URL
-  const uuidPattern = /\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//gi;
+  const uuidPattern = /\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\//gi;
   const matches = url.match(uuidPattern);
   
   if (matches) {
@@ -23,8 +23,8 @@ export function validateUUIDsInURL(url: string): void {
       // Validar se é UUID v4
       if (!isValidUUID(possibleUUID)) {
         throw new Error(
-          `UUID inválido detectado na URL: ${possibleUUID}. ` +
-          `Certifique-se de usar apenas UUIDs v4 válidos.`
+          `UUID v4 inválido detectado na URL: ${possibleUUID}. ` +
+          `Certifique-se de usar apenas UUIDs v4 válidos no formato: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`
         );
       }
     });
@@ -48,7 +48,7 @@ export function validateUUIDsInData(data: any, strict: boolean = false): void {
       // Validar propriedades que terminam com 'Id' ou são 'id'
       if ((key === 'id' || key.endsWith('Id')) && typeof value === 'string' && value) {
         if (!isValidUUID(value)) {
-          const message = `UUID inválido detectado em ${currentPath}: ${value}`;
+          const message = `UUID v4 inválido detectado em ${currentPath}: ${value}. Esperado formato: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`;
           
           if (strict) {
             throw new Error(message);
@@ -151,7 +151,7 @@ export function createAxiosUUIDInterceptor() {
 }
 
 /**
- * Sanitiza IDs em um objeto convertendo para UUID válidos
+ * Sanitiza UUIDs em um objeto (apenas formatação, sem conversões)
  * @param data - Dados para sanitizar
  * @returns Dados sanitizados
  */
@@ -169,9 +169,14 @@ export function sanitizeUUIDsInObject<T>(data: T): T {
       const result: any = {};
       
       for (const [key, value] of Object.entries(obj)) {
-        // Sanitizar campos ID
+        // Sanitizar campos ID (apenas formatação, não conversão)
         if ((key === 'id' || key.endsWith('Id')) && typeof value === 'string') {
-          result[key] = value.trim().toLowerCase();
+          // Apenas validar se é UUID válido e formatar
+          if (isValidUUID(value)) {
+            result[key] = value.trim().toLowerCase();
+          } else {
+            throw new Error(`UUID v4 inválido em ${key}: ${value}. A aplicação usa apenas UUIDs v4.`);
+          }
         } else {
           result[key] = sanitize(value);
         }
@@ -185,4 +190,7 @@ export function sanitizeUUIDsInObject<T>(data: T): T {
   
   return sanitize(data);
 }
+
+
+
 

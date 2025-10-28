@@ -3,7 +3,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { User } from '@/types';
 import {
-  api,
   authLogin,
   authLogout,
   authRefresh,
@@ -12,6 +11,9 @@ import {
   onAuthRefreshed,
   onAuthLoggedOut,
 } from '@/lib/apiClient';
+import { api } from '@/lib/api'; // ← API com todos os métodos incluindo notificações
+import { removeAuthToken } from '@/lib/auth';
+import { checkPrinterStatus } from '@/lib/printer-check';
 
 type AuthContextValue = {
   user: User | null;
@@ -74,6 +76,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(null);
       setToken(null);
       setUser(null);
+      // Limpa também o localStorage quando logout é disparado pelos interceptors
+      removeAuthToken();
     });
 
     return () => {
@@ -96,6 +100,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(data.access_token);
       setUser(data.user);
       console.log('[AuthContext.login] Token setado no contexto');
+      
+      // Verificar status da impressora após login bem-sucedido
+      try {
+        console.log('[AuthContext.login] Verificando impressoras...');
+        await checkPrinterStatus();
+      } catch (printerError) {
+        console.error('[AuthContext.login] Erro ao verificar impressoras:', printerError);
+        // Não bloqueia o login se houver erro na verificação da impressora
+      }
+      
       return data.user;
     } catch (error) {
       console.error('[AuthContext.login] Erro no login:', error);
@@ -117,6 +131,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(null);
       setToken(null);
       setUser(null);
+      // Limpa também o localStorage
+      removeAuthToken();
       console.log('[AuthContext.logout] Logout concluído');
     }
   }, []);

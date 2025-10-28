@@ -20,10 +20,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { handleApiError } from '@/lib/handleApiError';
 import { saleApi, sellerApi } from '@/lib/api-endpoints';
 import { saleSchema } from '@/lib/validations';
-import { generateCoherentUUID, ensureCoherentId, formatCurrency, calculateChange, calculateMultiplePaymentChange, handleNumberInputChange, convertCuidToUuid, testUuidConversion, testSaleUuidConversion } from '@/lib/utils';
-import { apiCallWithIdConversion } from '@/lib/apiClient';
+import { formatCurrency, calculateChange, calculateMultiplePaymentChange, handleNumberInputChange, isValidId, validateUUID } from '@/lib/utils-clean';
 import { useCartStore } from '@/store/cart-store';
 import { InstallmentSaleModal } from './installment-sale-modal';
+import { PrintConfirmationDialog } from './print-confirmation-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import type { CreateSaleDto, PaymentMethod, PaymentMethodDetail, InstallmentData, Seller } from '@/types';
 
@@ -46,11 +46,16 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const [showInstallmentModal, setShowInstallmentModal] = useState(false);
   const [installmentData, setInstallmentData] = useState<InstallmentData | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [selectedCustomerName, setSelectedCustomerName] = useState<string>('');
+  const [selectedCustomerCpfCnpj, setSelectedCustomerCpfCnpj] = useState<string>('');
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [selectedSellerId, setSelectedSellerId] = useState<string>('');
   const [loadingSellers, setLoadingSellers] = useState(false);
+  const [showPrintConfirmation, setShowPrintConfirmation] = useState(false);
+  const [createdSaleId, setCreatedSaleId] = useState<string | null>(null);
+  const [printing, setPrinting] = useState(false);
   const { items, discount, getTotal, clearCart } = useCartStore();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, api } = useAuth();
 
   const total = getTotal();
   const isCompany = user?.role === 'empresa';
@@ -71,6 +76,9 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       setInstallmentData(null);
       setSelectedCustomerId('');
       setSelectedSellerId('');
+      setShowPrintConfirmation(false);
+      setCreatedSaleId(null);
+      setPrinting(false);
     }
   }, [open]);
 
@@ -80,7 +88,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     setLoadingSellers(true);
     try {
       const response = await sellerApi.list({ 
-        companyId: user?.companyId 
+        companyId: (user?.companyId ?? undefined) 
       });
       
       // Normalizar a resposta da API (mesma lógica da página de vendedores)
@@ -94,28 +102,25 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
         ? [response.data] 
         : [];
       
-      // Normalizar IDs dos vendedores para UUIDs válidos
-      const normalizedSellers = sellersData.map((seller: Seller) => {
-        console.log('[DEBUG] Vendedor sendo normalizado:', {
-          originalId: seller.id,
-          sellerName: seller.name,
-          isOriginalUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(seller.id)
-        });
+      // Validar que os vendedores têm IDs válidos (UUID v4 ou CUID)
+      const validSellers = sellersData.filter((seller: Seller) => {
+        const isValid = isValidId(seller.id);
         
-        const normalizedSeller = {
-          ...seller,
-          id: convertCuidToUuid(seller.id)
-        };
-        
-        console.log('[DEBUG] Vendedor normalizado:', {
-          normalizedId: normalizedSeller.id,
-          isNormalizedUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalizedSeller.id)
-        });
-        
-        return normalizedSeller;
+        if (!isValid) {
+          console.error('[Checkout] Vendedor com ID inválido ignorado:', {
+            sellerId: seller.id,
+            sellerName: seller.name
+          });
+        }
+        return isValid;
       });
       
-      setSellers(normalizedSellers);
+      if (validSellers.length === 0 && sellersData.length > 0) {
+        console.error('[Checkout] ERRO: Todos os vendedores têm IDs inválidos!');
+        toast.error('Erro: vendedores com IDs inválidos. Contate o suporte.');
+      }
+      
+      setSellers(validSellers);
     } catch (error) {
       console.error('Erro ao carregar vendedores:', error);
       toast.error('Erro ao carregar lista de vendedores');
@@ -127,7 +132,10 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
 
 
   const addPaymentMethod = () => {
-    setPaymentDetails([...paymentDetails, { method: 'cash', amount: 0 }]);
+    // Prefill with remaining amount to avoid zero-value payments
+    const remaining = getRemainingAmount();
+    const defaultAmount = remaining > 0 ? remaining : 0;
+    setPaymentDetails([...paymentDetails, { method: 'cash', amount: defaultAmount }]);
   };
 
   const removePaymentMethod = (index: number) => {
@@ -141,7 +149,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   };
 
   const getTotalPaid = () => {
-    return paymentDetails.reduce((sum, payment) => sum + payment.amount, 0);
+    return paymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
   };
 
   const getRemainingAmount = () => {
@@ -162,15 +170,24 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     return paymentDetails.some(payment => payment.method === 'installment');
   };
 
-  const handleInstallmentConfirm = (customerId: string, data: InstallmentData) => {
+  const handleInstallmentConfirm = (customerId: string, data: InstallmentData, customerInfo?: { name: string; cpfCnpj?: string }) => {
     setSelectedCustomerId(customerId);
     setInstallmentData(data);
     setShowInstallmentModal(false);
+    // Autopreencher dados do cliente no formulário principal
+    if (customerInfo) {
+      setSelectedCustomerName(customerInfo.name || '');
+      setSelectedCustomerCpfCnpj(customerInfo.cpfCnpj || '');
+      setValue('clientName', customerInfo.name || '');
+      setValue('clientCpfCnpj', customerInfo.cpfCnpj || '');
+    }
     
     // Adicionar método de pagamento a prazo automaticamente
+    // Usar apenas o valor restante (sobra) em vez do total
+    const remainingAmount = getRemainingAmount();
     const installmentPayment: PaymentMethodDetail = {
       method: 'installment',
-      amount: total,
+      amount: remainingAmount > 0 ? remainingAmount : 0,
     };
     
     // Se já existe um método de pagamento a prazo, substituir
@@ -191,27 +208,82 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<{ clientName?: string; clientCpfCnpj?: string }>({});
 
-  const onSubmit = async (data: { clientName?: string; clientCpfCnpj?: string }) => {
-    // Teste da conversão UUID para vendas
-    console.log('[DEBUG] Testando conversão UUID para vendas:');
-    testSaleUuidConversion();
+  const handlePrintConfirm = async () => {
+    if (!createdSaleId) return;
     
-    // Debug detalhado dos IDs dos produtos no carrinho
-    console.log('[DEBUG] Itens do carrinho antes do envio:');
-    items.forEach((item, index) => {
-      console.log(`[DEBUG] Item ${index}:`, {
+    setPrinting(true);
+    try {
+      await saleApi.reprint(createdSaleId);
+      toast.success('NFC-e enviada para impressão!');
+    } catch (error) {
+      console.error('[Checkout] Erro ao imprimir NFC-e:', error);
+      handleApiError(error);
+    } finally {
+      setPrinting(false);
+      handlePrintComplete();
+    }
+  };
+
+  const handlePrintCancel = () => {
+    toast.success('Venda registrada sem impressão');
+    handlePrintComplete();
+  };
+
+  const handlePrintComplete = () => {
+    // Limpar carrinho e resetar formulário
+    clearCart();
+    reset();
+    setPaymentDetails([]);
+    setInstallmentData(null);
+    setSelectedCustomerId('');
+    setShowPrintConfirmation(false);
+    setCreatedSaleId(null);
+    onClose();
+  };
+
+  const onSubmit = async (data: { clientName?: string; clientCpfCnpj?: string }) => {
+    console.log('[Checkout] Iniciando finalização de venda...');
+    
+    // Validar IDs dos produtos NO CARRINHO
+    console.log('[Checkout] Validando IDs dos produtos:');
+    for (const [index, item] of items.entries()) {
+      const isValid = isValidId(item.product.id);
+      console.log(`[Checkout] Item ${index}: ${item.product.name}`, {
         productId: item.product.id,
-        productName: item.product.name,
-        isUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.product.id),
-        isCuid: /^[a-z0-9]{25}$/i.test(item.product.id),
-        convertedUuid: convertCuidToUuid(item.product.id)
+        isValidId: isValid
       });
-    });
+      
+      if (!isValid) {
+        toast.error(`Produto "${item.product.name}" tem ID inválido. Remova-o do carrinho e adicione novamente.`);
+        return;
+      }
+    }
     
     if (paymentDetails.length === 0) {
       toast.error('Adicione pelo menos um método de pagamento!');
+      return;
+    }
+
+    // Validações específicas para venda a prazo
+    const hasInstallment = hasInstallmentPayment();
+    if (hasInstallment) {
+      if (!installmentData || !selectedCustomerId) {
+        toast.error('Complete a configuração da venda a prazo (cliente, parcelas e vencimento).');
+        return;
+      }
+      if (!data.clientName || data.clientName.trim().length === 0) {
+        toast.error('Nome do cliente é obrigatório para vendas a prazo.');
+        return;
+      }
+    }
+
+    // Impedir valores zerados/negativos em qualquer método
+    const invalidPaymentIndex = paymentDetails.findIndex(p => Number(p.amount) < 0.01);
+    if (invalidPaymentIndex !== -1) {
+      toast.error('Há um método de pagamento com valor 0. Ajuste os valores antes de finalizar.');
       return;
     }
 
@@ -221,7 +293,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       return;
     }
 
-    const totalPaid = getTotalPaid();
+  const totalPaid = getTotalPaid();
     const remainingAmount = getRemainingAmount();
 
     // Validar se o valor pago é suficiente (pode ser maior devido ao troco)
@@ -233,67 +305,40 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
 
     setLoading(true);
     try {
-      // Analisar IDs dos produtos para determinar estratégia
-      const productIds = items.map(item => item.product.id);
-      const hasUuids = productIds.some(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
-      const hasCuids = productIds.some(id => /^[a-z0-9]{25}$/i.test(id));
-      
-      console.log('[DEBUG] Análise de IDs dos produtos:', {
-        totalItems: items.length,
-        hasUuids,
-        hasCuids,
-        productIds: productIds.map((id, index) => ({
-          index,
-          id,
-          isUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id),
-          isCuid: /^[a-z0-9]{25}$/i.test(id)
-        }))
-      });
-
-      // Dados da venda - CONVERTER TODOS OS IDs PARA UUIDs
-      // O backend agora exige UUIDs mesmo para operações de criação (POST)
+  // Criar dados da venda com validações mínimas e sem conversões desnecessárias
+      // Todos os IDs já são UUID v4 válidos
       const saleData: CreateSaleDto = {
         items: items.map((item) => {
-          console.log('[DEBUG] Item do carrinho:', {
-            productId: item.product.id,
-            productName: item.product.name,
-            isUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.product.id),
-            isCuid: /^[a-z0-9]{25}$/i.test(item.product.id),
-            quantity: item.quantity
-          });
-          
-          // Validar se o produto tem um ID válido antes de converter
-          if (!item.product.id || item.product.id.trim() === '') {
-            throw new Error(`Produto "${item.product.name}" não possui ID válido. Remova este item do carrinho e adicione novamente.`);
-          }
-          
-          // Verificar se é o UUID problemático reportado
-          if (item.product.id.includes('00000000-0000-4000-8000-000063ef2970')) {
-            throw new Error(`Produto "${item.product.name}" possui ID corrompido. Remova este item do carrinho e adicione novamente.`);
-          }
-          
+          // Validar UUID (já validado acima, mas garantir)
           try {
-            // CONVERTER SEMPRE PARA UUID - backend exige UUIDs
-            const coherentProductId = ensureCoherentId(item.product.id, 'sale.productId');
-            console.log(`[DEBUG] Convertendo productId: ${item.product.id} -> ${coherentProductId}`);
-            
-            return {
-              productId: coherentProductId, // Converter para UUID
-              quantity: item.quantity,
-            };
+            validateUUID(item.product.id, `Produto ${item.product.name}`);
           } catch (error) {
-            console.error(`[DEBUG] Erro ao converter productId: ${item.product.id}`, error);
-            throw new Error(`Erro ao processar produto "${item.product.name}": ${error instanceof Error ? error.message : 'ID inválido'}. Remova este item do carrinho e adicione novamente.`);
+            throw new Error(`Produto "${item.product.name}" tem ID inválido: ${item.product.id}`);
           }
+          
+          return {
+            productId: item.product.id, // Usar ID EXATAMENTE como está
+            quantity: item.quantity,
+          };
         }),
         paymentMethods: paymentDetails.map((payment) => {
+          // Garantir que o valor seja sempre >= 0.01
+          const amount = Math.max(Number(payment.amount) || 0, 0.01);
+          
           const paymentMethod: any = {
             method: payment.method,
-            amount: payment.amount,
+            amount: amount,
           };
           
-          // Adicionar additionalInfo para vendas a prazo
-          if (payment.method === 'installment' && installmentData) {
+          // Adicionar informações de parcelas para vendas a prazo
+          if (payment.method === 'installment' && installmentData && selectedCustomerId) {
+            paymentMethod.customerId = selectedCustomerId;
+            paymentMethod.installments = installmentData.installments;
+            
+            // Garantir que a data seja enviada como ISO string
+            paymentMethod.firstDueDate = installmentData.firstDueDate.toISOString();
+            
+            paymentMethod.description = installmentData.description || `Parcelado em ${installmentData.installments}x de ${formatCurrency(installmentData.installmentValue)}`;
             paymentMethod.additionalInfo = `Parcelado em ${installmentData.installments}x de ${formatCurrency(installmentData.installmentValue)}`;
           }
           
@@ -301,27 +346,50 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
         }),
         clientName: data.clientName,
         clientCpfCnpj: data.clientCpfCnpj,
-        sellerId: selectedSellerId ? ensureCoherentId(selectedSellerId, 'sale.sellerId') : undefined, // Converter para UUID
+        sellerId: selectedSellerId || undefined, // Usar ID EXATAMENTE como está
       };
       
-      console.log('[DEBUG] SellerId sendo enviado:', {
-        originalSellerId: selectedSellerId,
-        convertedSellerId: selectedSellerId ? ensureCoherentId(selectedSellerId, 'sale.sellerId') : undefined,
-        isUuid: selectedSellerId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selectedSellerId) : 'undefined'
-      });
+      // Validar sellerId se fornecido
+      if (selectedSellerId) {
+        try {
+          validateUUID(selectedSellerId, 'Vendedor');
+          console.log('[Checkout] SellerId válido:', selectedSellerId);
+        } catch (error) {
+          throw new Error(`Vendedor selecionado tem ID inválido: ${selectedSellerId}`);
+        }
+      }
       
-      console.log('[Checkout] Sale data:', saleData);
+      console.log('[Checkout] Dados da venda (sem conversões):', {
+        itemCount: saleData.items.length,
+        paymentMethodsCount: saleData.paymentMethods.length,
+        sellerId: saleData.sellerId,
+        total: total
+      });
 
-      // Criar venda com IDs convertidos para UUIDs
-      // O backend agora exige UUIDs mesmo para operações de criação (POST)
-      await saleApi.create(saleData);
+      // Criar venda - IDs já são UUID v4 válidos
+      // Enviar skipPrint: true para não imprimir automaticamente
+      const saleDataWithSkipPrint = {
+        ...saleData,
+        skipPrint: true,
+      };
+      
+      const response = await saleApi.create(saleDataWithSkipPrint);
+      
+      // Extrair ID da venda da resposta
+  const saleId = response.data?.id || (response.data?.data && response.data.data.id);
+      
+      if (!saleId) {
+        console.error('[Checkout] Venda criada mas ID não foi retornado:', response);
+        toast.error('Venda criada, mas não foi possível obter o ID da venda');
+        return;
+      }
+      
+      console.log('[Checkout] Venda criada com sucesso:', saleId);
       toast.success('Venda realizada com sucesso!');
-      clearCart();
-      reset();
-      setPaymentDetails([]);
-      setInstallmentData(null);
-      setSelectedCustomerId('');
-      onClose();
+      
+      // Armazenar ID da venda e mostrar diálogo de confirmação
+      setCreatedSaleId(saleId);
+      setShowPrintConfirmation(true);
     } catch (error) {
       console.error('[Checkout] Error details:', error);
       console.error('[Checkout] Error type:', typeof error);
@@ -333,6 +401,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
@@ -414,6 +483,9 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                     value={payment.method}
                     onValueChange={(value: PaymentMethod) => {
                       if (value === 'installment') {
+                        // Atualizar o valor para o restante antes de abrir o modal
+                        const remainingAmount = getRemainingAmount();
+                        updatePaymentMethod(index, 'amount', remainingAmount > 0 ? remainingAmount : 0);
                         setShowInstallmentModal(true);
                       } else {
                         updatePaymentMethod(index, 'method', value);
@@ -422,7 +494,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                     disabled={loading}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Selecione o método" />
                     </SelectTrigger>
                     <SelectContent>
                       {paymentMethods.map((method) => (
@@ -451,7 +523,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                   size="sm"
                   onClick={() => removePaymentMethod(index)}
                   disabled={loading}
-                  className="text-red-600 hover:text-red-700"
+                  className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -469,20 +541,20 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
               <span className="font-bold">{formatCurrency(getTotalPaid())}</span>
             </div>
             {getCashChange() > 0 && (
-              <div className="flex justify-between text-green-600">
+              <div className="flex justify-between text-green-600 dark:text-green-400">
                 <span>Troco:</span>
                 <span className="font-bold">{formatCurrency(getCashChange())}</span>
               </div>
             )}
             {installmentData && (
-              <div className="flex justify-between text-blue-600">
+              <div className="flex justify-between text-blue-600 dark:text-blue-400">
                 <span>Parcelas:</span>
                 <span className="font-bold">{installmentData.installments}x de {formatCurrency(installmentData.installmentValue)}</span>
               </div>
             )}
             <div className="flex justify-between text-lg font-bold border-t pt-2">
               <span>Restante:</span>
-              <span className={getRemainingAmount() > 0 ? 'text-red-600' : 'text-green-600'}>
+              <span className={getRemainingAmount() > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}>
                 {formatCurrency(getRemainingAmount())}
               </span>
             </div>
@@ -503,9 +575,18 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
           open={showInstallmentModal}
           onClose={() => setShowInstallmentModal(false)}
           onConfirm={handleInstallmentConfirm}
-          totalAmount={total}
+          totalAmount={getRemainingAmount()}
         />
       </DialogContent>
     </Dialog>
+    
+    {/* Dialog de Confirmação de Impressão */}
+    <PrintConfirmationDialog
+      open={showPrintConfirmation}
+      onConfirm={handlePrintConfirm}
+      onCancel={handlePrintCancel}
+      loading={printing}
+    />
+  </>
   );
 }

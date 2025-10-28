@@ -12,7 +12,8 @@ import { ProductsTable } from '@/components/products/products-table';
 import { ProductDialog } from '@/components/products/product-dialog';
 import { ProductFilters } from '@/components/products/product-filters';
 import { applyProductFilters, getActiveFiltersCount, type ProductFilters as ProductFiltersType } from '@/lib/productFilters';
-import type { Product } from '@/types';
+import type { Product, PlanUsageStats } from '@/types';
+import { AlertTriangle } from 'lucide-react';
 
 export default function ProductsPage() {
   const { api, user } = useAuth();
@@ -34,6 +35,13 @@ export default function ProductsPage() {
     },
   });
 
+  // Carregar estatísticas de uso do plano
+  const { data: planUsage } = useQuery<PlanUsageStats>({
+    queryKey: ['plan-usage'],
+    queryFn: async () => (await api.get('/company/plan-usage')).data,
+    enabled: user?.role === 'empresa',
+  });
+
   const products = productsResponse?.products || [];
   const filteredProducts = applyProductFilters(products, filters);
   const activeFiltersCount = getActiveFiltersCount(filters);
@@ -52,6 +60,18 @@ export default function ProductsPage() {
       toast.error('Você não tem permissão para adicionar produtos.');
       return;
     }
+
+    // Validar limite do plano
+    if (planUsage && planUsage.usage.products.max) {
+      if (planUsage.usage.products.current >= planUsage.usage.products.max) {
+        toast.error(
+          `Limite de produtos atingido! Seu plano ${planUsage.plan} permite no máximo ${planUsage.usage.products.max} produtos. Faça upgrade para adicionar mais.`,
+          { duration: 5000 }
+        );
+        return;
+      }
+    }
+
     setSelectedProduct(null);
     setDialogOpen(true);
   };
@@ -67,12 +87,25 @@ export default function ProductsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Produtos</h1>
-          <p className="text-muted-foreground">Gerencie seu catálogo de produtos</p>
+          <p className="text-muted-foreground">
+            Gerencie seu catálogo de produtos
+            {planUsage && planUsage.usage.products.max && (
+              <span className="ml-2 text-sm">
+                ({planUsage.usage.products.current}/{planUsage.usage.products.max} usados)
+              </span>
+            )}
+          </p>
         </div>
         {canManageProducts && (
-          <Button onClick={handleCreate}>
+          <Button 
+            onClick={handleCreate}
+            disabled={planUsage?.usage.products.max ? planUsage.usage.products.current >= planUsage.usage.products.max : false}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Novo Produto
+            {planUsage?.usage.products.percentage >= 90 && (
+              <AlertTriangle className="ml-2 h-4 w-4 text-yellow-500" />
+            )}
           </Button>
         )}
       </div>

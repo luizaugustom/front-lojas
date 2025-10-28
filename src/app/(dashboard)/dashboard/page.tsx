@@ -13,6 +13,8 @@ import { ProductImage } from '@/components/products/product-image';
 import type { Sale, Product, Customer } from '@/types';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { companyApi, customerApi } from '@/lib/api-endpoints';
+import { PlanWarningBanner } from '@/components/plan-limits/plan-warning-banner';
+import { PlanUsageCard } from '@/components/plan-limits/plan-usage-card';
 
 interface MetricCardProps {
   title: string;
@@ -94,7 +96,7 @@ export default function DashboardPage() {
     const dateKey = (s.createdAt ? new Date(s.createdAt).toISOString().slice(0, 10) : '').toString();
     if (!dateKey) return;
     if (!salesByDayMap[dateKey]) salesByDayMap[dateKey] = { total: 0, count: 0 };
-    const revenue = (s.total || 0) - (s.change || 0);
+    const revenue = Number(s.total || 0) - Number(s.change || 0);
     salesByDayMap[dateKey].total += revenue;
     salesByDayMap[dateKey].count += 1;
   });
@@ -210,7 +212,7 @@ export default function DashboardPage() {
   // Compute sales metrics for month
   const sales: Sale[] = normalizeList<Sale>(salesData, 'sales');
   const totalSalesCount = sales.length;
-  const revenueTotal = sales.reduce((acc, s) => acc + (s.total || 0) - (s.change || 0), 0);
+  const revenueTotal = sales.reduce((acc, s) => acc + Number(s.total || 0) - Number(s.change || 0), 0);
 
   const products: Product[] = normalizeList<Product>(productsData, 'products');
   const customers: Customer[] = normalizeList<Customer>(customersData, 'customers');
@@ -231,12 +233,11 @@ export default function DashboardPage() {
       return da - db;
     });
 
-  // Estoque baixo (local): stockQuantity <= minStockQuantity (ou <= 0 se min não definido)
+  // Estoque baixo (local): stockQuantity <= 3 unidades
   const lowStockList: Product[] = (products || []).filter((p) => {
     const stock = Number(p.stockQuantity ?? 0);
-    const min = Number(p.minStockQuantity ?? 0);
-    if (Number.isNaN(stock) || Number.isNaN(min)) return false;
-    return stock <= min;
+    if (Number.isNaN(stock)) return false;
+    return stock <= 3;
   });
   const lowStockCount = lowStockList.length;
   const lowStockPreview = lowStockList.slice(0, 5);
@@ -256,7 +257,7 @@ export default function DashboardPage() {
       const pid = it.productId || (it.product && it.product.id) || 'unknown';
       if (!productMap[pid]) productMap[pid] = { product: it.product || null, quantity: 0, revenue: 0 };
       productMap[pid].quantity += it.quantity || 0;
-      productMap[pid].revenue += (it.subtotal != null ? it.subtotal : (it.unitPrice || 0) * (it.quantity || 0));
+      productMap[pid].revenue += Number(it.subtotal != null ? it.subtotal : (Number(it.unitPrice || 0) * (it.quantity || 0)));
     });
   });
 
@@ -398,7 +399,7 @@ export default function DashboardPage() {
                           <div className="text-xs text-muted-foreground">{p.barcode || '-'}</div>
                         </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">{p.stockQuantity} / {p.minStockQuantity ?? 0}</div>
+                      <div className="text-sm text-muted-foreground">{p.stockQuantity} unidades</div>
                     </div>
                   ))}
                 </div>

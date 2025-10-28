@@ -288,7 +288,7 @@ export function APITestRunner() {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">🧪 Testes da API</h1>
-        <p className="text-gray-600">Execute testes reais em todas as funcionalidades da API</p>
+        <p className="text-muted-foreground">Execute testes reais em todas as funcionalidades da API</p>
       </div>
 
       {/* Controles */}
@@ -323,7 +323,7 @@ export function APITestRunner() {
               <div className="text-sm font-medium mb-1">{currentTest}</div>
               <Progress value={progress} className="h-2" />
             </div>
-            <div className="text-sm text-gray-500">{Math.round(progress)}%</div>
+            <div className="text-sm text-muted-foreground">{Math.round(progress)}%</div>
           </div>
         </Card>
       )}
@@ -333,23 +333,23 @@ export function APITestRunner() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <Card className="p-4 text-center">
             <div className="text-2xl font-bold text-blue-600">{totalTests}</div>
-            <div className="text-sm text-gray-600">Total de Testes</div>
+            <div className="text-sm text-muted-foreground">Total de Testes</div>
           </Card>
           <Card className="p-4 text-center">
             <div className="text-2xl font-bold text-green-600">{totalPassed}</div>
-            <div className="text-sm text-gray-600">Passou</div>
+            <div className="text-sm text-muted-foreground">Passou</div>
           </Card>
           <Card className="p-4 text-center">
             <div className="text-2xl font-bold text-red-600">{totalFailed}</div>
-            <div className="text-sm text-gray-600">Falhou</div>
+            <div className="text-sm text-muted-foreground">Falhou</div>
           </Card>
           <Card className="p-4 text-center">
             <div className="text-2xl font-bold text-purple-600">{successRate}%</div>
-            <div className="text-sm text-gray-600">Taxa de Sucesso</div>
+            <div className="text-sm text-muted-foreground">Taxa de Sucesso</div>
           </Card>
           <Card className="p-4 text-center">
             <div className="text-2xl font-bold text-orange-600">{totalDuration}ms</div>
-            <div className="text-sm text-gray-600">Tempo Total</div>
+            <div className="text-sm text-muted-foreground">Tempo Total</div>
           </Card>
         </div>
       )}
@@ -379,8 +379,8 @@ export function APITestRunner() {
                   key={index}
                   className={`flex items-center justify-between p-3 rounded-lg ${
                     test.success 
-                      ? 'bg-green-50 border border-green-200' 
-                      : 'bg-red-50 border border-red-200'
+                      ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
+                      : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -396,7 +396,7 @@ export function APITestRunner() {
                       )}
                     </div>
                   </div>
-                  <div className="text-sm text-gray-500">{test.duration}ms</div>
+                  <div className="text-sm text-muted-foreground">{test.duration}ms</div>
                 </div>
               ))}
             </div>

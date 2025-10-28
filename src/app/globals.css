@@ -2,10 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Scrollbar personalizada - barra azul fina sem fundo */
+/* Garantir que html e body usem o background do tema */
+html,
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* Scrollbar personalizada - usa a cor da empresa */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-track {
@@ -13,13 +21,13 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3b82f6; /* Azul */
+  background: hsl(var(--scrollbar-color, 221.2 83.2% 53.3%)); /* Cor da empresa ou azul padrão */
   border-radius: 4px;
   border: none;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2563eb; /* Azul mais escuro no hover */
+  background: hsl(var(--scrollbar-color-hover, 221.2 83.2% 45%)); /* Versão mais escura no hover */
 }
 
 ::-webkit-scrollbar-corner {
@@ -29,7 +37,7 @@
 /* Para Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #3b82f6 transparent;
+  scrollbar-color: hsl(var(--scrollbar-color, 221.2 83.2% 53.3%)) transparent;
 }
 
 @layer base {
@@ -40,7 +48,7 @@
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
+    --primary: 221.2 83.2% 53.3%; /* Azul padrão - será substituído pela cor da empresa */
     --primary-foreground: 0 0% 98%;
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9%;
@@ -54,6 +62,8 @@
     --input: 0 0% 89.8%;
     --ring: 0 0% 3.9%;
     --radius: 0.5rem;
+    --scrollbar-color: 221.2 83.2% 53.3%; /* Cor da scrollbar - será sincronizada com a cor da empresa */
+    --scrollbar-color-hover: 221.2 83.2% 45%; /* Cor da scrollbar no hover */
   }
 }
 
@@ -351,6 +361,38 @@
     --ring: 0 0% 83.1%;
     --radius: 0.5rem;
   }
+}
+
+/* Estilos para o calendário (react-day-picker) */
+.rdp {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: hsl(var(--primary));
+  --rdp-background-color: hsl(var(--accent));
+  --rdp-accent-color-dark: hsl(var(--primary));
+  --rdp-background-color-dark: hsl(var(--muted));
+  --rdp-outline: 2px solid hsl(var(--ring));
+  --rdp-outline-selected: 2px solid hsl(var(--ring));
+}
+
+.rdp-months {
+  display: flex;
+}
+
+.rdp-month {
+  flex: 1;
+}
+
+.rdp-caption_dropdowns {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.rdp-dropdown {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 0.25rem 0.5rem;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 /* Melhorias para impressão */

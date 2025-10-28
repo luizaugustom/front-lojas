@@ -24,6 +24,15 @@ export function isValidUUID(value: string | null | undefined): boolean {
 }
 
 /**
+ * Valida se um ID é válido (apenas UUID v4)
+ * @param value - String para validar
+ * @returns true se for um UUID v4 válido
+ */
+export function isValidId(value: string | null | undefined): boolean {
+  return isValidUUID(value);
+}
+
+/**
  * Valida se um array contém apenas UUIDs v4 válidos
  * @param values - Array de strings para validar
  * @returns true se todos forem UUIDs v4 válidos
@@ -179,4 +188,7 @@ export type UUID = string & { readonly __brand: unique symbol };
 export function asUUID(value: string | null | undefined): UUID | null {
   return isValidUUID(value) ? (value as UUID) : null;
 }
+
+
+
 

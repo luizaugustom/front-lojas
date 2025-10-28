@@ -18,12 +18,12 @@ export function SellerCharts({ stats, isLoading }: SellerChartsProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <div className="h-64 flex items-center justify-center">
-            <div className="text-gray-500">Carregando gráficos...</div>
+            <div className="text-muted-foreground">Carregando gráficos...</div>
           </div>
         </Card>
         <Card className="p-6">
           <div className="h-64 flex items-center justify-center">
-            <div className="text-gray-500">Carregando gráficos...</div>
+            <div className="text-muted-foreground">Carregando gráficos...</div>
           </div>
         </Card>
       </div>
@@ -35,13 +35,13 @@ export function SellerCharts({ stats, isLoading }: SellerChartsProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Vendas por Período</h3>
-          <div className="h-64 flex items-center justify-center text-gray-500">
+          <div className="h-64 flex items-center justify-center text-muted-foreground">
             Nenhum dado disponível
           </div>
         </Card>
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Produtos Mais Vendidos</h3>
-          <div className="h-64 flex items-center justify-center text-gray-500">
+          <div className="h-64 flex items-center justify-center text-muted-foreground">
             Nenhum dado disponível
           </div>
         </Card>

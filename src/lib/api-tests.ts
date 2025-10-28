@@ -179,7 +179,7 @@ class APITester {
 
     // Teste 5: Produtos com estoque baixo
     await this.runTest('Produtos com estoque baixo', async () => {
-      const response = await productApi.lowStock(10);
+      const response = await productApi.lowStock(3);
       return response;
     });
 

@@ -80,9 +80,9 @@ export function calculateMultiplePaymentChange(
   paymentDetails: Array<{ method: string; amount: number }>,
   total: number
 ): { cashChange: number; totalPaid: number; remaining: number } {
-  const totalPaid = paymentDetails.reduce((sum, payment) => sum + payment.amount, 0);
+  const totalPaid = paymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
   const cashPayment = paymentDetails.find(p => p.method === 'cash');
-  const cashAmount = cashPayment ? cashPayment.amount : 0;
+  const cashAmount = cashPayment ? Number(cashPayment.amount) : 0;
   const cashChange = Math.max(0, cashAmount - total);
   const remaining = total - totalPaid;
   

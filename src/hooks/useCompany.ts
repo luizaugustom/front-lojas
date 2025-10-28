@@ -21,7 +21,7 @@ export function useCompany() {
       setError(null);
       
       try {
-        const response = await api.get('/company');
+        const response = await api.get('/company/my-company');
         setCompany(response.data);
       } catch (err: any) {
         console.error('Erro ao buscar dados da empresa:', err);

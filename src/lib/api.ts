@@ -3,7 +3,7 @@ import { toast } from 'react-hot-toast';
 import type { UserRole } from '@/types';
 import { createAxiosUUIDInterceptor } from './api-uuid-interceptor';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const USE_MOCK = false; // Sempre usar backend real
 
 class ApiClient {
@@ -12,6 +12,7 @@ class ApiClient {
   constructor() {
     this.client = axios.create({
       baseURL: API_URL,
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -108,6 +109,44 @@ class ApiClient {
    */
   async me() {
     const response = await this.client.get('/auth/me');
+    return response.data;
+  }
+
+  /**
+   * GET /auth/profile
+   * Obter perfil completo do usuário autenticado
+   * Autenticação: Requerida (Bearer token)
+   * Resposta: Dados completos do perfil do usuário
+   */
+  async getProfile() {
+    const response = await this.client.get('/auth/profile');
+    return response.data;
+  }
+
+  /**
+   * PUT /auth/profile
+   * Atualizar perfil do usuário autenticado
+   * Autenticação: Requerida (Bearer token)
+   * Body: { name?: string, email?: string, phone?: string, login?: string }
+   * Resposta: Perfil atualizado
+   */
+  async updateProfile(data: { name?: string; email?: string; phone?: string; login?: string }) {
+    const response = await this.client.put('/auth/profile', data);
+    return response.data;
+  }
+
+  /**
+   * POST /auth/change-password
+   * Alterar senha do usuário autenticado
+   * Autenticação: Requerida (Bearer token)
+   * Body: { currentPassword: string, newPassword: string }
+   * Resposta: { message: string }
+   */
+  async changePassword(currentPassword: string, newPassword: string) {
+    const response = await this.client.post('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    });
     return response.data;
   }
 
@@ -536,6 +575,134 @@ class ApiClient {
   async getDashboardMetrics() {
     const response = await this.client.get('/dashboard/metrics');
     return response.data;
+  }
+
+  // Notifications
+  /**
+   * GET /notification
+   * Listar notificações do usuário autenticado
+   * Autenticação: Requerida (Bearer token)
+   * Query Parameters: onlyUnread (opcional)
+   */
+  async getNotifications(onlyUnread?: boolean) {
+    const params = onlyUnread ? { onlyUnread: true } : {};
+    const response = await this.client.get('/notification', { params });
+    return response.data;
+  }
+
+  /**
+   * GET /notification/unread-count
+   * Obter contagem de notificações não lidas
+   * Autenticação: Requerida (Bearer token)
+   */
+  async getUnreadNotificationsCount() {
+    const response = await this.client.get('/notification/unread-count');
+    return response.data;
+  }
+
+  /**
+   * GET /notification/:id
+   * Obter notificação por ID
+   * Autenticação: Requerida (Bearer token)
+   */
+  async getNotification(id: string) {
+    const response = await this.client.get(`/notification/${id}`);
+    return response.data;
+  }
+
+  /**
+   * PUT /notification/:id/read
+   * Marcar notificação como lida
+   * Autenticação: Requerida (Bearer token)
+   */
+  async markNotificationAsRead(id: string) {
+    const response = await this.client.put(`/notification/${id}/read`);
+    return response.data;
+  }
+
+  /**
+   * PUT /notification/read-all
+   * Marcar todas as notificações como lidas
+   * Autenticação: Requerida (Bearer token)
+   */
+  async markAllNotificationsAsRead() {
+    const response = await this.client.put('/notification/read-all');
+    return response.data;
+  }
+
+  /**
+   * DELETE /notification/:id
+   * Deletar notificação
+   * Autenticação: Requerida (Bearer token)
+   */
+  async deleteNotification(id: string) {
+    const response = await this.client.delete(`/notification/${id}`);
+    return response.data;
+  }
+
+  /**
+   * GET /notification/preferences/me
+   * Obter preferências de notificação do usuário
+   * Autenticação: Requerida (Bearer token)
+   */
+  async getNotificationPreferences() {
+    const response = await this.client.get('/notification/preferences/me');
+    return response.data;
+  }
+
+  /**
+   * PUT /notification/preferences
+   * Atualizar preferências de notificação
+   * Autenticação: Requerida (Bearer token)
+   * Body: { stockAlerts?, billReminders?, weeklyReports?, salesAlerts?, systemUpdates?, emailEnabled?, inAppEnabled? }
+   */
+  async updateNotificationPreferences(data: {
+    stockAlerts?: boolean;
+    billReminders?: boolean;
+    weeklyReports?: boolean;
+    salesAlerts?: boolean;
+    systemUpdates?: boolean;
+    emailEnabled?: boolean;
+    inAppEnabled?: boolean;
+  }) {
+    const response = await this.client.put('/notification/preferences', data);
+    return response.data;
+  }
+
+  // Métodos HTTP genéricos para compatibilidade com código existente
+  /**
+   * Método GET genérico
+   */
+  async get(url: string, config?: any) {
+    return await this.client.get(url, config);
+  }
+
+  /**
+   * Método POST genérico
+   */
+  async post(url: string, data?: any, config?: any) {
+    return await this.client.post(url, data, config);
+  }
+
+  /**
+   * Método PATCH genérico
+   */
+  async patch(url: string, data?: any, config?: any) {
+    return await this.client.patch(url, data, config);
+  }
+
+  /**
+   * Método PUT genérico
+   */
+  async put(url: string, data?: any, config?: any) {
+    return await this.client.put(url, data, config);
+  }
+
+  /**
+   * Método DELETE genérico
+   */
+  async delete(url: string, config?: any) {
+    return await this.client.delete(url, config);
   }
 }
 

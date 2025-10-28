@@ -1,6 +1,49 @@
 // User Types
 export type UserRole = 'admin' | 'empresa' | 'vendedor';
 
+// Plan Types
+export enum PlanType {
+  BASIC = 'BASIC',
+  PLUS = 'PLUS',
+  PRO = 'PRO',
+}
+
+export interface PlanLimits {
+  maxProducts: number | null;
+  maxSellers: number | null;
+  maxBillsToPay: number | null;
+}
+
+export interface PlanUsageStats {
+  plan: PlanType;
+  limits: PlanLimits;
+  usage: {
+    products: {
+      current: number;
+      max: number | null;
+      percentage: number;
+      available: number | null;
+    };
+    sellers: {
+      current: number;
+      max: number | null;
+      percentage: number;
+      available: number | null;
+    };
+    billsToPay: {
+      current: number;
+      max: number | null;
+      percentage: number;
+      available: number | null;
+    };
+  };
+}
+
+export interface PlanWarnings {
+  nearLimit: boolean;
+  warnings: string[];
+}
+
 export interface User {
   id: string;
   name: string;
@@ -16,9 +59,11 @@ export interface User {
 export interface Company {
   id: string;
   name: string;
+  login: string;
   cnpj: string;
   email: string;
   phone?: string;
+  plan?: PlanType;
   address?: {
     street: string;
     number: string;
@@ -29,7 +74,7 @@ export interface Company {
     zipCode: string;
   };
   brandColor?: string;
-  logo?: string;
+  logoUrl?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -110,6 +155,8 @@ export interface Seller {
   birthDate?: string;
   email?: string;
   phone?: string;
+  commissionRate?: number;
+  hasIndividualCash?: boolean;
   companyId: string;
   createdAt: string;
   updatedAt: string;
@@ -275,7 +322,7 @@ export interface CreateProductDto {
 export interface InstallmentData {
   installments: number;
   installmentValue: number;
-  firstDueDate: string;
+  firstDueDate: Date;
   description?: string;
 }
 
@@ -316,6 +363,8 @@ export interface CreateSellerDto {
   birthDate?: string;
   email?: string;
   phone?: string;
+  commissionRate?: number;
+  hasIndividualCash?: boolean;
 }
 
 export interface UpdateSellerDto {
@@ -324,6 +373,8 @@ export interface UpdateSellerDto {
   birthDate?: string;
   email?: string;
   phone?: string;
+  commissionRate?: number;
+  hasIndividualCash?: boolean;
   activityId?: string; // UUID para rastreamento de atividades
 }
 
@@ -356,6 +407,7 @@ export interface CreateCompanyDto {
   phone?: string;
   stateRegistration?: string;
   municipalRegistration?: string;
+  plan?: PlanType;
   
   // Campos opcionais - visual
   logoUrl?: string;

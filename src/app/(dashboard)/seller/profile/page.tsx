@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
@@ -22,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,6 +43,7 @@ export default function SellerProfilePage() {
     formState: { errors },
     reset,
     watch,
+    control,
   } = useForm<UpdateSellerProfileDto>({
     resolver: zodResolver(updateSellerProfileSchema),
     defaultValues: {
@@ -180,8 +182,8 @@ export default function SellerProfilePage() {
     return (
       <div className="text-center py-8">
         <User className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Perfil não encontrado</h2>
-        <p className="text-gray-500">Não foi possível carregar as informações do seu perfil.</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-300 mb-2">Perfil não encontrado</h2>
+        <p className="text-muted-foreground">Não foi possível carregar as informações do seu perfil.</p>
       </div>
     );
   }
@@ -222,7 +224,7 @@ export default function SellerProfilePage() {
               <p className="text-2xl font-bold text-blue-600">
                 {isLoadingStats ? '...' : stats?.totalSales || 0}
               </p>
-              <p className="text-sm text-gray-600">Total de Vendas</p>
+              <p className="text-sm text-muted-foreground">Total de Vendas</p>
             </div>
           </div>
         </Card>
@@ -236,7 +238,7 @@ export default function SellerProfilePage() {
               <p className="text-2xl font-bold text-green-600">
                 {isLoadingStats ? '...' : formatCurrency(stats?.totalRevenue || 0)}
               </p>
-              <p className="text-sm text-gray-600">Faturamento Total</p>
+              <p className="text-sm text-muted-foreground">Faturamento Total</p>
             </div>
           </div>
         </Card>
@@ -250,7 +252,7 @@ export default function SellerProfilePage() {
               <p className="text-2xl font-bold text-purple-600">
                 {isLoadingStats ? '...' : formatCurrency(stats?.averageSaleValue || 0)}
               </p>
-              <p className="text-sm text-gray-600">Ticket Médio</p>
+              <p className="text-sm text-muted-foreground">Ticket Médio</p>
             </div>
           </div>
         </Card>
@@ -275,9 +277,9 @@ export default function SellerProfilePage() {
                 id="login"
                 value={profile.login}
                 disabled
-                className="bg-gray-50"
+                className="bg-gray-50 dark:bg-gray-900"
               />
-              <p className="text-xs text-gray-500 mt-1">Login não pode ser alterado</p>
+              <p className="text-xs text-muted-foreground mt-1">Login não pode ser alterado</p>
             </div>
 
             {/* Nome */}
@@ -329,12 +331,17 @@ export default function SellerProfilePage() {
                 <Calendar className="h-4 w-4" />
                 Data de Nascimento
               </Label>
-              <Input
-                id="birthDate"
-                type="date"
-                {...register('birthDate')}
-                disabled={!isEditing}
-                className={errors.birthDate ? 'border-red-500' : ''}
+              <Controller
+                name="birthDate"
+                control={control}
+                render={({ field }) => (
+                  <DatePicker
+                    date={field.value ? new Date(field.value) : undefined}
+                    onSelect={(date) => field.onChange(date?.toISOString().split('T')[0] || '')}
+                    placeholder="Selecione sua data de nascimento"
+                    disabled={!isEditing}
+                  />
+                )}
               />
               {errors.birthDate && (
                 <p className="text-sm text-red-500 mt-1">{errors.birthDate.message}</p>
@@ -438,10 +445,10 @@ export default function SellerProfilePage() {
         ) : recentSales.length > 0 ? (
           <div className="space-y-3">
             {recentSales.map((sale) => (
-              <div key={sale.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={sale.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                 <div>
                   <p className="font-medium">Venda #{sale.saleNumber}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     {formatDate(sale.createdAt)}
                   </p>
                 </div>
@@ -464,7 +471,7 @@ export default function SellerProfilePage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-muted-foreground">
             <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-50" />
             <p>Nenhuma venda encontrada</p>
           </div>

@@ -40,7 +40,7 @@ export const useCartStore = create<CartState>((set, get) => ({
             ? {
                 ...item,
                 quantity: item.quantity + quantity,
-                subtotal: (item.quantity + quantity) * product.price,
+                subtotal: (item.quantity + quantity) * Number(product.price),
               }
             : item
         ),
@@ -52,7 +52,7 @@ export const useCartStore = create<CartState>((set, get) => ({
           {
             product,
             quantity,
-            subtotal: quantity * product.price,
+            subtotal: quantity * Number(product.price),
           },
         ],
       });
@@ -77,7 +77,7 @@ export const useCartStore = create<CartState>((set, get) => ({
           ? {
               ...item,
               quantity,
-              subtotal: quantity * item.product.price,
+              subtotal: quantity * Number(item.product.price),
             }
           : item
       ),
@@ -93,7 +93,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
   
   getSubtotal: () => {
-    return get().items.reduce((total, item) => total + item.subtotal, 0);
+    return get().items.reduce((total, item) => total + Number(item.subtotal), 0);
   },
   
   getTotal: () => {

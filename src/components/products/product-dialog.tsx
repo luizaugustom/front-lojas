@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
 import { Plus, X } from 'lucide-react';
@@ -16,24 +16,43 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/handleApiError';
 import { productFormSchema } from '@/lib/validations';
-import { generateCoherentUUID, ensureUUID } from '@/lib/utils';
+import { generateCoherentUUID } from '@/lib/utils';
+import { getImageUrl } from '@/lib/image-utils';
 import { productApi } from '@/lib/api-endpoints';
 import type { Product, CreateProductDto } from '@/types';
+import { useDeviceStore } from '@/store/device-store';
+import {
+  MAX_PRODUCT_PHOTOS,
+  ACCEPTED_IMAGE_STRING,
+  validateImageFile,
+  UPLOAD_ERROR_MESSAGES,
+} from '@/lib/constants/upload.constants';
 
 // Função utilitária para garantir conversão correta de dados
 function sanitizeProductData(data: any) {
-  return {
+  const sanitized: any = {
     name: String(data.name || ''),
     barcode: String(data.barcode || ''),
     price: Number(data.price || 0),
     stockQuantity: Number(data.stockQuantity || 0),
-    category: data.category ? String(data.category) : undefined,
-    ...(data.expirationDate && { expirationDate: String(data.expirationDate) }),
   };
+  
+  // Adicionar campos opcionais apenas se tiverem valor
+  if (data.category && String(data.category).trim() !== '') {
+    sanitized.category = String(data.category);
+  }
+  
+  // Tratar data de validade - converter null, undefined ou string vazia em undefined (não enviar)
+  if (data.expirationDate && String(data.expirationDate).trim() !== '' && data.expirationDate !== 'null' && data.expirationDate !== null) {
+    sanitized.expirationDate = String(data.expirationDate);
+  }
+  
+  return sanitized;
 }
 
 interface ProductDialogProps {
@@ -62,16 +81,36 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isEditing = !!product;
-  const { api } = useAuth();
+  const { api, user } = useAuth();
+  const [companyPlan, setCompanyPlan] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
+    control,
+    setValue,
+    setFocus,
   } = useForm<CreateProductDto>({
     resolver: zodResolver(productFormSchema),
   });
+
+  // Carregar plano da empresa
+  useEffect(() => {
+    const loadCompanyPlan = async () => {
+      try {
+        const response = await api.get('/company/my-company');
+        setCompanyPlan(response.data?.plan || null);
+      } catch (error) {
+        console.error('Erro ao carregar plano da empresa:', error);
+      }
+    };
+    
+    if (user?.role === 'empresa') {
+      loadCompanyPlan();
+    }
+  }, [api, user]);
 
   useEffect(() => {
     if (product) {
@@ -101,6 +140,15 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     }
   }, [product, reset]);
 
+  // Focar automaticamente o campo de código de barras ao abrir o modal
+  useEffect(() => {
+    if (open) {
+      // pequeno timeout para garantir que o campo esteja renderizado
+      const t = setTimeout(() => setFocus('barcode'), 50);
+      return () => clearTimeout(t);
+    }
+  }, [open, setFocus]);
+
   // Limpeza das URLs de pré-visualização quando o componente for desmontado
   useEffect(() => {
     return () => {
@@ -108,30 +156,82 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     };
   }, [photoPreviewUrls]);
 
+  // Calcular total de fotos (existentes + novas)
+  const getTotalPhotosCount = () => {
+    const existingCount = isEditing 
+      ? (product?.photos?.length || 0) - existingPhotosToDelete.length 
+      : 0;
+    return existingCount + selectedPhotos.length;
+  };
+
+  const canAddMorePhotos = () => {
+    return getTotalPhotosCount() < MAX_PRODUCT_PHOTOS;
+  };
+
+  // Verificar se o plano permite upload de fotos
+  const isPlanAllowedForPhotos = () => {
+    return companyPlan === 'PRO';
+  };
+
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isPlanAllowedForPhotos()) {
+      toast.error('Upload de fotos disponível apenas no Plano PRO. Faça upgrade para usar este recurso.');
+      event.target.value = '';
+      return;
+    }
+    
     const files = event.target.files;
     if (files) {
       const fileArray = Array.from(files);
       addPhotos(fileArray);
     }
+    // Limpar o input para permitir re-seleção do mesmo arquivo
+    event.target.value = '';
   };
 
   const addPhotos = (files: File[]) => {
-    // Filtrar apenas arquivos de imagem
-    const imageFiles = files.filter(file => file.type.startsWith('image/'));
-    
-    if (imageFiles.length !== files.length) {
-      toast.error('Apenas arquivos de imagem são permitidos');
+    // Verificar limite total de fotos
+    const existingPhotosCount = isEditing 
+      ? (product?.photos?.length || 0) - existingPhotosToDelete.length 
+      : 0;
+    const currentNewPhotos = selectedPhotos.length;
+    const totalPhotos = existingPhotosCount + currentNewPhotos + files.length;
+
+    if (totalPhotos > MAX_PRODUCT_PHOTOS) {
+      toast.error(UPLOAD_ERROR_MESSAGES.TOO_MANY_FILES);
+      return;
     }
-    
-    if (imageFiles.length > 0) {
-      const newPhotos = [...selectedPhotos, ...imageFiles];
-      setSelectedPhotos(newPhotos);
-      
-      // Gerar URLs de pré-visualização para as novas fotos
-      const newPreviewUrls = imageFiles.map(file => URL.createObjectURL(file));
-      setPhotoPreviewUrls([...photoPreviewUrls, ...newPreviewUrls]);
+
+    // Validar cada arquivo
+    const validFiles: File[] = [];
+    for (const file of files) {
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        toast.error(`${file.name}: ${validation.error}`);
+        continue;
+      }
+      validFiles.push(file);
     }
+
+    if (validFiles.length === 0) {
+      return;
+    }
+
+    // Calcular quantas fotos podem ser adicionadas
+    const availableSlots = MAX_PRODUCT_PHOTOS - existingPhotosCount - currentNewPhotos;
+    const photosToAdd = validFiles.slice(0, availableSlots);
+
+    if (photosToAdd.length < validFiles.length) {
+      toast.error(`Apenas ${photosToAdd.length} foto(s) foram adicionadas devido ao limite de ${MAX_PRODUCT_PHOTOS}`);
+    }
+
+    // Adicionar fotos válidas
+    const newPhotos = [...selectedPhotos, ...photosToAdd];
+    setSelectedPhotos(newPhotos);
+
+    // Gerar URLs de pré-visualização
+    const newPreviewUrls = photosToAdd.map(file => URL.createObjectURL(file));
+    setPhotoPreviewUrls([...photoPreviewUrls, ...newPreviewUrls]);
   };
 
   const handleDragOver = (event: React.DragEvent) => {
@@ -148,13 +248,74 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     event.preventDefault();
     setIsDragOver(false);
     
+    if (!isPlanAllowedForPhotos()) {
+      toast.error('Upload de fotos disponível apenas no Plano PRO. Faça upgrade para usar este recurso.');
+      return;
+    }
+    
     const files = event.dataTransfer.files;
     if (files) {
       addPhotos(Array.from(files));
     }
   };
 
+  // Suporte ao leitor de código de barras via teclado (buffer + Enter)
+  const {
+    barcodeBuffer,
+    setBarcodeBuffer,
+    scanSuccess,
+    setScanSuccess,
+  } = useDeviceStore();
+  const [lastScanned, setLastScanned] = useState(0);
+
+  // Limpar buffer após inatividade
+  useEffect(() => {
+    if (!open) return;
+    if (barcodeBuffer) {
+      const timer = setTimeout(() => setBarcodeBuffer(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [open, barcodeBuffer, setBarcodeBuffer]);
+
+  // Capturar teclado quando o modal estiver aberto
+  useEffect(() => {
+    if (!open) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      // Sempre permitir uso normal quando estiver digitando dentro de inputs do modal,
+      // exceto quando a tecla é Enter para finalizar leitura rápida
+      if (e.key === 'Enter') {
+        const code = barcodeBuffer.trim();
+        if (code.length >= 3) {
+          const now = Date.now();
+          if (now - lastScanned > 400) {
+            // Preencher o campo e sinalizar sucesso
+            setValue('barcode', code, { shouldValidate: true, shouldDirty: true });
+            setFocus('barcode');
+            setScanSuccess(true);
+            setTimeout(() => setScanSuccess(false), 1200);
+            setLastScanned(now);
+          }
+        }
+        setBarcodeBuffer('');
+      } else if (e.key && e.key.length === 1) {
+        // Acumular caracteres típicos de leitores (rápidos e sequenciais)
+        setBarcodeBuffer((s) => {
+          const next = s + e.key;
+          return next.length > 50 ? next.slice(-50) : next;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, barcodeBuffer, lastScanned, setBarcodeBuffer, setValue, setFocus, setScanSuccess]);
+
   const openFileDialog = () => {
+    if (!isPlanAllowedForPhotos()) {
+      toast.error('Upload de fotos disponível apenas no Plano PRO. Faça upgrade para usar este recurso.');
+      return;
+    }
     fileInputRef.current?.click();
   };
 
@@ -262,22 +423,23 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             console.log('[ProductDialog] Adicionando fotos ao produto existente');
             
             // Fazer upload das fotos usando o endpoint de upload múltiplo
-            const uploadResponse = await api.post('/upload/multiple', 
-              selectedPhotos.reduce((formData, photo) => {
-                formData.append('files', photo);
-                return formData;
-              }, new FormData()),
-              {
-                headers: { 'Content-Type': 'multipart/form-data' },
-              }
-            );
+            const formData = new FormData();
+            selectedPhotos.forEach((photo) => {
+              formData.append('files', photo);
+            });
+            
+            const uploadResponse = await api.post('/upload/multiple', formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+              params: { subfolder: `products/${user?.companyId || 'default'}` }
+            });
             
             console.log('[ProductDialog] Upload das fotos concluído:', uploadResponse.data);
             
-            // Adicionar as URLs das fotos ao produto
-            if (uploadResponse.data && uploadResponse.data.urls) {
-              updatedPhotos = [...updatedPhotos, ...uploadResponse.data.urls];
-              console.log('[ProductDialog] Fotos adicionadas ao produto');
+            // Extrair as URLs das fotos do array de files
+            if (uploadResponse.data && uploadResponse.data.files && Array.isArray(uploadResponse.data.files)) {
+              const newPhotoUrls = uploadResponse.data.files.map((file: any) => file.fileUrl);
+              updatedPhotos = [...updatedPhotos, ...newPhotoUrls];
+              console.log('[ProductDialog] Fotos adicionadas ao produto:', newPhotoUrls);
             }
           }
           
@@ -405,27 +567,12 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
               <Label htmlFor="price" className="text-foreground">Preço de Venda *</Label>
               <Input
                 id="price"
-                type="text"
+                type="number"
+                step="0.01"
+                min="0"
                 placeholder="0.00"
                 {...register('price', { 
                   valueAsNumber: true,
-                  onChange: (e) => {
-                    // Permitir apenas números e ponto decimal
-                    let value = e.target.value.replace(/[^0-9.]/g, '');
-                    
-                    // Se o valor for vazio ou apenas pontos, definir como vazio
-                    if (value === '' || value === '.') {
-                      e.target.value = '';
-                    } else {
-                      e.target.value = value;
-                    }
-                  },
-                  onFocus: (e) => {
-                    // Se o valor for 0, limpar o campo ao focar
-                    if (e.target.value === '0' || e.target.value === '0.00') {
-                      e.target.value = '';
-                    }
-                  },
                   onBlur: (e) => {
                     // Se o campo estiver vazio ao sair, definir como 0
                     if (e.target.value === '') {
@@ -433,8 +580,14 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     }
                   }
                 })}
+                onFocus={(e) => {
+                  // Se o valor for 0, limpar o campo ao focar
+                  if (Number(e.target.value) === 0) {
+                    e.target.value = '';
+                  }
+                }}
                 disabled={loading}
-                className="text-foreground"
+                className="text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               {errors.price && (
                 <p className="text-sm text-destructive">{errors.price.message}</p>
@@ -445,21 +598,11 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
               <Label htmlFor="stockQuantity" className="text-foreground">Quantidade em Estoque *</Label>
               <Input
                 id="stockQuantity"
-                type="text"
+                type="number"
+                min="0"
                 placeholder="0"
                 {...register('stockQuantity', { 
                   valueAsNumber: true,
-                  onChange: (e) => {
-                    // Permitir apenas números inteiros
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    e.target.value = value;
-                  },
-                  onFocus: (e) => {
-                    // Se o valor for 0, limpar o campo ao focar
-                    if (e.target.value === '0') {
-                      e.target.value = '';
-                    }
-                  },
                   onBlur: (e) => {
                     // Se o campo estiver vazio ao sair, definir como 0
                     if (e.target.value === '') {
@@ -467,8 +610,14 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                     }
                   }
                 })}
+                onFocus={(e) => {
+                  // Se o valor for 0, limpar o campo ao focar
+                  if (Number(e.target.value) === 0) {
+                    e.target.value = '';
+                  }
+                }}
                 disabled={loading}
-                className="text-foreground"
+                className="text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               {errors.stockQuantity && (
                 <p className="text-sm text-destructive">{errors.stockQuantity.message}</p>
@@ -477,12 +626,17 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
 
             <div className="space-y-2">
               <Label htmlFor="expirationDate" className="text-foreground">Data de Validade</Label>
-              <Input
-                id="expirationDate"
-                type="date"
-                {...register('expirationDate')}
-                disabled={loading}
-                className="text-foreground"
+              <Controller
+                name="expirationDate"
+                control={control}
+                render={({ field }) => (
+                  <DatePicker
+                    date={field.value ? new Date(field.value) : undefined}
+                    onSelect={(date) => field.onChange(date ? date.toISOString().split('T')[0] : undefined)}
+                    placeholder="Selecione a data de validade"
+                    disabled={loading}
+                  />
+                )}
               />
               {errors.expirationDate && (
                 <p className="text-sm text-destructive">{errors.expirationDate.message}</p>
@@ -493,12 +647,35 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
 
           {/* Campo de Upload de Fotos */}
           <div className="space-y-2">
-            <Label htmlFor="photos" className="text-foreground">
-              {isEditing ? 'Adicionar Mais Fotos' : 'Fotos do Produto'}
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="photos" className="text-foreground">
+                {isEditing ? 'Adicionar Mais Fotos' : 'Fotos do Produto'}
+                {!isPlanAllowedForPhotos() && (
+                  <span className="ml-2 text-xs text-amber-600 dark:text-amber-400 font-normal">
+                    (Disponível apenas no Plano PRO)
+                  </span>
+                )}
+              </Label>
+              <span className="text-sm text-muted-foreground">
+                {getTotalPhotosCount()} / {MAX_PRODUCT_PHOTOS}
+              </span>
+            </div>
+            
+            {/* Aviso de plano para BASIC e PLUS */}
+            {!isPlanAllowedForPhotos() && (
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>🔒 Recurso Bloqueado:</strong> O upload de fotos de produtos está disponível apenas para empresas do Plano PRO.
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                  Faça upgrade do seu plano para utilizar este recurso e melhorar a apresentação dos seus produtos.
+                </p>
+              </div>
+            )}
+            
             
             {/* Mostrar fotos existentes quando editando */}
-            {isEditing && product?.photos && product.photos.length > 0 && (
+            {isPlanAllowedForPhotos() && isEditing && product?.photos && product.photos.length > 0 && (
               <div className="mb-3">
                 <p className="text-sm text-muted-foreground mb-2">
                   Fotos existentes ({product.photos.length}):
@@ -507,20 +684,6 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   {product.photos.map((photoUrl, index) => {
                     console.log(`[ProductDialog] Renderizando foto ${index}:`, photoUrl);
                     const isMarkedForDeletion = existingPhotosToDelete.includes(photoUrl);
-                    
-                    // Verificar se a URL é válida e construir URL completa se necessário
-                    const getImageUrl = (url: string) => {
-                      if (!url) return '';
-                      
-                      // Se já é uma URL completa, usar como está
-                      if (url.startsWith('http://') || url.startsWith('https://')) {
-                        return url;
-                      }
-                      
-                      // Se é um caminho relativo, construir URL completa
-                      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-                      return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
-                    };
                     
                     const fullImageUrl = getImageUrl(photoUrl);
                     console.log(`[ProductDialog] URL completa da foto ${index}:`, fullImageUrl);
@@ -597,12 +760,12 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                 </div>
                 {existingPhotosToDelete.length > 0 && (
                   <div className="mt-2 flex items-center justify-between">
-                    <p className="text-xs text-red-600">
+                    <p className="text-xs text-red-600 dark:text-red-400">
                       {existingPhotosToDelete.length} foto(s) marcada(s) para exclusão
                     </p>
                     <button
                       type="button"
-                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-500 underline"
                       onClick={handleRestoreAllPhotos}
                     >
                       Restaurar todas
@@ -625,45 +788,58 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             )}
             
             {/* Input de arquivo oculto */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handlePhotoChange}
-              disabled={loading}
-              className="hidden"
-            />
+            {isPlanAllowedForPhotos() && (
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={ACCEPTED_IMAGE_STRING}
+                onChange={handlePhotoChange}
+                disabled={loading || !canAddMorePhotos()}
+                className="hidden"
+              />
+            )}
             
             {/* Input customizado */}
-            <div
-                className={`
-                w-16 h-16 border-2 border-dashed rounded-lg cursor-pointer
-                flex flex-col items-center justify-center
-                transition-all duration-200 ease-in-out
-                ${isDragOver 
-                  ? 'border-primary bg-primary/5 scale-105' 
-                  : 'border-border hover:border-primary hover:bg-muted'
-                }
-                ${loading ? 'opacity-50 cursor-not-allowed' : ''}
-              `}
-              onClick={openFileDialog}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <Plus 
-                size={16} 
-                className={`
-                  text-muted-foreground transition-colors duration-200
-                  ${isDragOver ? 'text-primary' : 'group-hover:text-primary'}
-                `} 
-              />
-              <span className="text-xs text-muted-foreground mt-0.5 text-center px-0.5 leading-tight">
-                {isDragOver ? 'Solte' : '+'}
-              </span>
-            </div>
-            {isEditing && (
+            {isPlanAllowedForPhotos() && (
+              <div
+                  className={`
+                  w-16 h-16 border-2 border-dashed rounded-lg
+                  flex flex-col items-center justify-center
+                  transition-all duration-200 ease-in-out
+                  ${!canAddMorePhotos() 
+                    ? 'opacity-50 cursor-not-allowed border-muted' 
+                    : isDragOver 
+                      ? 'border-primary bg-primary/5 scale-105 cursor-pointer' 
+                      : 'border-border hover:border-primary hover:bg-muted cursor-pointer'
+                  }
+                  ${loading ? 'opacity-50 cursor-not-allowed' : ''}
+                `}
+                onClick={canAddMorePhotos() && !loading ? openFileDialog : undefined}
+                onDragOver={canAddMorePhotos() && !loading ? handleDragOver : undefined}
+                onDragLeave={canAddMorePhotos() && !loading ? handleDragLeave : undefined}
+                onDrop={canAddMorePhotos() && !loading ? handleDrop : undefined}
+                title={!canAddMorePhotos() ? 'Limite máximo de fotos atingido' : 'Clique ou arraste fotos aqui'}
+              >
+                <Plus 
+                  size={16} 
+                  className={`
+                    text-muted-foreground transition-colors duration-200
+                    ${isDragOver ? 'text-primary' : 'group-hover:text-primary'}
+                  `} 
+                />
+                <span className="text-xs text-muted-foreground mt-0.5 text-center px-0.5 leading-tight">
+                  {isDragOver ? 'Solte' : '+'}
+                </span>
+              </div>
+            )}
+            
+            {isPlanAllowedForPhotos() && !canAddMorePhotos() && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                Limite máximo de {MAX_PRODUCT_PHOTOS} fotos atingido
+              </p>
+            )}
+            {isPlanAllowedForPhotos() && isEditing && (
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>• Passe o mouse sobre uma foto existente para excluí-la</p>
                 <p>• Fotos marcadas para exclusão ficam com borda vermelha</p>
@@ -671,7 +847,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                 <p>• As novas fotos serão adicionadas ao produto</p>
               </div>
             )}
-            {selectedPhotos.length > 0 && (
+            {isPlanAllowedForPhotos() && selectedPhotos.length > 0 && (
               <div className="mt-2">
                 <p className="text-sm text-muted-foreground mb-2">
                   {selectedPhotos.length} foto(s) selecionada(s):
