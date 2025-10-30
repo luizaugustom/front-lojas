@@ -18,6 +18,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/handleApiError';
 import { productFormSchema } from '@/lib/validations';
@@ -50,6 +57,11 @@ function sanitizeProductData(data: any) {
   // Tratar data de validade - converter null, undefined ou string vazia em undefined (não enviar)
   if (data.expirationDate && String(data.expirationDate).trim() !== '' && data.expirationDate !== 'null' && data.expirationDate !== null) {
     sanitized.expirationDate = String(data.expirationDate);
+  }
+  
+  // Adicionar unidade de medida se fornecida
+  if (data.unitOfMeasure && String(data.unitOfMeasure).trim() !== '') {
+    sanitized.unitOfMeasure = String(data.unitOfMeasure);
   }
   
   return sanitized;
@@ -126,6 +138,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         stockQuantity: product.stockQuantity,
         category: product.category,
         expirationDate: product.expirationDate,
+        unitOfMeasure: product.unitOfMeasure || 'un',
       });
     } else {
       reset({
@@ -133,6 +146,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         barcode: '',
         price: 0,
         stockQuantity: 0,
+        unitOfMeasure: 'un',
       });
       setSelectedPhotos([]);
       setPhotoPreviewUrls([]);
@@ -396,63 +410,51 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             throw new Error('ID do produto inválido');
           }
           
-          // Incluir o ID nos dados para evitar problemas na URL
-          const dataWithId = {
-            ...dataToSend,
-            id: productId
-          };
+          console.log('[ProductDialog] Fazendo requisição de atualização para:', `/product/${productId}`);
+          console.log('[ProductDialog] Dados sendo enviados:', dataToSend);
           
-          console.log('[ProductDialog] Fazendo requisição PATCH para:', `/product/${productId}`);
-          console.log('[ProductDialog] Dados sendo enviados:', dataWithId);
+          // Verificar se há fotos para adicionar ou remover
+          const hasPhotoChanges = selectedPhotos.length > 0 || existingPhotosToDelete.length > 0;
           
-          // Tentar usar o endpoint de atualização do productApi
-          await productApi.update(productId, dataToSend);
-          
-          // Gerenciar fotos (adicionar novas e remover existentes)
-          const currentPhotos = product!.photos || [];
-          let updatedPhotos = [...currentPhotos];
-          
-          // Remover fotos marcadas para exclusão
-          if (existingPhotosToDelete.length > 0) {
-            updatedPhotos = updatedPhotos.filter(photo => !existingPhotosToDelete.includes(photo));
-            console.log('[ProductDialog] Fotos removidas:', existingPhotosToDelete);
-          }
-          
-          // Adicionar fotos novas se houver
-          if (selectedPhotos.length > 0) {
-            console.log('[ProductDialog] Adicionando fotos ao produto existente');
+          if (hasPhotoChanges) {
+            // Usar endpoint upload-and-update quando há mudanças em fotos
+            console.log('[ProductDialog] Atualizando produto com fotos usando /product/:id/upload-and-update');
             
-            // Fazer upload das fotos usando o endpoint de upload múltiplo
             const formData = new FormData();
+            
+            // Adicionar dados do produto
+            formData.append('name', dataToSend.name);
+            formData.append('barcode', dataToSend.barcode);
+            formData.append('price', dataToSend.price.toString());
+            formData.append('stockQuantity', dataToSend.stockQuantity.toString());
+            
+            if (dataToSend.category) formData.append('category', dataToSend.category);
+            if (dataToSend.expirationDate) formData.append('expirationDate', dataToSend.expirationDate);
+            if (dataToSend.unitOfMeasure) formData.append('unitOfMeasure', dataToSend.unitOfMeasure);
+            
+            // Adicionar fotos novas
             selectedPhotos.forEach((photo) => {
-              formData.append('files', photo);
+              formData.append('photos', photo);
             });
             
-            const uploadResponse = await api.post('/upload/multiple', formData, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-              params: { subfolder: `products/${user?.companyId || 'default'}` }
-            });
-            
-            console.log('[ProductDialog] Upload das fotos concluído:', uploadResponse.data);
-            
-            // Extrair as URLs das fotos do array de files
-            if (uploadResponse.data && uploadResponse.data.files && Array.isArray(uploadResponse.data.files)) {
-              const newPhotoUrls = uploadResponse.data.files.map((file: any) => file.fileUrl);
-              updatedPhotos = [...updatedPhotos, ...newPhotoUrls];
-              console.log('[ProductDialog] Fotos adicionadas ao produto:', newPhotoUrls);
+            // Adicionar fotos para deletar
+            if (existingPhotosToDelete.length > 0) {
+              existingPhotosToDelete.forEach((photoUrl) => {
+                formData.append('photosToDelete', photoUrl);
+              });
             }
-          }
-          
-          // Atualizar as fotos do produto se houve mudanças
-          if (existingPhotosToDelete.length > 0 || selectedPhotos.length > 0) {
-            await api.patch(`/product/${productId}`, {
-              photos: updatedPhotos
-            });
             
-            console.log('[ProductDialog] Fotos do produto atualizadas:', updatedPhotos);
+            console.log('[ProductDialog] Fotos novas:', selectedPhotos.length);
+            console.log('[ProductDialog] Fotos para deletar:', existingPhotosToDelete.length);
+            
+            await productApi.updateWithPhotos(productId, formData);
+            toast.success('Produto atualizado com sucesso!');
+          } else {
+            // Usar endpoint padrão quando não há mudanças em fotos
+            console.log('[ProductDialog] Atualizando produto sem mudanças em fotos');
+            await productApi.update(productId, dataToSend);
+            toast.success('Produto atualizado com sucesso!');
           }
-          
-          toast.success('Produto atualizado com sucesso!');
         } catch (patchError) {
           console.error('[ProductDialog] Erro específico na edição:', patchError);
           throw patchError;
@@ -480,6 +482,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
           if (sanitizedData.expirationDate) formData.append('expirationDate', sanitizedData.expirationDate);
           if (data.costPrice) formData.append('costPrice', Number(data.costPrice || 0).toString());
           if (data.minStockQuantity) formData.append('minStockQuantity', Number(data.minStockQuantity || 0).toString());
+          if (sanitizedData.unitOfMeasure) formData.append('unitOfMeasure', sanitizedData.unitOfMeasure);
           
           // Adicionar fotos
           selectedPhotos.forEach((photo, index) => {
@@ -493,6 +496,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             barcode: data.barcode,
             price: data.price,
             stockQuantity: data.stockQuantity,
+            unitOfMeasure: sanitizedData.unitOfMeasure,
             photosCount: selectedPhotos.length
           });
           
@@ -621,6 +625,36 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
               />
               {errors.stockQuantity && (
                 <p className="text-sm text-destructive">{errors.stockQuantity.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="unitOfMeasure" className="text-foreground">Unidade de Medida</Label>
+              <Controller
+                name="unitOfMeasure"
+                control={control}
+                render={({ field }) => (
+                  <Select 
+                    onValueChange={(value) => field.onChange(value)} 
+                    value={field.value || 'un'}
+                  >
+                    <SelectTrigger id="unitOfMeasure" className="text-foreground">
+                      <SelectValue placeholder="Selecione a unidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="un">Unidade (un)</SelectItem>
+                      <SelectItem value="kg">Kilograma (kg)</SelectItem>
+                      <SelectItem value="g">Grama (g)</SelectItem>
+                      <SelectItem value="ml">Mililitro (ml)</SelectItem>
+                      <SelectItem value="l">Litro (l)</SelectItem>
+                      <SelectItem value="m">Metro (m)</SelectItem>
+                      <SelectItem value="cm">Centímetro (cm)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.unitOfMeasure && (
+                <p className="text-sm text-destructive">{errors.unitOfMeasure.message}</p>
               )}
             </div>
 

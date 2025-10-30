@@ -115,6 +115,16 @@ export const productApi = {
   update: (id: string, data: any) => api.patch(`/product/${id}`, data),
 
   /**
+   * PATCH /product/:id/upload-and-update
+   * Roles: COMPANY - Atualizar produto com upload de fotos
+   * Content-Type: multipart/form-data
+   * Body: Arquivos de imagem + dados do produto + photosToDelete (opcional)
+   */
+  updateWithPhotos: (id: string, formData: FormData) => api.patch(`/product/${id}/upload-and-update`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+
+  /**
    * PATCH /product/:id/stock
    * Roles: ADMIN, COMPANY - Atualizar estoque
    * Body: { stockQuantity }

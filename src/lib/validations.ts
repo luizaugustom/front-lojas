@@ -17,6 +17,7 @@ export const productSchema = z.object({
   category: z.string().optional(),
   description: z.string().optional(),
   expirationDate: z.string().optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
+  unitOfMeasure: z.enum(['kg', 'g', 'ml', 'l', 'm', 'cm', 'un']).optional(),
 });
 
 // Schema para formulário de produto (inclui campos opcionais para edição)
@@ -31,6 +32,7 @@ export const productFormSchema = z.object({
   category: z.string().optional(),
   description: z.string().optional(),
   expirationDate: z.string().optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
+  unitOfMeasure: z.enum(['kg', 'g', 'ml', 'l', 'm', 'cm', 'un']).optional(),
   activityId: z.any().optional(), // Aceita qualquer tipo para evitar validação de UUID
   companyId: z.any().optional(), // Aceita qualquer tipo para evitar validação de UUID
 });

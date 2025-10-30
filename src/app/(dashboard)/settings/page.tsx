@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, FileText, Shield, Upload, X, Image, MessageSquare } from 'lucide-react';
+import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, FileText, Shield, Upload, X, Image, MessageSquare, Store, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,10 +62,23 @@ export default function SettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
 
+  // Estado da empresa (incluindo plano)
+  const [companyData, setCompanyData] = useState<any>(null);
+  const [loadingCompanyData, setLoadingCompanyData] = useState(false);
+
   // Estado das mensagens automáticas
   const [autoMessageStatus, setAutoMessageStatus] = useState<any>(null);
   const [loadingAutoMessage, setLoadingAutoMessage] = useState(false);
   const [togglingAutoMessage, setTogglingAutoMessage] = useState(false);
+
+  // Estado da página de catálogo
+  const [catalogPageConfig, setCatalogPageConfig] = useState<any>(null);
+  const [loadingCatalogPage, setLoadingCatalogPage] = useState(false);
+  const [updatingCatalogPage, setUpdatingCatalogPage] = useState(false);
+  const [catalogPageForm, setCatalogPageForm] = useState({
+    url: '',
+    enabled: false,
+  });
 
   // Estado das configurações do admin (Focus NFe global)
   const [adminFocusConfig, setAdminFocusConfig] = useState<any>(null);
@@ -77,14 +90,30 @@ export default function SettingsPage() {
     ibptToken: '',
   });
 
+  // Carregar dados da empresa (incluindo plano)
+  const loadCompanyData = async () => {
+    try {
+      setLoadingCompanyData(true);
+      const response = await authApi.get('/company/my-company');
+      setCompanyData(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar dados da empresa:', error);
+      setCompanyData(null);
+    } finally {
+      setLoadingCompanyData(false);
+    }
+  };
+
   // Carregar perfil do usuário quando o user mudar
   useEffect(() => {
     if (user) {
       loadProfile();
       if (user.role === 'empresa') {
+        loadCompanyData();
         loadFiscalConfig();
         loadCompanyLogo();
         loadAutoMessageStatus();
+        loadCatalogPageConfig();
       }
       if (user.role === 'admin') {
         loadAdminFocusConfig();
@@ -551,6 +580,15 @@ export default function SettingsPage() {
 
   const handleToggleAutoMessage = async (enable: boolean) => {
     try {
+      // Verificar plano antes de habilitar
+      if (enable && companyData?.plan) {
+        const plan = companyData.plan.toUpperCase();
+        if (plan !== 'PLUS' && plan !== 'PRO') {
+          toast.error('O envio automático de mensagens de cobrança está disponível apenas para planos Plus e Pro. Faça upgrade para utilizar esta funcionalidade.');
+          return;
+        }
+      }
+
       setTogglingAutoMessage(true);
       const endpoint = enable 
         ? '/company/my-company/auto-message/enable' 
@@ -564,10 +602,111 @@ export default function SettingsPage() {
       await loadAutoMessageStatus();
     } catch (error: any) {
       console.error('Erro ao alterar status de mensagens automáticas:', error);
-      handleApiError(error);
+      // Verificar se erro é relacionado ao plano
+      if (error.response?.data?.message?.includes('plano')) {
+        toast.error('Esta funcionalidade está disponível apenas para planos Plus e Pro.');
+      } else {
+        handleApiError(error);
+      }
     } finally {
       setTogglingAutoMessage(false);
     }
+  };
+
+  // Funções para gerenciar página de catálogo
+  const loadCatalogPageConfig = async () => {
+    try {
+      setLoadingCatalogPage(true);
+      const response = await authApi.get('/company/my-company/catalog-page');
+      setCatalogPageConfig(response.data);
+      setCatalogPageForm({
+        url: response.data.catalogPageUrl || '',
+        enabled: response.data.catalogPageEnabled || false,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar configurações da página de catálogo:', error);
+      setCatalogPageConfig(null);
+    } finally {
+      setLoadingCatalogPage(false);
+    }
+  };
+
+  const handleUpdateCatalogPage = async () => {
+    try {
+      setUpdatingCatalogPage(true);
+
+      // Verificar plano antes de habilitar
+      if (catalogPageForm.enabled && companyData?.plan) {
+        const plan = companyData.plan.toUpperCase();
+        if (plan !== 'PRO') {
+          toast.error('O catálogo público está disponível apenas para empresas com plano Pro. Faça upgrade para utilizar esta funcionalidade.');
+          setUpdatingCatalogPage(false);
+          // Reverter estado do formulário
+          setCatalogPageForm({
+            ...catalogPageForm,
+            enabled: false,
+          });
+          return;
+        }
+      }
+
+      // Validar URL se estiver sendo habilitada
+      if (catalogPageForm.enabled && !catalogPageForm.url) {
+        toast.error('Informe uma URL para a página de catálogo');
+        return;
+      }
+
+      const updates: any = {};
+      if (catalogPageForm.url) updates.catalogPageUrl = catalogPageForm.url;
+      if (catalogPageForm.enabled !== catalogPageConfig?.catalogPageEnabled) {
+        updates.catalogPageEnabled = catalogPageForm.enabled;
+      }
+
+      await authApi.patch('/company/my-company/catalog-page', updates);
+      
+      toast.success('Configurações da página de catálogo atualizadas com sucesso!');
+      
+      // Recarregar configurações
+      await loadCatalogPageConfig();
+    } catch (error: any) {
+      console.error('Erro ao atualizar página de catálogo:', error);
+      // Verificar se erro é relacionado ao plano
+      if (error.response?.data?.message?.includes('plano PRO') || error.response?.data?.message?.includes('plano Pro')) {
+        toast.error('O catálogo público está disponível apenas para empresas com plano Pro.');
+        // Reverter estado do formulário
+        setCatalogPageForm({
+          ...catalogPageForm,
+          enabled: false,
+        });
+      } else {
+        handleApiError(error);
+      }
+    } finally {
+      setUpdatingCatalogPage(false);
+    }
+  };
+
+  // Desativar/ativar catálogo ao clicar no toggle
+  const handleToggleCatalogEnabled = async (nextEnabled: boolean) => {
+    setCatalogPageForm({ ...catalogPageForm, enabled: nextEnabled });
+
+    // Desativar imediatamente sem exigir salvar
+    if (!nextEnabled) {
+      try {
+        setUpdatingCatalogPage(true);
+        await authApi.patch('/company/my-company/catalog-page', { catalogPageEnabled: false });
+        toast.success('Página de catálogo desativada.');
+        await loadCatalogPageConfig();
+      } catch (error) {
+        handleApiError(error as any);
+      } finally {
+        setUpdatingCatalogPage(false);
+      }
+      return;
+    }
+
+    // Ao ativar, manter fluxo existente (requer salvar) para validar URL e plano
+    toast('Defina a URL e clique em Salvar para ativar o catálogo.');
   };
 
   if (loadingProfile) {
@@ -1132,6 +1271,23 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <>
+                  {/* Aviso de plano */}
+                  {companyData?.plan && companyData.plan.toUpperCase() !== 'PLUS' && companyData.plan.toUpperCase() !== 'PRO' && (
+                    <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <Lock className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
+                            Funcionalidade disponível apenas para planos Plus e Pro
+                          </p>
+                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                            Seu plano atual: <strong>{companyData.plan}</strong>. Faça upgrade para utilizar o envio automático de mensagens de cobrança.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Status atual */}
                   <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                     <div className="flex-1">
@@ -1150,7 +1306,7 @@ export default function SettingsPage() {
                     </div>
                     <Button
                       onClick={() => handleToggleAutoMessage(!autoMessageStatus?.autoMessageEnabled)}
-                      disabled={togglingAutoMessage}
+                      disabled={togglingAutoMessage || (companyData?.plan && companyData.plan.toUpperCase() !== 'PLUS' && companyData.plan.toUpperCase() !== 'PRO' && !autoMessageStatus?.autoMessageEnabled)}
                       variant={autoMessageStatus?.autoMessageEnabled ? "destructive" : "default"}
                     >
                       {togglingAutoMessage ? (
@@ -1319,6 +1475,152 @@ export default function SettingsPage() {
                   <strong>ℹ️ Informação:</strong> O logo será exibido no header da aplicação para todos os usuários da empresa (empresa e vendedores).
                 </p>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Página de Catálogo Pública - Apenas para Empresas */}
+        {user?.role === 'empresa' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Store className="h-5 w-5" />
+                Página de Catálogo Pública
+              </CardTitle>
+              <CardDescription>
+                Crie uma página pública de catálogo para exibir seus produtos na web
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {loadingCatalogPage ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">Carregando...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Aviso de plano */}
+                  {companyData?.plan && companyData.plan.toUpperCase() !== 'PRO' && (
+                    <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <Lock className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
+                            Funcionalidade disponível apenas para plano Pro
+                          </p>
+                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                            Seu plano atual: <strong>{companyData.plan}</strong>. Faça upgrade para plano Pro para utilizar o catálogo público.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Status da página */}
+                  <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${catalogPageForm.enabled ? 'bg-green-500' : 'bg-gray-400'}`} />
+                      <div>
+                        <p className="font-medium">
+                          {catalogPageForm.enabled ? 'Página Ativa' : 'Página Desativada'}
+                        </p>
+                        {catalogPageForm.enabled && catalogPageForm.url && (
+                          <p className="text-sm text-muted-foreground">
+                            /catalogo/{catalogPageForm.url}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Formulário */}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="catalog-url">
+                        URL da Página (apenas letras minúsculas, números, hífen e underscore)
+                      </Label>
+                      <Input
+                        id="catalog-url"
+                        value={catalogPageForm.url}
+                        onChange={(e) => setCatalogPageForm({ ...catalogPageForm, url: e.target.value.toLowerCase() })}
+                        placeholder="exemplo: masolucoes"
+                        disabled={updatingCatalogPage}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Exemplo: se você digitar "masolucoes", sua página será acessível em /catalogo/masolucoes
+                      </p>
+                    </div>
+
+                    {catalogPageConfig?.pageUrl && (
+                      <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                        <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">
+                          ✅ Sua página está disponível
+                        </p>
+                        <a
+                          href={catalogPageConfig.pageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-green-700 dark:text-green-300 hover:underline"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Abrir página pública
+                        </a>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="font-medium">Ativar Página</p>
+                        <p className="text-sm text-muted-foreground">
+                          Torna sua página de catálogo acessível publicamente
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={catalogPageForm.enabled}
+                          onChange={(e) => handleToggleCatalogEnabled(e.target.checked)}
+                          className="sr-only peer"
+                          disabled={updatingCatalogPage || (companyData?.plan && companyData.plan.toUpperCase() !== 'PRO')}
+                        />
+                        <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary ${companyData?.plan && companyData.plan.toUpperCase() !== 'PRO' ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                      </label>
+                    </div>
+
+                    <Button
+                      onClick={handleUpdateCatalogPage}
+                      disabled={updatingCatalogPage}
+                      className="w-full"
+                    >
+                      {updatingCatalogPage ? (
+                        <>
+                          <span className="animate-spin mr-2">⏳</span>
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Salvar Configurações
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Informações */}
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                      ℹ️ Sobre a Página de Catálogo
+                    </p>
+                    <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                      <li>• Lista todos os seus produtos com estoque disponível</li>
+                      <li>• Exibe fotos, preços e informações dos produtos</li>
+                      <li>• Mostra suas informações de contato (telefone, email, endereço)</li>
+                      <li>• Acesso público - não requer login</li>
+                      <li>• Compartilhe o link com seus clientes!</li>
+                    </ul>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         )}

@@ -104,6 +104,7 @@ export interface Product {
   description?: string;
   photos?: string[];
   expirationDate?: string;
+  unitOfMeasure?: string;
   companyId: string;
   createdAt: string;
   updatedAt: string;
@@ -317,6 +318,7 @@ export interface CreateProductDto {
   category?: string;
   photos?: string[];
   expirationDate?: string;
+  unitOfMeasure?: string;
 }
 
 export interface InstallmentData {
