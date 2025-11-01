@@ -32,17 +32,17 @@ export function ProductList({ products, isLoading, onAddToCart }: ProductListPro
   };
   if (isLoading) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-1">
         {[...Array(8)].map((_, i) => (
-          <Card key={i} className="p-2">
-            <CardContent className="flex items-center gap-4">
+          <Card key={i} className="p-1">
+            <CardContent className="flex items-center gap-3 py-2">
               <div className="h-10 w-10 rounded bg-muted animate-pulse" />
               <div className="flex-1">
                 <div className="h-4 w-40 rounded bg-muted animate-pulse" />
-                <div className="mt-2 h-3 w-24 rounded bg-muted animate-pulse" />
+                <div className="mt-0.5 h-3 w-24 rounded bg-muted animate-pulse" />
               </div>
-              <div className="w-16">
-                <div className="h-8 w-full rounded bg-muted animate-pulse" />
+              <div className="w-7">
+                <div className="h-7 w-full rounded bg-muted animate-pulse" />
               </div>
             </CardContent>
           </Card>
@@ -90,7 +90,7 @@ export function ProductList({ products, isLoading, onAddToCart }: ProductListPro
                     aria-label={`Adicionar ${product.name}`}
                     title={`Adicionar ${product.name}`}
                   >
-                    <Plus className="h-4 w-4 text-blue-600" />
+                    <Plus className="h-4 w-4 text-primary" />
                   </Button>
                 </div>
               </CardContent>

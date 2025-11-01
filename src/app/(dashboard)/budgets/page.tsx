@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { FileText, Search, Printer, Download, Eye, Trash2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { FileText, Search, Printer, Download, Eye, Trash2, CheckCircle, XCircle, Clock, Edit } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency } from '@/lib/utils-clean';
 import { useAuth } from '@/hooks/useAuth';
@@ -59,12 +61,20 @@ interface Budget {
 
 export default function BudgetsPage() {
   const { api, user } = useAuth();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editStatusDialogOpen, setEditStatusDialogOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const [newStatus, setNewStatus] = useState<string>('');
+  const [statusNotes, setStatusNotes] = useState<string>('');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  
+  const isCompany = user?.role === 'empresa';
 
   const { data: budgets, isLoading, refetch } = useQuery({
     queryKey: ['budgets', statusFilter],
@@ -129,6 +139,45 @@ export default function BudgetsPage() {
       refetch();
     } catch (error) {
       handleApiError(error);
+    }
+  };
+
+  const handleOpenEditStatus = (budget: Budget) => {
+    setEditingBudget(budget);
+    setNewStatus(budget.status);
+    setStatusNotes(budget.notes || '');
+    setEditStatusDialogOpen(true);
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!editingBudget || !newStatus) return;
+
+    setUpdatingStatus(true);
+    try {
+      await api.patch(`/budget/${editingBudget.id}`, {
+        status: newStatus,
+        notes: statusNotes || undefined,
+      });
+      
+      toast.success('Status do orçamento atualizado com sucesso!');
+      
+      // Se o status foi alterado para aprovado, informar sobre a venda criada
+      if (newStatus === 'approved' && editingBudget.status !== 'approved') {
+        toast.success('Venda criada automaticamente com base no orçamento!');
+      }
+      
+      setEditStatusDialogOpen(false);
+      setEditingBudget(null);
+      setNewStatus('');
+      setStatusNotes('');
+      
+      // Invalidar cache e recarregar
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      refetch();
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -250,6 +299,16 @@ export default function BudgetsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          {isCompany && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleOpenEditStatus(budget)}
+                              title="Alterar status"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             size="icon"
                             variant="ghost"
@@ -400,6 +459,70 @@ export default function BudgetsPage() {
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
               Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Status Dialog */}
+      <Dialog open={editStatusDialogOpen} onOpenChange={setEditStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar Status do Orçamento</DialogTitle>
+            <DialogDescription>
+              Altere o status do orçamento #{editingBudget?.budgetNumber.toString().padStart(6, '0')}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="status">Status *</Label>
+              <Select value={newStatus} onValueChange={setNewStatus} disabled={updatingStatus}>
+                <SelectTrigger id="status">
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                  <SelectItem value="approved">Aprovado</SelectItem>
+                  <SelectItem value="rejected">Rejeitado</SelectItem>
+                  <SelectItem value="expired">Expirado</SelectItem>
+                </SelectContent>
+              </Select>
+              {newStatus === 'approved' && editingBudget?.status !== 'approved' && (
+                <p className="text-sm text-muted-foreground">
+                  ⚠️ Ao aprovar este orçamento, uma venda será criada automaticamente.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Observações (opcional)</Label>
+              <Textarea
+                id="notes"
+                value={statusNotes}
+                onChange={(e) => setStatusNotes(e.target.value)}
+                placeholder="Adicione observações sobre a mudança de status..."
+                rows={3}
+                disabled={updatingStatus}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditStatusDialogOpen(false);
+                setEditingBudget(null);
+                setNewStatus('');
+                setStatusNotes('');
+              }}
+              disabled={updatingStatus}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdateStatus} disabled={updatingStatus || !newStatus}>
+              {updatingStatus ? 'Atualizando...' : 'Atualizar Status'}
             </Button>
           </DialogFooter>
         </DialogContent>

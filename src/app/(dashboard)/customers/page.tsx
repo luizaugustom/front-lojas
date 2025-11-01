@@ -48,7 +48,32 @@ export default function CustomersPage() {
     enabled: !!user?.companyId
   });
 
-  const customers = (customersResponse?.data?.customers || customersResponse?.data || []) as any[];
+  // Transformar clientes: campos de endereço flat -> nested
+  const customersRaw = (customersResponse?.data?.customers || customersResponse?.data || []) as any[];
+  const customers = customersRaw.map((customer: any) => {
+    // Se já tem address, retornar como está
+    if (customer.address) {
+      return customer;
+    }
+    // Transformar campos flat em objeto address
+    const { street, number, complement, city, state, zipCode, district, ...rest } = customer;
+    // Verificar se tem algum campo de endereço
+    if (street || city || state) {
+      return {
+        ...rest,
+        address: {
+          street: street || '',
+          number: number || '',
+          complement: complement || '',
+          neighborhood: district || '',
+          city: city || '',
+          state: state || '',
+          zipCode: zipCode || '',
+        },
+      };
+    }
+    return customer;
+  });
 
   const handleEdit = (customer: Customer) => {
     setSelectedCustomer(customer);

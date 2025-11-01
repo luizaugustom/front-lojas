@@ -51,7 +51,8 @@ const navigation = [
   { name: 'Empresas', href: '/companies', icon: Building2, roles: ['admin'] },
   // Testes da API - visível apenas para admin
   { name: 'Testes da API', href: '/test-api', icon: TestTube, roles: ['admin'] },
-  { name: 'Impressoras', href: '/printers', icon: Printer, roles: ['empresa'] },
+  // Dispositivos - página dedicada
+  { name: 'Dispositivos', href: '/devices', icon: Printer, roles: ['empresa'] },
   { name: 'Configurações', href: '/settings', icon: Settings, roles: ['admin', 'empresa'] },
 ];
 

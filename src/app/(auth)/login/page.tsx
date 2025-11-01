@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { loginSchema } from '@/lib/validations';
 import { getRandomVerse } from '@/lib/verses';
 import { handleApiError } from '@/lib/handleApiError';
@@ -23,11 +24,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [verse, setVerse] = useState<{ reference: string; text: string } | null>(null);
+  const [savedEmails, setSavedEmails] = useState<string[]>([]);
+  const [rememberEmail, setRememberEmail] = useState<boolean>(true);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<LoginDto>({
     resolver: zodResolver(loginSchema),
   });
@@ -45,11 +49,39 @@ export default function LoginPage() {
     setVerse(v);
   }, []);
 
+  // Carrega e-mails salvos no dispositivo
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('savedLoginEmails');
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          setSavedEmails(list.filter((e) => typeof e === 'string'));
+        }
+      }
+    } catch (_) {
+      // ignora erros de parse/storage
+    }
+  }, []);
+
   const onSubmit = async (data: LoginDto) => {
     setLoading(true);
     try {
       const logged = await login(data.login, data.password);
       toast.success('Login realizado com sucesso!');
+
+      // Salva o e-mail localmente (sem credenciais) se marcado
+      if (rememberEmail && data.login) {
+        try {
+          const current = new Set<string>([...savedEmails, String(data.login).trim()]);
+          // Limita para evitar crescimento infinito (mantém os mais recentes no final)
+          const next = Array.from(current).slice(-10);
+          localStorage.setItem('savedLoginEmails', JSON.stringify(next));
+          setSavedEmails(next);
+        } catch (_) {
+          // storage pode falhar (quota, privacidade) — ignora silenciosamente
+        }
+      }
       router.push(logged.role === 'vendedor' ? '/sales' : '/dashboard');
     } catch (error) {
       console.error('Login error:', error);
@@ -57,6 +89,19 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const [showSavedEmailsDialog, setShowSavedEmailsDialog] = useState(false);
+  const [emailSearchTerm, setEmailSearchTerm] = useState('');
+
+  const filteredSavedEmails = (emailSearchTerm
+    ? savedEmails.filter((e) => e.toLowerCase().includes(emailSearchTerm.toLowerCase()))
+    : savedEmails
+  ).slice(0, 50);
+
+  const handlePickEmail = (email: string) => {
+    setValue('login', email);
+    setShowSavedEmailsDialog(false);
   };
 
   return (
@@ -87,9 +132,30 @@ export default function LoginPage() {
                 {...register('login')}
                 disabled={loading}
               />
+              {savedEmails.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">E-mails salvos neste dispositivo</span>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setShowSavedEmailsDialog(true)} disabled={loading}>
+                    Selecionar e-mail
+                  </Button>
+                </div>
+              )}
               {errors.login && (
                 <p className="text-sm text-destructive">{errors.login.message}</p>
               )}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  id="rememberEmail"
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={rememberEmail}
+                  onChange={(e) => setRememberEmail(e.target.checked)}
+                  disabled={loading}
+                />
+                <Label htmlFor="rememberEmail" className="text-sm text-muted-foreground">
+                  Salvar este e-mail neste dispositivo
+                </Label>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -131,6 +197,39 @@ export default function LoginPage() {
         </CardContent>
       </Card>
       </div>
+      <Dialog open={showSavedEmailsDialog} onOpenChange={setShowSavedEmailsDialog}>
+        <DialogContent className="max-w-md w-[92vw]">
+          <DialogHeader>
+            <DialogTitle>E-mails salvos</DialogTitle>
+            <DialogDescription>
+              Escolha um e-mail salvo para preencher o campo de login.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="Pesquisar e-mail..."
+              value={emailSearchTerm}
+              onChange={(e) => setEmailSearchTerm(e.target.value)}
+            />
+            {filteredSavedEmails.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-6 text-center">
+                Nenhum e-mail salvo encontrado.
+              </div>
+            ) : (
+              <ul className="max-h-64 overflow-y-auto divide-y rounded-md border">
+                {filteredSavedEmails.map((email) => (
+                  <li key={email} className="p-3 hover:bg-accent/60 flex items-center justify-between gap-2">
+                    <div className="truncate text-sm">{email}</div>
+                    <Button type="button" size="sm" onClick={() => handlePickEmail(email)}>
+                      Usar
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Marca fixa no canto inferior direito */}
       <div className="fixed right-4 bottom-4 select-none flex flex-col items-center">
         <div className="text-sky-300 font-extrabold tracking-widest">MONT</div>

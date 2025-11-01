@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import type { User, UserRole } from '@/types';
+import { logApiError } from './error-logger';
 
 // Configurações de ambiente
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -500,6 +501,13 @@ instance.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
+    }
+
+    // Loga erros não tratados (exceto 401 que já foi tratado)
+    if (status !== 401) {
+      const endpoint = originalRequest?.url || 'unknown';
+      const method = originalRequest?.method?.toUpperCase() || 'unknown';
+      logApiError(error, endpoint, method);
     }
 
     return Promise.reject(error);

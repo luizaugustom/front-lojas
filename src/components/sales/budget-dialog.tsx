@@ -15,10 +15,13 @@ import { Button } from '@/components/ui/button';
 import { Input, InputWithIcon } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency } from '@/lib/utils-clean';
 import { useCartStore } from '@/store/cart-store';
 import { useAuth } from '@/hooks/useAuth';
+import { sellerApi } from '@/lib/api-endpoints';
+import type { Seller } from '@/types';
 
 interface BudgetDialogProps {
   open: boolean;
@@ -34,11 +37,52 @@ export function BudgetDialog({ open, onClose, onSuccess }: BudgetDialogProps) {
   const [clientCpfCnpj, setClientCpfCnpj] = useState('');
   const [notes, setNotes] = useState('');
   const [validityDays, setValidityDays] = useState('7');
+  const [selectedSellerId, setSelectedSellerId] = useState<string>('');
+  const [sellers, setSellers] = useState<Seller[]>([]);
+  const [loadingSellers, setLoadingSellers] = useState(false);
   
   const { items, getTotal } = useCartStore();
   const { user, api } = useAuth();
+  const isCompany = user?.role === 'empresa';
 
   const total = getTotal();
+
+  // Carregar vendedores quando for empresa e o modal abrir
+  useEffect(() => {
+    if (open && isCompany && sellers.length === 0) {
+      loadSellers();
+    }
+  }, [open, isCompany]);
+
+  const loadSellers = async () => {
+    if (!isCompany) return;
+    
+    setLoadingSellers(true);
+    try {
+      const response = await sellerApi.list({ 
+        companyId: (user?.companyId ?? undefined) 
+      });
+      
+      // Normalizar a resposta da API
+      const sellersData = Array.isArray(response.data) 
+        ? response.data 
+        : response.data?.data 
+        ? response.data.data 
+        : response.data?.sellers 
+        ? response.data.sellers 
+        : response.data 
+        ? [response.data] 
+        : [];
+      
+      setSellers(sellersData);
+    } catch (error) {
+      console.error('Erro ao carregar vendedores:', error);
+      toast.error('Erro ao carregar lista de vendedores');
+      setSellers([]);
+    } finally {
+      setLoadingSellers(false);
+    }
+  };
 
   // Resetar estado quando o modal fechar
   useEffect(() => {
@@ -49,6 +93,7 @@ export function BudgetDialog({ open, onClose, onSuccess }: BudgetDialogProps) {
       setClientCpfCnpj('');
       setNotes('');
       setValidityDays('7');
+      setSelectedSellerId('');
     }
   }, [open]);
 
@@ -99,7 +144,11 @@ export function BudgetDialog({ open, onClose, onSuccess }: BudgetDialogProps) {
       if (notes && notes.trim()) {
         budgetData.notes = notes.trim();
       }
-      if (user?.role === 'vendedor' && user.id) {
+      // Se for empresa, usar o vendedor selecionado
+      if (isCompany && selectedSellerId) {
+        budgetData.sellerId = selectedSellerId;
+      } else if (user?.role === 'vendedor' && user.id) {
+        // Se for vendedor, usar seu próprio ID
         budgetData.sellerId = user.id;
       }
 
@@ -158,6 +207,34 @@ export function BudgetDialog({ open, onClose, onSuccess }: BudgetDialogProps) {
               <span className="text-primary">{formatCurrency(total)}</span>
             </div>
           </div>
+
+          {/* Seleção de Vendedor (apenas para empresas) */}
+          {isCompany && (
+            <div className="space-y-2">
+              <Label htmlFor="seller">Vendedor *</Label>
+              <Select
+                value={selectedSellerId}
+                onValueChange={setSelectedSellerId}
+                disabled={loadingSellers || loading}
+              >
+                <SelectTrigger id="seller">
+                  <SelectValue placeholder={loadingSellers ? 'Carregando vendedores...' : 'Selecione um vendedor'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {sellers.map((seller) => (
+                    <SelectItem key={seller.id} value={seller.id}>
+                      {seller.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {sellers.length === 0 && !loadingSellers && (
+                <p className="text-xs text-muted-foreground">
+                  Nenhum vendedor cadastrado. Cadastre um vendedor antes de criar o orçamento.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Dados do Cliente */}
           <div className="space-y-4">
@@ -254,7 +331,7 @@ export function BudgetDialog({ open, onClose, onSuccess }: BudgetDialogProps) {
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || items.length === 0}>
+            <Button type="submit" disabled={loading || items.length === 0 || (isCompany && !selectedSellerId)}>
               {loading ? 'Criando...' : 'Criar Orçamento'}
             </Button>
           </DialogFooter>

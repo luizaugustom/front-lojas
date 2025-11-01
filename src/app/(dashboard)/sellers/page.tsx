@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Filter, Users, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, Search, Users, TrendingUp, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InputWithIcon } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -166,24 +166,16 @@ export default function SellersPage() {
       </div>
 
 
-      {/* Filtros e Busca */}
+      {/* Busca */}
       <Card className="p-4 bg-card border-border">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <InputWithIcon
-              placeholder="Buscar por nome, email ou CPF..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              icon={<Search className="h-4 w-4" />}
-              iconPosition="left"
-              className="bg-background border-input text-foreground placeholder:text-muted-foreground focus:ring-ring"
-            />
-          </div>
-          <Button variant="outline" className="border-border text-foreground hover:bg-muted">
-            <Filter className="mr-2 h-4 w-4" />
-            Filtros
-          </Button>
-        </div>
+        <InputWithIcon
+          placeholder="Buscar por nome, email ou CPF..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          icon={<Search className="h-4 w-4" />}
+          iconPosition="left"
+          className="bg-background border-input text-foreground placeholder:text-muted-foreground focus:ring-ring"
+        />
       </Card>
 
       {/* Tabela de Vendedores */}

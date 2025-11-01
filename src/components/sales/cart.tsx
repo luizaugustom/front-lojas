@@ -24,9 +24,9 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
 
   return (
     <Card className="flex flex-col h-full">
-      <CardHeader className="border-b">
-        <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-          <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+      <CardHeader className="border-b py-3">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <ShoppingCart className="h-4 w-4" aria-hidden="true" />
           Carrinho ({items.length})
         </CardTitle>
       </CardHeader>
@@ -89,10 +89,10 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
       </CardContent>
 
       {/* Seção fixa na parte inferior */}
-      <div className="border-t bg-background">
+      <div className="border-t bg-background flex-shrink-0">
         {/* Totais e desconto */}
-        <div className="p-4 space-y-3">
-          <div className="space-y-2 text-sm">
+        <div className="p-2 space-y-2">
+          <div className="space-y-0.5 text-xs">
             <div className="flex justify-between">
               <span>Subtotal:</span>
               <span>{formatCurrency(subtotal)}</span>
@@ -103,14 +103,14 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
                 <span>-{formatCurrency(discount)}</span>
               </div>
             )}
-            <div className="flex justify-between text-lg font-bold border-t pt-2">
+            <div className="flex justify-between text-sm font-bold border-t pt-0.5">
               <span>Total:</span>
               <span>{formatCurrency(total)}</span>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="discount">Desconto</Label>
+          <div className="space-y-1">
+            <Label htmlFor="discount" className="text-xs">Desconto</Label>
             <Input
               id="discount"
               type="text"
@@ -126,13 +126,13 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
                 }
               }}
               placeholder="0.00"
-              className="no-spinner"
+              className="no-spinner h-8"
             />
           </div>
         </div>
 
         {/* Botões fixos na parte inferior */}
-        <div className="p-4 pt-0 space-y-2">
+        <div className="p-2 pt-0 space-y-1.5">
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={clearCart} disabled={items.length === 0}>
               Limpar

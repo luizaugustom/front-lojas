@@ -18,6 +18,14 @@ export const productSchema = z.object({
   description: z.string().optional(),
   expirationDate: z.string().optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
   unitOfMeasure: z.enum(['kg', 'g', 'ml', 'l', 'm', 'cm', 'un']).optional(),
+  ncm: z.string()
+    .regex(/^\d{8}$/, 'NCM deve conter exatamente 8 dígitos numéricos')
+    .optional()
+    .or(z.literal('')),
+  cfop: z.string()
+    .regex(/^\d{4}$/, 'CFOP deve conter exatamente 4 dígitos numéricos')
+    .optional()
+    .or(z.literal('')),
 });
 
 // Schema para formulário de produto (inclui campos opcionais para edição)
@@ -33,6 +41,16 @@ export const productFormSchema = z.object({
   description: z.string().optional(),
   expirationDate: z.string().optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
   unitOfMeasure: z.enum(['kg', 'g', 'ml', 'l', 'm', 'cm', 'un']).optional(),
+  ncm: z.string()
+    .regex(/^\d{8}$/, 'NCM deve conter exatamente 8 dígitos numéricos')
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === '' ? undefined : val),
+  cfop: z.string()
+    .regex(/^\d{4}$/, 'CFOP deve conter exatamente 4 dígitos numéricos')
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === '' ? undefined : val),
   activityId: z.any().optional(), // Aceita qualquer tipo para evitar validação de UUID
   companyId: z.any().optional(), // Aceita qualquer tipo para evitar validação de UUID
 });

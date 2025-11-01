@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle, AlertCircle, CreditCard } from 'lucide-react';
+import { CheckCircle, AlertCircle, CreditCard, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
   Table,
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -28,11 +29,21 @@ interface BillsTableProps {
 export function BillsTable({ bills, isLoading, onRefetch }: BillsTableProps) {
   const { api } = useAuth();
   const [paying, setPaying] = useState<string | null>(null);
+  const [confirmingBillId, setConfirmingBillId] = useState<string | null>(null);
+  const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleMarkAsPaid = async (id: string) => {
-    if (!confirm('Marcar esta conta como paga?')) return;
+    setConfirmingBillId(id);
+  };
 
+  const confirmMarkAsPaid = async () => {
+    if (!confirmingBillId) return;
+
+    const id = confirmingBillId;
+    setConfirmingBillId(null);
     setPaying(id);
+    
     try {
       // Tentar usar ID original primeiro
       try {
@@ -54,6 +65,31 @@ export function BillsTable({ bills, isLoading, onRefetch }: BillsTableProps) {
       setPaying(null);
     }
   };
+
+  const handleDelete = async (id: string) => {
+    setDeletingBillId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingBillId) return;
+
+    const id = deletingBillId;
+    setDeletingBillId(null);
+    setIsDeleting(true);
+    
+    try {
+      await api.delete(`/bill-to-pay/${id}`);
+      toast.success('Conta excluída com sucesso!');
+      onRefetch();
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const billToConfirm = bills.find(bill => bill.id === confirmingBillId);
+  const billToDelete = bills.find(bill => bill.id === deletingBillId);
 
   if (isLoading) {
     return (
@@ -81,8 +117,39 @@ export function BillsTable({ bills, isLoading, onRefetch }: BillsTableProps) {
   }
 
   return (
-    <Card>
-      <Table>
+    <>
+      <ConfirmationModal
+        open={confirmingBillId !== null}
+        onClose={() => setConfirmingBillId(null)}
+        onConfirm={confirmMarkAsPaid}
+        title="Marcar conta como paga"
+        description={
+          billToConfirm
+            ? `Deseja marcar a conta "${billToConfirm.title || billToConfirm.description}" no valor de ${formatCurrency(billToConfirm.amount)} como paga?`
+            : 'Deseja marcar esta conta como paga?'
+        }
+        confirmText="Sim, marcar como paga"
+        cancelText="Cancelar"
+        variant="default"
+        loading={paying !== null}
+      />
+      <ConfirmationModal
+        open={deletingBillId !== null}
+        onClose={() => setDeletingBillId(null)}
+        onConfirm={confirmDelete}
+        title="Excluir conta a pagar"
+        description={
+          billToDelete
+            ? `Tem certeza que deseja excluir a conta "${billToDelete.title || billToDelete.description}" no valor de ${formatCurrency(billToDelete.amount)}? Esta ação não pode ser desfeita.`
+            : 'Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.'
+        }
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        variant="destructive"
+        loading={isDeleting}
+      />
+      <Card>
+        <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Descrição</TableHead>
@@ -102,7 +169,7 @@ export function BillsTable({ bills, isLoading, onRefetch }: BillsTableProps) {
 
             return (
               <TableRow key={bill.id}>
-                <TableCell className="font-medium">{bill.description}</TableCell>
+                <TableCell className="font-medium">{bill.title || bill.description || '-'}</TableCell>
                 <TableCell>{formatCurrency(bill.amount)}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -127,15 +194,38 @@ export function BillsTable({ bills, isLoading, onRefetch }: BillsTableProps) {
                 </TableCell>
                 <TableCell>{bill.barcode || '-'}</TableCell>
                 <TableCell className="text-right">
-                  {!bill.isPaid && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleMarkAsPaid(bill.id)}
-                      disabled={paying === bill.id}
-                    >
-                      Marcar como Pago
-                    </Button>
-                  )}
+                  <div className="flex items-center justify-end gap-2 flex-wrap">
+                    {!bill.isPaid ? (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => handleMarkAsPaid(bill.id)}
+                          disabled={paying === bill.id}
+                        >
+                          Marcar como Pago
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(bill.id)}
+                          disabled={isDeleting && deletingBillId === bill.id}
+                          title="Excluir conta"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDelete(bill.id)}
+                        disabled={isDeleting && deletingBillId === bill.id}
+                        title="Excluir conta"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             );
@@ -143,5 +233,6 @@ export function BillsTable({ bills, isLoading, onRefetch }: BillsTableProps) {
         </TableBody>
       </Table>
     </Card>
+    </>
   );
 }

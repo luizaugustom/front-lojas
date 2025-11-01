@@ -11,7 +11,7 @@ import { Input, InputWithIcon } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrency, formatDateTime, downloadFile } from '@/lib/utils';
-import { fiscalApi } from '@/lib/api-endpoints';
+import { fiscalApi, uploadApi } from '@/lib/api-endpoints';
 
 interface InboundDoc {
   id: string;
@@ -27,8 +27,8 @@ export default function InboundInvoicesPage() {
   const { api, user } = useAuth();
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
-  const [inputMode, setInputMode] = useState<'xml' | 'manual'>('manual');
-  const [xmlFile, setXmlFile] = useState<File | null>(null);
+  const [inputMode, setInputMode] = useState<'file' | 'manual'>('manual');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // XML ou PDF
   const [uploading, setUploading] = useState(false);
   
   // Estado para exclusão
@@ -40,6 +40,7 @@ export default function InboundInvoicesPage() {
   const [accessKey, setAccessKey] = useState('');
   const [supplierName, setSupplierName] = useState('');
   const [totalValue, setTotalValue] = useState('');
+  const [manualAttachment, setManualAttachment] = useState<File | null>(null); // anexo opcional (PDF ou XML)
 
   // Protege rota para empresa
   useEffect(() => {
@@ -252,10 +253,11 @@ export default function InboundInvoicesPage() {
         if (!open) {
           // Limpar campos ao fechar
           setInputMode('manual');
-          setXmlFile(null);
+          setSelectedFile(null);
           setAccessKey('');
           setSupplierName('');
           setTotalValue('');
+          setManualAttachment(null);
         }
       }}>
         <DialogContent className="max-w-2xl">
@@ -263,8 +265,8 @@ export default function InboundInvoicesPage() {
             <DialogTitle>Adicionar Nota de Entrada</DialogTitle>
             <DialogDescription>
               {inputMode === 'manual' 
-                ? 'Preencha as informações da nota fiscal de entrada manualmente.'
-                : 'Envie um arquivo XML de NF-e de entrada para processamento.'}
+                ? 'Preencha as informações da nota fiscal de entrada manualmente e, se quiser, anexe o PDF/XML.'
+                : 'Envie um arquivo XML ou PDF da nota de entrada. XML será processado; PDF será armazenado como anexo.'}
             </DialogDescription>
           </DialogHeader>
           
@@ -280,11 +282,11 @@ export default function InboundInvoicesPage() {
             </Button>
             <Button
               type="button"
-              variant={inputMode === 'xml' ? 'default' : 'outline'}
-              onClick={() => setInputMode('xml')}
+              variant={inputMode === 'file' ? 'default' : 'outline'}
+              onClick={() => setInputMode('file')}
               className="flex-1"
             >
-              Upload XML
+              Upload XML/PDF
             </Button>
           </div>
 
@@ -334,48 +336,72 @@ export default function InboundInvoicesPage() {
                     Use vírgula para separar os centavos (ex: 1500,50)
                   </p>
                 </div>
+
+                {/* Anexo opcional no modo manual */}
+                <div className="space-y-1">
+                  <Label htmlFor="manualAttachment">Anexo (opcional) - PDF ou XML</Label>
+                  <Input
+                    id="manualAttachment"
+                    type="file"
+                    accept=".pdf,application/pdf,.xml,application/xml,text/xml"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      if (file) {
+                        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                        const isXml = ['application/xml', 'text/xml'].includes(file.type) || file.name.toLowerCase().endsWith('.xml');
+                        if (!isPdf && !isXml) {
+                          toast.error('Selecione um arquivo PDF ou XML');
+                          e.currentTarget.value = '';
+                          setManualAttachment(null);
+                          return;
+                        }
+                        const maxSize = 10 * 1024 * 1024; // 10MB
+                        if (file.size > maxSize) {
+                          toast.error('Arquivo muito grande. Tamanho máximo: 10MB');
+                          e.currentTarget.value = '';
+                          setManualAttachment(null);
+                          return;
+                        }
+                      }
+                      setManualAttachment(file);
+                    }}
+                  />
+                  {manualAttachment && (
+                    <p className="text-xs text-muted-foreground">Anexo: {manualAttachment.name}</p>
+                  )}
+                </div>
               </>
             ) : (
               <div className="space-y-1">
-                <Label htmlFor="xmlFile">Arquivo XML</Label>
+                <Label htmlFor="inboundFile">Arquivo XML ou PDF</Label>
                 <Input
-                  id="xmlFile"
+                  id="inboundFile"
                   type="file"
-                  accept=".xml,application/xml,text/xml"
+                  accept=".pdf,application/pdf,.xml,application/xml,text/xml"
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
                     if (file) {
-                      // Validar extensão
-                      if (!file.name.toLowerCase().endsWith('.xml')) {
-                        toast.error('Selecione um arquivo .xml');
+                      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                      const isXml = ['application/xml', 'text/xml'].includes(file.type) || file.name.toLowerCase().endsWith('.xml');
+                      if (!isPdf && !isXml) {
+                        toast.error('Selecione um arquivo PDF ou XML');
                         e.currentTarget.value = '';
-                        setXmlFile(null);
+                        setSelectedFile(null);
                         return;
                       }
-                      
-                      // Validar tipo MIME
-                      const validMimeTypes = ['application/xml', 'text/xml'];
-                      if (!validMimeTypes.includes(file.type)) {
-                        toast.error('Arquivo deve ser um XML válido (application/xml ou text/xml)');
-                        e.currentTarget.value = '';
-                        setXmlFile(null);
-                        return;
-                      }
-                      
-                      // Validar tamanho máximo (10MB)
                       const maxSize = 10 * 1024 * 1024; // 10MB
                       if (file.size > maxSize) {
                         toast.error('Arquivo muito grande. Tamanho máximo: 10MB');
                         e.currentTarget.value = '';
-                        setXmlFile(null);
+                        setSelectedFile(null);
                         return;
                       }
                     }
-                    setXmlFile(file || null);
+                    setSelectedFile(file || null);
                   }}
                 />
-                {xmlFile && (
-                  <p className="text-xs text-muted-foreground">Selecionado: {xmlFile.name}</p>
+                {selectedFile && (
+                  <p className="text-xs text-muted-foreground">Selecionado: {selectedFile.name}</p>
                 )}
               </div>
             )}
@@ -408,11 +434,21 @@ export default function InboundInvoicesPage() {
                       toast.error('Valor total inválido');
                       return;
                     }
-                    
+                    // Se houver anexo no manual, subir primeiro e enviar URL junto
+                    let attachmentUrl: string | undefined = undefined;
+                    if (manualAttachment) {
+                      try {
+                        const uploaded = await uploadApi.single(manualAttachment);
+                        attachmentUrl = uploaded?.url || uploaded?.data?.url;
+                      } catch (e) {
+                        console.warn('Falha no upload do anexo. Continuando sem anexo.', e);
+                      }
+                    }
                     await api.post('/fiscal/inbound-invoice', {
                       accessKey,
                       supplierName,
                       totalValue: totalValueNumber,
+                      attachmentUrl,
                     });
                     
                     toast.success('Nota fiscal de entrada registrada com sucesso');
@@ -420,6 +456,7 @@ export default function InboundInvoicesPage() {
                     setAccessKey('');
                     setSupplierName('');
                     setTotalValue('');
+                    setManualAttachment(null);
                     refetch();
                   } catch (error: any) {
                     console.error(error);
@@ -429,28 +466,47 @@ export default function InboundInvoicesPage() {
                     setUploading(false);
                   }
                 } else {
-                  // Modo XML
-                  if (!xmlFile) {
-                    toast.error('Selecione um arquivo XML primeiro');
+                  // Modo arquivo (XML ou PDF)
+                  if (!selectedFile) {
+                    toast.error('Selecione um arquivo XML ou PDF');
                     return;
                   }
+                  const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
+                  const isXml = ['application/xml', 'text/xml'].includes(selectedFile.type) || selectedFile.name.toLowerCase().endsWith('.xml');
                   try {
                     setUploading(true);
-                    await fiscalApi.uploadXml(xmlFile, 'inbound');
-                    toast.success('XML de nota fiscal de entrada enviado com sucesso');
+                    if (isXml) {
+                      await fiscalApi.uploadXml(selectedFile, 'inbound');
+                      toast.success('XML de nota fiscal de entrada enviado e processado com sucesso');
+                    } else if (isPdf) {
+                      const uploaded = await uploadApi.single(selectedFile);
+                      const url = uploaded?.url || uploaded?.data?.url;
+                      if (url) {
+                        toast.success('PDF enviado e armazenado como anexo');
+                      } else {
+                        toast.success('PDF enviado');
+                      }
+                    }
                     setAddOpen(false);
-                    setXmlFile(null);
-                    refetch();
+                    setSelectedFile(null);
+                    // Atualiza lista apenas se for XML (cria registro). PDF pode não criar registro.
+                    if (isXml) refetch();
                   } catch (error: any) {
                     console.error(error);
-                    const errorMessage = error.message || 'Falha ao enviar XML';
+                    const errorMessage = error.message || 'Falha ao enviar arquivo';
                     toast.error(errorMessage);
                   } finally {
                     setUploading(false);
                   }
                 }
               }}
-              disabled={uploading || (inputMode === 'manual' ? !accessKey || !supplierName || !totalValue : !xmlFile)}
+              disabled={
+                uploading || (
+                  inputMode === 'manual'
+                    ? !accessKey || !supplierName || !totalValue
+                    : !selectedFile
+                )
+              }
             >
               {uploading ? (
                 <>
@@ -458,7 +514,7 @@ export default function InboundInvoicesPage() {
                 </>
               ) : (
                 <>
-                  <PlusCircle className="mr-2 h-4 w-4" /> {inputMode === 'manual' ? 'Adicionar' : 'Enviar XML'}
+                  <PlusCircle className="mr-2 h-4 w-4" /> {inputMode === 'manual' ? 'Adicionar' : 'Enviar Arquivo'}
                 </>
               )}
             </Button>

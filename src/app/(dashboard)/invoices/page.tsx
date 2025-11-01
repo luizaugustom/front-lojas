@@ -244,9 +244,49 @@ export default function InvoicesPage() {
         toast.error('Informe o nome do destinatário');
         return;
       }
+      
+      // Validação de endereço para NF-e (obrigatório pela Receita Federal)
+      if (!recipientStreet.trim()) {
+        toast.error('Informe o endereço do destinatário');
+        return;
+      }
+      if (!recipientCity.trim()) {
+        toast.error('Informe a cidade do destinatário');
+        return;
+      }
+      if (!recipientState.trim() || recipientState.length !== 2) {
+        toast.error('Informe o estado (UF) do destinatário');
+        return;
+      }
+      
       if (items.length === 0 || !items[0].description.trim()) {
         toast.error('Adicione pelo menos um item');
         return;
+      }
+      
+      // Validar itens
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (!item.description.trim()) {
+          toast.error(`Item ${i + 1}: Informe a descrição do produto/serviço`);
+          return;
+        }
+        if (item.quantity <= 0) {
+          toast.error(`Item ${i + 1}: A quantidade deve ser maior que zero`);
+          return;
+        }
+        if (item.unitPrice <= 0) {
+          toast.error(`Item ${i + 1}: O valor unitário deve ser maior que zero`);
+          return;
+        }
+        if (!item.cfop || item.cfop.length !== 4) {
+          toast.error(`Item ${i + 1}: CFOP deve ter 4 dígitos`);
+          return;
+        }
+        if (item.ncm && item.ncm.length !== 8) {
+          toast.error(`Item ${i + 1}: NCM deve ter 8 dígitos`);
+          return;
+        }
       }
     }
     
@@ -297,8 +337,14 @@ export default function InvoicesPage() {
       toast.success('NF-e emitida com sucesso');
       setEmitOpen(false);
       refetch();
-    } catch (error) {
-      handleApiError(error);
+    } catch (error: any) {
+      // Verificar se é erro de dados fiscais incompletos da empresa
+      const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao emitir NF-e';
+      if (errorMessage.includes('Dados fiscais incompletos da empresa')) {
+        toast.error('Configure os dados fiscais da empresa na seção de Configurações antes de emitir notas fiscais');
+      } else {
+        handleApiError(error);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -442,6 +488,17 @@ export default function InvoicesPage() {
             </TabsContent>
 
             <TabsContent value="manual" className="space-y-6">
+              {/* Aviso sobre dados obrigatórios */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                <p className="font-semibold mb-1">⚠️ Dados obrigatórios da Receita Federal</p>
+                <p>Para emitir NF-e, certifique-se de que:</p>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li>A empresa possui todos os dados fiscais cadastrados (Configurações)</li>
+                  <li>O endereço completo do destinatário está preenchido (obrigatório para NF-e)</li>
+                  <li>Os itens possuem CFOP válido de 4 dígitos</li>
+                </ul>
+              </div>
+
               {/* Dados do Destinatário */}
               <Card className="p-4">
                 <h3 className="font-semibold mb-4">Dados do Destinatário</h3>
@@ -513,7 +570,7 @@ export default function InvoicesPage() {
                       />
                     </div>
                     <div className="space-y-2 col-span-2">
-                      <Label htmlFor="recipientStreet">Logradouro</Label>
+                      <Label htmlFor="recipientStreet">Logradouro *</Label>
                       <Input
                         id="recipientStreet"
                         placeholder="Rua, Avenida, etc."
@@ -552,7 +609,7 @@ export default function InvoicesPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="recipientState">UF</Label>
+                      <Label htmlFor="recipientState">UF *</Label>
                       <Input
                         id="recipientState"
                         placeholder="SC"
@@ -564,7 +621,7 @@ export default function InvoicesPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="recipientCity">Cidade</Label>
+                    <Label htmlFor="recipientCity">Cidade *</Label>
                     <Input
                       id="recipientCity"
                       placeholder="Nome da cidade"

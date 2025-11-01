@@ -15,6 +15,7 @@ import { Card } from '@/components/ui/card';
 import { CustomerDeleteModal } from './customer-delete-modal';
 import { formatCPFCNPJ, formatPhone } from '@/lib/utils';
 import type { Customer } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CustomersTableProps {
   customers: Customer[];
@@ -24,6 +25,7 @@ interface CustomersTableProps {
 }
 
 export function CustomersTable({ customers, isLoading, onEdit, onRefetch }: CustomersTableProps) {
+  const { user } = useAuth();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
 
@@ -97,14 +99,16 @@ export function CustomersTable({ customers, isLoading, onEdit, onRefetch }: Cust
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDeleteClick(customer)}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {user?.role !== 'vendedor' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteClick(customer)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

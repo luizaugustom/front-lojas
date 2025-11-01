@@ -64,6 +64,16 @@ function sanitizeProductData(data: any) {
     sanitized.unitOfMeasure = String(data.unitOfMeasure);
   }
   
+  // Adicionar NCM se fornecido (remove caracteres não numéricos)
+  if (data.ncm && String(data.ncm).trim() !== '' && String(data.ncm).trim().match(/^\d{8}$/)) {
+    sanitized.ncm = String(data.ncm).trim();
+  }
+  
+  // Adicionar CFOP se fornecido (remove caracteres não numéricos)
+  if (data.cfop && String(data.cfop).trim() !== '' && String(data.cfop).trim().match(/^\d{4}$/)) {
+    sanitized.cfop = String(data.cfop).trim();
+  }
+  
   return sanitized;
 }
 
@@ -79,6 +89,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [existingPhotosToDelete, setExistingPhotosToDelete] = useState<string[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [lastCategory, setLastCategory] = useState<string | undefined>(undefined);
   const [confirmationModal, setConfirmationModal] = useState<{
     open: boolean;
     title: string;
@@ -124,6 +135,14 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     }
   }, [api, user]);
 
+  // Salvar categoria quando um produto é editado
+  useEffect(() => {
+    if (product && product.category) {
+      setLastCategory(product.category);
+    }
+  }, [product]);
+
+  // Resetar formulário quando produto muda
   useEffect(() => {
     if (product) {
       console.log('[ProductDialog] Produto recebido:', product);
@@ -139,20 +158,27 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         category: product.category,
         expirationDate: product.expirationDate,
         unitOfMeasure: product.unitOfMeasure || 'un',
+        ncm: product.ncm || '',
+        cfop: product.cfop || '',
       });
     } else {
+      // Ao criar novo produto, manter apenas a categoria, limpar todo o resto
       reset({
         name: '',
         barcode: '',
         price: 0,
         stockQuantity: 0,
+        category: lastCategory || '',
+        expirationDate: undefined,
         unitOfMeasure: 'un',
+        ncm: '', // Será preenchido com padrão pelo backend se vazio
+        cfop: '', // Será preenchido com padrão pelo backend se vazio
       });
       setSelectedPhotos([]);
       setPhotoPreviewUrls([]);
       setExistingPhotosToDelete([]);
     }
-  }, [product, reset]);
+  }, [product, reset, lastCategory]);
 
   // Focar automaticamente o campo de código de barras ao abrir o modal
   useEffect(() => {
@@ -431,6 +457,8 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             if (dataToSend.category) formData.append('category', dataToSend.category);
             if (dataToSend.expirationDate) formData.append('expirationDate', dataToSend.expirationDate);
             if (dataToSend.unitOfMeasure) formData.append('unitOfMeasure', dataToSend.unitOfMeasure);
+            if (dataToSend.cfop) formData.append('cfop', dataToSend.cfop);
+            if (dataToSend.ncm) formData.append('ncm', dataToSend.ncm);
             
             // Adicionar fotos novas
             selectedPhotos.forEach((photo) => {
@@ -483,6 +511,8 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
           if (data.costPrice) formData.append('costPrice', Number(data.costPrice || 0).toString());
           if (data.minStockQuantity) formData.append('minStockQuantity', Number(data.minStockQuantity || 0).toString());
           if (sanitizedData.unitOfMeasure) formData.append('unitOfMeasure', sanitizedData.unitOfMeasure);
+          if (sanitizedData.cfop) formData.append('cfop', sanitizedData.cfop);
+          if (sanitizedData.ncm) formData.append('ncm', sanitizedData.ncm);
           
           // Adicionar fotos
           selectedPhotos.forEach((photo, index) => {
@@ -517,6 +547,11 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
           console.log('[ProductDialog] JSON.stringify do name:', JSON.stringify(productData.name));
           
           await productApi.create(productData);
+        }
+        
+        // Salvar a categoria do produto criado para usar no próximo produto
+        if (data.category) {
+          setLastCategory(data.category);
         }
         
         toast.success('Produto criado com sucesso!');
@@ -675,6 +710,72 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
               {errors.expirationDate && (
                 <p className="text-sm text-destructive">{errors.expirationDate.message}</p>
               )}
+            </div>
+
+            {/* Aviso sobre campos fiscais */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800 dark:text-amber-200 font-semibold mb-1">
+                ⚠️ Campos Fiscais para Nota Fiscal
+              </p>
+              <ul className="text-xs text-amber-700 dark:text-amber-300 space-y-1 ml-4 list-disc">
+                <li><strong>CFOP:</strong> Obrigatório de 4 dígitos para emitir NF-e</li>
+                <li><strong>NCM:</strong> Necessário de 8 dígitos (sistema usa código genérico se não informado)</li>
+                <li>Recomendamos preencher ambos para evitar problemas na emissão fiscal</li>
+              </ul>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cfop" className="text-foreground">
+                  CFOP
+                  <span className="text-xs text-amber-600 dark:text-amber-400 ml-1">(Obrigatório para NF-e)</span>
+                </Label>
+                <Input
+                  id="cfop"
+                  placeholder="5102"
+                  maxLength={4}
+                  {...register('cfop', {
+                    onChange: (e) => {
+                      // Permite apenas números
+                      e.target.value = e.target.value.replace(/\D/g, '');
+                    }
+                  })}
+                  disabled={loading}
+                  className="text-foreground"
+                />
+                {errors.cfop && (
+                  <p className="text-sm text-destructive">{errors.cfop.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  4 dígitos obrigatórios - Ex.: 5102 (venda dentro do estado)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ncm" className="text-foreground">
+                  NCM
+                  <span className="text-xs text-amber-600 dark:text-amber-400 ml-1">(Necessário para NF-e)</span>
+                </Label>
+                <Input
+                  id="ncm"
+                  placeholder="85171231"
+                  maxLength={8}
+                  {...register('ncm', {
+                    onChange: (e) => {
+                      // Permite apenas números
+                      e.target.value = e.target.value.replace(/\D/g, '');
+                    }
+                  })}
+                  disabled={loading}
+                  className="text-foreground"
+                />
+                {errors.ncm && (
+                  <p className="text-sm text-destructive">{errors.ncm.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  8 dígitos - Nomenclatura Comum do Mercosul
+                </p>
+              </div>
             </div>
 
           </div>

@@ -212,13 +212,25 @@ export function InstallmentSaleModal({
             const installmentsResponse = await api.get(`/customer/${customer.id}/installments`);
             const installments = installmentsResponse.data.data || [];
             
+            const now = new Date();
+            // Normalizar data atual para meia-noite para comparação correta
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const unpaidInstallments = installments.filter((inst: any) => !inst.isPaid);
             const totalDebt = unpaidInstallments.reduce((sum: number, inst: any) => sum + Number(inst.amount || 0), 0);
+            
+            // Filtrar apenas parcelas realmente vencidas (dueDate < hoje)
+            const overdueInstallments = unpaidInstallments.filter((inst: any) => {
+              if (!inst.dueDate) return false;
+              const dueDate = new Date(inst.dueDate);
+              // Normalizar data de vencimento para meia-noite para comparação
+              const dueDateNormalized = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+              return dueDateNormalized < today;
+            });
             
             return {
               ...customer,
               totalDebt,
-              overdueInstallments: unpaidInstallments.length,
+              overdueInstallments: overdueInstallments.length,
             };
           } catch (error) {
             console.error(`Erro ao carregar parcelas do cliente ${customer.id}:`, error);

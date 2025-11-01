@@ -120,12 +120,12 @@ export function Header() {
       <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 justify-center">
         {/* Logomarca centralizada se existir */}
         {companyLogoUrl && companyLogoUrl.trim() !== '' && companyLogoUrl !== 'null' && companyLogoUrl !== 'undefined' ? (
-          <div className="relative flex items-center justify-center h-[98%] w-[30%] max-w-[200px] mx-auto">
+          <div className="relative flex items-center justify-center h-14 w-[40%] max-w-[250px] mx-auto">
             {console.log('🔍 [Header] Renderizando logo:', { companyLogoUrl, fullUrl: getImageUrl(companyLogoUrl) })}
             <img
               src={getImageUrl(companyLogoUrl)}
               alt="Logomarca da empresa"
-              className="h-full w-full object-contain"
+              className="h-full w-full object-contain max-h-full"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 console.error('🔍 [Header] Erro ao carregar imagem:', {

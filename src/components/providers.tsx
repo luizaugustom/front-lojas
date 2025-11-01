@@ -12,7 +12,23 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: 1,
+      retry: (failureCount, error: any) => {
+        // Não tenta novamente em erros 4xx (exceto 401 que é tratado separadamente)
+        if (error?.response?.status >= 400 && error?.response?.status < 500) {
+          return false;
+        }
+        return failureCount < 2; // Máximo 2 tentativas
+      },
+      onError: (error: any) => {
+        // Loga erros de query automaticamente
+        console.error('[React Query Error]', error);
+      },
+    },
+    mutations: {
+      onError: (error: any) => {
+        // Loga erros de mutations automaticamente
+        console.error('[React Query Mutation Error]', error);
+      },
     },
   },
 });

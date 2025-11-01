@@ -524,6 +524,12 @@ export const printerApi = {
   queue: (id: string) => api.get(`/printer/${id}/queue`),
 
   /**
+   * GET /printer/:id/logs
+   * Roles: ADMIN, COMPANY - Obtém logs recentes da impressora
+   */
+  logs: (id: string) => api.get(`/printer/${id}/logs`),
+
+  /**
    * POST /printer/custom-footer
    * Roles: COMPANY - Atualiza footer personalizado
    */
@@ -534,6 +540,65 @@ export const printerApi = {
    * Roles: COMPANY - Obtém footer personalizado
    */
   getFooter: () => api.get('/printer/custom-footer'),
+
+  /**
+   * DELETE /printer/:id
+   * Roles: ADMIN, COMPANY - Excluir impressora
+   */
+  delete: (id: string) => api.delete(`/printer/${id}`),
+};
+
+// ============================================================================
+// SCALE
+// ============================================================================
+
+export const scaleApi = {
+  /**
+   * GET /scale/available
+   * Roles: ADMIN, COMPANY - Lista balanças disponíveis no sistema
+   */
+  available: () => api.get('/scale/available'),
+
+  /**
+   * POST /scale/discover
+   * Roles: ADMIN, COMPANY - Descobrir balanças
+   */
+  discover: () => api.post('/scale/discover'),
+
+  /**
+   * GET /scale
+   * Roles: ADMIN, COMPANY
+   */
+  list: () => api.get('/scale'),
+
+  /**
+   * POST /scale
+   * Roles: COMPANY - Adicionar balança
+   * Body: { name, connectionInfo }
+   */
+  create: (data: { name: string; connectionInfo: string }) => api.post('/scale', data),
+
+  /**
+   * GET /scale/check-drivers
+   * Roles: ADMIN, COMPANY - Verifica drivers
+   */
+  checkDrivers: () => api.get('/scale/check-drivers'),
+
+  /**
+   * POST /scale/install-drivers
+   * Roles: ADMIN, COMPANY - Instala drivers automaticamente
+   */
+  installDrivers: () => api.post('/scale/install-drivers'),
+
+  /**
+   * GET /scale/:id/status
+   */
+  status: (id: string) => api.get(`/scale/${id}/status`),
+
+  /**
+   * POST /scale/:id/test
+   */
+  test: (id: string) => api.post(`/scale/${id}/test`),
 };
 
 // ============================================================================

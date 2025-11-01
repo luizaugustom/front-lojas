@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
@@ -19,7 +19,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/handleApiError';
 import { billSchema } from '@/lib/validations';
-import { generateCoherentUUID, handleNumberInputChange } from '@/lib/utils';
+import { handleNumberInputChange } from '@/lib/utils';
 import type { CreateBillDto } from '@/types';
 
 interface BillDialogProps {
@@ -38,20 +38,25 @@ export function BillDialog({ open, onClose }: BillDialogProps) {
     formState: { errors },
     reset,
     control,
+    setValue,
   } = useForm<CreateBillDto>({
     resolver: zodResolver(billSchema),
   });
 
+  // Resetar o campo amountInput quando o modal fechar
+  useEffect(() => {
+    if (!open) {
+      setAmountInput('');
+    }
+  }, [open]);
+
   const onSubmit = async (data: CreateBillDto) => {
     setLoading(true);
     try {
-      const billData = {
-        ...data,
-        activityId: generateCoherentUUID(), // UUID coerente para rastreamento de atividades
-      };
-      await api.post('/bill-to-pay', billData);
+      await api.post('/bill-to-pay', data);
       toast.success('Conta criada com sucesso!');
       reset();
+      setAmountInput('');
       onClose();
     } catch (error) {
       handleApiError(error);
@@ -85,16 +90,16 @@ export function BillDialog({ open, onClose }: BillDialogProps) {
               value={amountInput}
               onChange={(e) => handleNumberInputChange(e, (value) => {
                 setAmountInput(value);
-                // Atualizar o valor no form register
-                const event = { target: { value: Number(value) || 0 } } as any;
-                register('amount').onChange(event);
+                // Converter o valor formatado para número e atualizar no form
+                // formatNumberInput retorna valores com ponto como separador decimal
+                const numericValue = value === '' ? 0 : parseFloat(value) || 0;
+                // Atualizar o valor no form sem validar durante a digitação
+                setValue('amount', numericValue, { shouldValidate: false, shouldDirty: true });
               })}
               onBlur={() => {
-                if (amountInput === '') {
-                  setAmountInput('0');
-                  const event = { target: { value: 0 } } as any;
-                  register('amount').onChange(event);
-                }
+                // Validar quando o campo perder o foco
+                const numericValue = amountInput === '' ? 0 : parseFloat(amountInput) || 0;
+                setValue('amount', numericValue, { shouldValidate: true });
               }}
               disabled={loading}
               className="no-spinner text-foreground"

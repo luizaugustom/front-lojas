@@ -364,6 +364,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
                     <option value={PlanType.BASIC}>Basic</option>
                     <option value={PlanType.PLUS}>Plus</option>
                     <option value={PlanType.PRO}>Pro</option>
+                    <option value={PlanType.TRIAL_7_DAYS}>Teste Grátis (7 dias)</option>
                   </select>
                 </div>
 

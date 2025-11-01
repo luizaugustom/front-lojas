@@ -9,6 +9,11 @@ body {
   color: hsl(var(--foreground));
 }
 
+/* Rolagem suave para âncoras internas */
+html {
+  scroll-behavior: smooth;
+}
+
 /* Scrollbar personalizada - usa a cor da empresa */
 ::-webkit-scrollbar {
   width: 8px;

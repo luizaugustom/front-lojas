@@ -21,6 +21,7 @@ import { BarcodeScanner } from '@/components/sales/barcode-scanner';
 import { handleNumberInputChange, isValidId } from '@/lib/utils-clean';
 import { useDeviceStore } from '@/store/device-store';
 import type { Product } from '@/types';
+import { parseScaleBarcode } from '@/lib/scale-barcode';
 
 export default function SalesPage() {
   const { api, user } = useAuth();
@@ -50,7 +51,12 @@ export default function SalesPage() {
   const { data: productsResponse, isLoading } = useQuery({
     queryKey: ['products', search],
     queryFn: async () => {
-      const response = (await api.get('/product', { params: { search } })).data;
+      const params: any = { 
+        search, 
+        page: 1, 
+        limit: search ? 1000 : 10 // Se tem busca, mostra todos; se não, só 10 mais vendidos
+      };
+      const response = (await api.get('/product', { params })).data;
       return response;
     },
   });
@@ -80,9 +86,38 @@ export default function SalesPage() {
         setScanSuccess(false);
       }
     } catch (error) {
-      console.error('Product not found');
-      toast.error('Produto não encontrado');
-      setScanSuccess(false);
+      // Tentativa 2: tratar como etiqueta de balança (EAN-13 com peso/preço)
+      const parsed = parseScaleBarcode(barcode);
+      if (!parsed) {
+        console.error('Product not found');
+        toast.error('Produto não encontrado');
+        setScanSuccess(false);
+        return;
+      }
+
+      try {
+        // Buscar produto pelo código interno de 5 dígitos
+        const prod = (await api.get(`/product/barcode/${parsed.itemCode}`)).data as Product;
+        let quantity = 1;
+        if (parsed.type === 'weight') {
+          quantity = parsed.amount; // kg
+        } else {
+          // tipo preço: calcular quantidade = totalEtiqueta / preçoUnitário
+          const unitPrice = Number(prod.price);
+          if (unitPrice > 0) {
+            quantity = Math.max(0.001, Number((parsed.amount / unitPrice).toFixed(3)));
+          }
+        }
+
+        addItem(prod, quantity);
+        const label = parsed.type === 'weight' ? `${quantity.toFixed(3)} kg` : `R$ ${parsed.amount.toFixed(2)}`;
+        toast.success(`${prod.name} adicionado (${label})!`);
+        setScannerOpen(false);
+      } catch (e2) {
+        console.error('[Scale Barcode] Produto não encontrado pelo código interno:', parsed.itemCode, e2);
+        toast.error('Produto da etiqueta de balança não encontrado');
+        setScanSuccess(false);
+      }
     }
   };
 

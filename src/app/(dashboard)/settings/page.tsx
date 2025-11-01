@@ -12,9 +12,11 @@ import { toast } from 'react-hot-toast';
 import { handleApiError } from '@/lib/handleApiError';
 import { companyApi } from '@/lib/api-endpoints';
 import { getImageUrl } from '@/lib/image-utils';
+import { useUIStore } from '@/store/ui-store';
 
 export default function SettingsPage() {
   const { user, api: authApi } = useAuth();
+  const setCompanyColor = useUIStore((s) => s.setCompanyColor);
   
   // Estado do perfil
   const [profile, setProfile] = useState<any>(null);
@@ -62,6 +64,10 @@ export default function SettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
 
+  // Cor da marca
+  const [brandColor, setBrandColor] = useState<string>('#3B82F6');
+  const [savingBrandColor, setSavingBrandColor] = useState(false);
+
   // Estado da empresa (incluindo plano)
   const [companyData, setCompanyData] = useState<any>(null);
   const [loadingCompanyData, setLoadingCompanyData] = useState(false);
@@ -96,11 +102,28 @@ export default function SettingsPage() {
       setLoadingCompanyData(true);
       const response = await authApi.get('/company/my-company');
       setCompanyData(response.data);
+      if (response.data?.brandColor) {
+        setBrandColor(response.data.brandColor);
+        setCompanyColor(response.data.brandColor);
+      }
     } catch (error) {
       console.error('Erro ao carregar dados da empresa:', error);
       setCompanyData(null);
     } finally {
       setLoadingCompanyData(false);
+    }
+  };
+
+  const handleSaveBrandColor = async () => {
+    try {
+      setSavingBrandColor(true);
+      await companyApi.updateMyCompany({ brandColor });
+      setCompanyColor(brandColor);
+      toast.success('Cor da empresa atualizada!');
+    } catch (error: any) {
+      handleApiError(error);
+    } finally {
+      setSavingBrandColor(false);
     }
   };
 
@@ -727,6 +750,17 @@ export default function SettingsPage() {
         <p className="text-muted-foreground">Gerencie as configurações do sistema</p>
       </div>
 
+      {user?.role === 'empresa' && (
+        <nav className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b rounded-md">
+          <div className="flex flex-wrap gap-2 p-2">
+            <a href="#empresa-logo-cor"><Button variant="outline" size="sm">Empresa</Button></a>
+            <a href="#catalogo-titulo"><Button variant="outline" size="sm">Catálogo</Button></a>
+            <a href="#notificacoes-fim"><Button variant="outline" size="sm">Notificações</Button></a>
+            
+          </div>
+        </nav>
+      )}
+
       <div className="grid gap-6">
         {/* Configurações Focus NFe Global - Apenas para Admin */}
         {user?.role === 'admin' && (
@@ -857,7 +891,7 @@ export default function SettingsPage() {
         )}
 
         {/* Perfil */}
-        <Card>
+        <Card id="notificacoes">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
@@ -955,6 +989,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        
         {/* Segurança - Alterar Senha */}
         <Card>
           <CardHeader>
@@ -1008,7 +1043,7 @@ export default function SettingsPage() {
 
         {/* Configurações Fiscais - Apenas para Empresas */}
         {user?.role === 'empresa' && (
-          <Card>
+          <Card id="catalogo">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
@@ -1357,14 +1392,14 @@ export default function SettingsPage() {
 
         {/* Logo da Empresa - Apenas para Empresas */}
         {user?.role === 'empresa' && (
-          <Card>
+          <Card id="empresa-logo-cor" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Image className="h-5 w-5" />
-                Logo da Empresa
+                Logo e Cor da Empresa
               </CardTitle>
               <CardDescription>
-                Configure o logo que será exibido no header da aplicação
+                Configure o logo e a cor principal que será usada no sistema
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1469,10 +1504,44 @@ export default function SettingsPage() {
                 )}
               </div>
 
+              {/* Cor da empresa */}
+              <div className="space-y-2">
+                <Label>Cor da empresa</Label>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <input
+                    type="color"
+                    value={brandColor}
+                    onChange={(e) => setBrandColor(e.target.value)}
+                    className="h-10 w-14 rounded border"
+                    aria-label="Selecionar cor da empresa"
+                  />
+                  <Input
+                    value={brandColor}
+                    onChange={(e) => setBrandColor(e.target.value)}
+                    className="w-36"
+                    placeholder="#3B82F6"
+                  />
+                  <Button onClick={handleSaveBrandColor} disabled={savingBrandColor}>
+                    {savingBrandColor ? (
+                      <>
+                        <Save className="mr-2 h-4 w-4 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Salvar cor
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Essa cor será aplicada como primária (botões, destaques e gráficos).</p>
+              </div>
+
               {/* Informações */}
               <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>ℹ️ Informação:</strong> O logo será exibido no header da aplicação para todos os usuários da empresa (empresa e vendedores).
+                  <strong>ℹ️ Informação:</strong> O logo será exibido no header e a cor será aplicada em todo o sistema.
                 </p>
               </div>
             </CardContent>
@@ -1481,9 +1550,9 @@ export default function SettingsPage() {
 
         {/* Página de Catálogo Pública - Apenas para Empresas */}
         {user?.role === 'empresa' && (
-          <Card>
+          <Card className="scroll-mt-24" id="catalogo">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle id="catalogo-titulo" className="flex items-center gap-2 scroll-mt-24">
                 <Store className="h-5 w-5" />
                 Página de Catálogo Pública
               </CardTitle>
@@ -1626,7 +1695,7 @@ export default function SettingsPage() {
         )}
 
         {/* Notificações */}
-        <Card>
+        <Card id="notificacoes" className="scroll-mt-24">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
@@ -1770,6 +1839,8 @@ export default function SettingsPage() {
             )}
           </CardContent>
         </Card>
+        {/* Sentinel para rolar até o fim de Notificações */}
+        <div id="notificacoes-fim" className="h-1" />
       </div>
     </div>
   );

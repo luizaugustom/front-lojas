@@ -43,6 +43,7 @@ const paymentMethods: { value: PaymentMethod; label: string }[] = [
 export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const [loading, setLoading] = useState(false);
   const [paymentDetails, setPaymentDetails] = useState<PaymentMethodDetail[]>([]);
+  const [paymentInputValues, setPaymentInputValues] = useState<Record<number, string>>({});
   const [showInstallmentModal, setShowInstallmentModal] = useState(false);
   const [installmentData, setInstallmentData] = useState<InstallmentData | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
@@ -72,6 +73,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   useEffect(() => {
     if (!open) {
       setPaymentDetails([]);
+      setPaymentInputValues({});
       setShowInstallmentModal(false);
       setInstallmentData(null);
       setSelectedCustomerId('');
@@ -135,11 +137,26 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     // Prefill with remaining amount to avoid zero-value payments
     const remaining = getRemainingAmount();
     const defaultAmount = remaining > 0 ? remaining : 0;
+    const newIndex = paymentDetails.length;
     setPaymentDetails([...paymentDetails, { method: 'cash', amount: defaultAmount }]);
+    setPaymentInputValues({ ...paymentInputValues, [newIndex]: defaultAmount > 0 ? defaultAmount.toString().replace('.', ',') : '' });
   };
 
   const removePaymentMethod = (index: number) => {
     setPaymentDetails(paymentDetails.filter((_, i) => i !== index));
+    const newInputValues = { ...paymentInputValues };
+    delete newInputValues[index];
+    // Reindexar os valores
+    const reindexed: Record<number, string> = {};
+    Object.keys(newInputValues).forEach((key) => {
+      const oldIndex = Number(key);
+      if (oldIndex > index) {
+        reindexed[oldIndex - 1] = newInputValues[oldIndex];
+      } else if (oldIndex < index) {
+        reindexed[oldIndex] = newInputValues[oldIndex];
+      }
+    });
+    setPaymentInputValues(reindexed);
   };
 
   const updatePaymentMethod = (index: number, field: keyof PaymentMethodDetail, value: PaymentMethod | number) => {
@@ -196,8 +213,17 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       const updated = [...paymentDetails];
       updated[existingInstallmentIndex] = installmentPayment;
       setPaymentDetails(updated);
+      setPaymentInputValues({ 
+        ...paymentInputValues, 
+        [existingInstallmentIndex]: remainingAmount > 0 ? remainingAmount.toString().replace('.', ',') : '' 
+      });
     } else {
+      const newIndex = paymentDetails.length;
       setPaymentDetails([...paymentDetails, installmentPayment]);
+      setPaymentInputValues({ 
+        ...paymentInputValues, 
+        [newIndex]: remainingAmount > 0 ? remainingAmount.toString().replace('.', ',') : '' 
+      });
     }
     
     toast.success(`Venda a prazo configurada para ${data.installments}x de ${formatCurrency(data.installmentValue)}`);
@@ -280,11 +306,34 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       }
     }
 
-    // Impedir valores zerados/negativos em qualquer método
-    const invalidPaymentIndex = paymentDetails.findIndex(p => Number(p.amount) < 0.01);
-    if (invalidPaymentIndex !== -1) {
-      toast.error('Há um método de pagamento com valor 0. Ajuste os valores antes de finalizar.');
+    // Filtrar métodos com valor zero antes de validar
+    const validPaymentDetails = paymentDetails.filter(p => Number(p.amount) >= 0.01);
+    
+    if (validPaymentDetails.length === 0) {
+      toast.error('Adicione pelo menos um método de pagamento com valor maior que zero!');
       return;
+    }
+    
+    // Atualizar paymentDetails para remover métodos zerados
+    if (validPaymentDetails.length !== paymentDetails.length) {
+      setPaymentDetails(validPaymentDetails);
+      // Limpar valores de input dos métodos removidos
+      const newInputValues: Record<number, string> = {};
+      validPaymentDetails.forEach((_, idx) => {
+        const originalIdx = paymentDetails.findIndex(p => 
+          p.method === validPaymentDetails[idx].method && 
+          Math.abs(p.amount - validPaymentDetails[idx].amount) < 0.01
+        );
+        if (originalIdx >= 0 && paymentInputValues[originalIdx] !== undefined) {
+          newInputValues[idx] = paymentInputValues[originalIdx];
+        }
+      });
+      setPaymentInputValues(newInputValues);
+      toast('Métodos de pagamento com valor zero foram removidos automaticamente.', {
+        icon: 'ℹ️',
+        duration: 3000,
+      });
+      return; // Retornar para que o usuário possa revisar
     }
 
     // Validar se empresa selecionou vendedor
@@ -293,8 +342,9 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       return;
     }
 
-  const totalPaid = getTotalPaid();
-    const remainingAmount = getRemainingAmount();
+    // Usar validPaymentDetails para cálculos (que é igual a paymentDetails se não houve filtragem)
+    const totalPaid = validPaymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
+    const remainingAmount = total - totalPaid;
 
     // Validar se o valor pago é suficiente (pode ser maior devido ao troco)
     if (remainingAmount > 0.01) {
@@ -321,7 +371,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
             quantity: item.quantity,
           };
         }),
-        paymentMethods: paymentDetails.map((payment) => {
+        paymentMethods: validPaymentDetails.map((payment) => {
           // Garantir que o valor seja sempre >= 0.01
           const amount = Math.max(Number(payment.amount) || 0, 0.01);
           
@@ -486,9 +536,40 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                         // Atualizar o valor para o restante antes de abrir o modal
                         const remainingAmount = getRemainingAmount();
                         updatePaymentMethod(index, 'amount', remainingAmount > 0 ? remainingAmount : 0);
+                        setPaymentInputValues({ 
+                          ...paymentInputValues, 
+                          [index]: remainingAmount > 0 ? remainingAmount.toString().replace('.', ',') : '' 
+                        });
                         setShowInstallmentModal(true);
                       } else {
                         updatePaymentMethod(index, 'method', value);
+                        // Manter o valor do input quando apenas o método muda
+                        // Se o valor estiver zerado, preencher com o valor restante
+                        const currentAmount = paymentDetails[index].amount;
+                        let newAmount = currentAmount;
+                        let newInputValue = '';
+                        
+                        if (currentAmount < 0.01) {
+                          // Se o valor está zerado, preencher com o valor restante
+                          const remainingAmount = getRemainingAmount();
+                          newAmount = remainingAmount > 0 ? remainingAmount : 0;
+                          newInputValue = newAmount > 0 ? newAmount.toString().replace('.', ',') : '';
+                          
+                          if (newAmount > 0) {
+                            updatePaymentMethod(index, 'amount', newAmount);
+                          } else {
+                            // Se não há valor restante e o valor está zerado, remover o método
+                            removePaymentMethod(index);
+                            return;
+                          }
+                        } else {
+                          newInputValue = currentAmount > 0 ? currentAmount.toString().replace('.', ',') : '';
+                        }
+                        
+                        setPaymentInputValues({ 
+                          ...paymentInputValues, 
+                          [index]: newInputValue 
+                        });
                       }
                     }}
                     disabled={loading}
@@ -509,10 +590,33 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                   <Input
                     type="text"
                     placeholder="0,00"
-                    value={payment.amount > 0 ? payment.amount.toString().replace('.', ',') : ''}
-                    onChange={(e) => handleNumberInputChange(e, (value) => {
-                      updatePaymentMethod(index, 'amount', Number(value) || 0);
-                    })}
+                    value={paymentInputValues[index] !== undefined ? paymentInputValues[index] : (payment.amount > 0 ? payment.amount.toString().replace('.', ',') : '')}
+                    onChange={(e) => {
+                      const inputValue = e.target.value;
+                      // Permitir vírgulas e pontos como separador decimal
+                      let cleaned = inputValue.replace(/,/g, '.');
+                      cleaned = cleaned.replace(/[^0-9.]/g, '');
+                      
+                      // Remover múltiplos pontos decimais
+                      const parts = cleaned.split('.');
+                      if (parts.length > 2) {
+                        cleaned = parts[0] + '.' + parts.slice(1).join('');
+                      }
+                      
+                      // Atualizar o valor do input (mantém como string)
+                      setPaymentInputValues({ ...paymentInputValues, [index]: cleaned.replace('.', ',') });
+                      
+                      // Converter para número e atualizar paymentDetails
+                      const numericValue = cleaned === '' || cleaned === '.' ? 0 : parseFloat(cleaned) || 0;
+                      updatePaymentMethod(index, 'amount', numericValue);
+                    }}
+                    onBlur={() => {
+                      // Ao perder o foco, garantir que o valor esteja formatado corretamente
+                      const currentValue = paymentInputValues[index] || '';
+                      const numericValue = currentValue === '' || currentValue === ',' ? 0 : parseFloat(currentValue.replace(',', '.')) || 0;
+                      setPaymentInputValues({ ...paymentInputValues, [index]: numericValue > 0 ? numericValue.toString().replace('.', ',') : '' });
+                      updatePaymentMethod(index, 'amount', numericValue);
+                    }}
                     disabled={loading}
                     className="no-spinner"
                   />

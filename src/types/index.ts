@@ -6,6 +6,7 @@ export enum PlanType {
   BASIC = 'BASIC',
   PLUS = 'PLUS',
   PRO = 'PRO',
+  TRIAL_7_DAYS = 'TRIAL_7_DAYS',
 }
 
 export interface PlanLimits {
@@ -51,6 +52,7 @@ export interface User {
   login?: string;
   role: UserRole;
   companyId?: string | null;
+  plan?: PlanType; // Plano da empresa (apenas para role 'empresa')
   createdAt?: string;
   updatedAt?: string;
 }
@@ -105,6 +107,8 @@ export interface Product {
   photos?: string[];
   expirationDate?: string;
   unitOfMeasure?: string;
+  ncm?: string;
+  cfop?: string;
   companyId: string;
   createdAt: string;
   updatedAt: string;
@@ -218,7 +222,8 @@ export interface Customer {
 // Bill to Pay Types
 export interface BillToPay {
   id: string;
-  description: string;
+  title?: string; // Backend retorna 'title'
+  description?: string; // Algumas respostas podem usar 'description'
   amount: number;
   dueDate: string;
   isPaid: boolean;
@@ -319,6 +324,8 @@ export interface CreateProductDto {
   photos?: string[];
   expirationDate?: string;
   unitOfMeasure?: string;
+  ncm?: string;
+  cfop?: string;
 }
 
 export interface InstallmentData {
@@ -394,7 +401,6 @@ export interface CreateBillDto {
   dueDate: string;
   barcode?: string;
   paymentInfo?: string;
-  activityId?: string; // UUID para rastreamento de atividades
 }
 
 export interface CreateCompanyDto {

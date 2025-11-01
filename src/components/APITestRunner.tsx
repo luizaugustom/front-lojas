@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { APITester } from '@/lib/api-tests';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,217 +37,42 @@ export function APITestRunner() {
     setIsRunning(true);
     setIsComplete(false);
     setResults([]);
-    setCurrentTest('');
-    setProgress(0);
+    setCurrentTest('Executando testes reais da API...');
+    setProgress(5);
 
-    const modules = [
-      'Autenticação', 'Produtos', 'Vendas', 'Clientes', 'Vendedores',
-      'Contas a Pagar', 'Fechamento de Caixa', 'Upload', 'Relatórios',
-      'Fiscal', 'Empresa', 'Administrador', 'Dashboard'
-    ];
-
-    const testResults: TestSuite[] = [];
-
-    for (let i = 0; i < modules.length; i++) {
-      const module = modules[i];
-      setCurrentTest(`Testando ${module}...`);
-      setProgress((i / modules.length) * 100);
-
-      try {
-        // Simular testes da API (em produção, chamaria as APIs reais)
-        const moduleTests = await runModuleTests(module);
-        testResults.push(moduleTests);
-      } catch (error) {
-        console.error(`Erro no módulo ${module}:`, error);
-        testResults.push({
-          module,
+    try {
+      const tester = new APITester();
+      const suites = await tester.runAllTests();
+      setResults(suites as unknown as TestSuite[]);
+      setCurrentTest('Testes concluídos!');
+      setProgress(100);
+    } catch (error) {
+      console.error('Erro executando testes reais:', error);
+      setResults([
+        {
+          module: 'Geral',
           tests: [{
-            module,
-            test: 'Erro geral',
+            module: 'Geral',
+            test: 'Execução dos testes',
             success: false,
             error: error instanceof Error ? error.message : 'Erro desconhecido',
-            duration: 0
+            duration: 0,
           }],
           totalTests: 1,
           passedTests: 0,
           failedTests: 1,
-          duration: 0
-        });
-      }
-
-      setResults([...testResults]);
+          duration: 0,
+        },
+      ]);
+      setCurrentTest('Falha ao executar testes');
+      setProgress(100);
     }
 
-    setCurrentTest('Testes concluídos!');
-    setProgress(100);
     setIsRunning(false);
     setIsComplete(true);
   };
 
-  const runModuleTests = async (module: string): Promise<TestSuite> => {
-    const tests: TestResult[] = [];
-    let passedTests = 0;
-    let failedTests = 0;
-    let totalDuration = 0;
-
-    // Simular diferentes tipos de testes baseados no módulo
-    const testCases = getTestCasesForModule(module);
-
-    for (const testCase of testCases) {
-      const startTime = Date.now();
-      
-      try {
-        // Simular chamada da API
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
-        
-        // Simular sucesso/falha baseado em probabilidade
-        const success = Math.random() > 0.2; // 80% de chance de sucesso
-        
-        const duration = Date.now() - startTime;
-        totalDuration += duration;
-
-        const result: TestResult = {
-          module,
-          test: testCase.name,
-          success,
-          duration,
-          data: success ? { status: 'ok' } : undefined,
-          error: success ? undefined : testCase.expectedError
-        };
-
-        tests.push(result);
-        
-        if (success) {
-          passedTests++;
-        } else {
-          failedTests++;
-        }
-      } catch (error) {
-        const duration = Date.now() - startTime;
-        totalDuration += duration;
-        
-        tests.push({
-          module,
-          test: testCase.name,
-          success: false,
-          error: error instanceof Error ? error.message : 'Erro desconhecido',
-          duration
-        });
-        
-        failedTests++;
-      }
-    }
-
-    return {
-      module,
-      tests,
-      totalTests: tests.length,
-      passedTests,
-      failedTests,
-      duration: totalDuration
-    };
-  };
-
-  const getTestCasesForModule = (module: string) => {
-    const testCases: { name: string; expectedError?: string }[] = [];
-
-    switch (module) {
-      case 'Autenticação':
-        testCases.push(
-          { name: 'Login válido' },
-          { name: 'Login inválido', expectedError: 'Credenciais inválidas' },
-          { name: 'Refresh token' },
-          { name: 'Logout' }
-        );
-        break;
-      case 'Produtos':
-        testCases.push(
-          { name: 'Listar produtos' },
-          { name: 'Buscar por código de barras' },
-          { name: 'Obter categorias' },
-          { name: 'Obter estatísticas' },
-          { name: 'Produtos com estoque baixo' },
-          { name: 'Produtos próximos do vencimento' }
-        );
-        break;
-      case 'Vendas':
-        testCases.push(
-          { name: 'Listar vendas' },
-          { name: 'Estatísticas de vendas' },
-          { name: 'Vendas do vendedor' },
-          { name: 'Estatísticas do vendedor' }
-        );
-        break;
-      case 'Clientes':
-        testCases.push(
-          { name: 'Listar clientes' },
-          { name: 'Estatísticas de clientes' },
-          { name: 'Buscar por CPF/CNPJ' }
-        );
-        break;
-      case 'Vendedores':
-        testCases.push(
-          { name: 'Listar vendedores' },
-          { name: 'Perfil do vendedor' },
-          { name: 'Estatísticas do vendedor' },
-          { name: 'Vendas do vendedor' }
-        );
-        break;
-      case 'Contas a Pagar':
-        testCases.push(
-          { name: 'Listar contas a pagar' },
-          { name: 'Estatísticas de contas' },
-          { name: 'Contas em atraso' },
-          { name: 'Contas próximas do vencimento' }
-        );
-        break;
-      case 'Fechamento de Caixa':
-        testCases.push(
-          { name: 'Fechamento atual' },
-          { name: 'Listar fechamentos' },
-          { name: 'Estatísticas de fechamento' },
-          { name: 'Histórico de fechamentos' }
-        );
-        break;
-      case 'Upload':
-        testCases.push(
-          { name: 'Upload único' },
-          { name: 'Upload múltiplo' }
-        );
-        break;
-      case 'Relatórios':
-        testCases.push(
-          { name: 'Gerar relatório de vendas' }
-        );
-        break;
-      case 'Fiscal':
-        testCases.push(
-          { name: 'Validar empresa' },
-          { name: 'Listar documentos fiscais' },
-          { name: 'Estatísticas fiscais' }
-        );
-        break;
-      case 'Empresa':
-        testCases.push(
-          { name: 'Dados da empresa atual' },
-          { name: 'Estatísticas da empresa' },
-          { name: 'Listar empresas' }
-        );
-        break;
-      case 'Administrador':
-        testCases.push(
-          { name: 'Listar administradores' }
-        );
-        break;
-      case 'Dashboard':
-        testCases.push(
-          { name: 'Métricas do dashboard' }
-        );
-        break;
-    }
-
-    return testCases;
-  };
+  // A execução agora é feita chamando testes reais via APITester; lógica simulada removida.
 
   const downloadReport = () => {
     const totalTests = results.reduce((sum, suite) => sum + suite.totalTests, 0);

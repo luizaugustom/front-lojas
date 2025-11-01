@@ -5,7 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(value: number): string {
+export function formatCurrency(value: number | null | undefined): string {
+  if (value === null || value === undefined || isNaN(value)) {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(0);
+  }
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -362,18 +368,32 @@ export function validateUUIDsInData(data: any, context?: string): any {
 export function formatNumberInput(value: string): string {
   if (!value) return '';
   
-  let cleaned = value.replace(/[^0-9.]/g, '');
+  // Aceitar vírgulas e pontos como separador decimal
+  // Primeiro, substituir vírgulas por pontos para processamento
+  let cleaned = value.replace(/,/g, '.');
   
-  if (cleaned.match(/^0[1-9]/)) {
-    cleaned = cleaned.substring(1);
+  // Remover todos os caracteres que não são números ou ponto
+  cleaned = cleaned.replace(/[^0-9.]/g, '');
+  
+  // Remover múltiplos pontos decimais, mantendo apenas o primeiro
+  const parts = cleaned.split('.');
+  if (parts.length > 2) {
+    cleaned = parts[0] + '.' + parts.slice(1).join('');
   }
   
-  if (cleaned === '0.' || cleaned === '0,') {
+  // Remover zeros à esquerda antes de números (exceto se for "0." ou "0,")
+  if (cleaned.match(/^0+[1-9]/)) {
+    cleaned = cleaned.replace(/^0+/, '');
+  }
+  
+  // Permitir "0." para que o usuário possa digitar decimais começando com zero
+  if (cleaned === '0.') {
     return cleaned;
   }
   
+  // Se for apenas "0", permitir para que possa continuar digitando
   if (cleaned === '0') {
-    return '';
+    return cleaned;
   }
   
   return cleaned;

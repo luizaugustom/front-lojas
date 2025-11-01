@@ -32,9 +32,9 @@ export function ProductGrid({ products, isLoading, onAddToCart }: ProductGridPro
   };
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
         {[...Array(8)].map((_, i) => (
-          <Card key={i} className="p-2">
+          <Card key={i} className="p-1.5">
             <CardHeader>
               <div className="h-3 w-16 sm:h-4 sm:w-20 animate-pulse rounded bg-muted" />
             </CardHeader>
@@ -59,11 +59,11 @@ export function ProductGrid({ products, isLoading, onAddToCart }: ProductGridPro
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
         {products.map((product) => (
-          <Card key={product.id} className="flex flex-col p-2">
-            <CardHeader className="pb-1">
-              <div className="flex items-start gap-2">
+          <Card key={product.id} className="flex flex-col p-1.5">
+            <CardHeader className="pb-0.5">
+              <div className="flex items-start gap-1.5">
                 <ProductImage 
                   photos={product.photos} 
                   name={product.name} 
@@ -71,18 +71,18 @@ export function ProductGrid({ products, isLoading, onAddToCart }: ProductGridPro
                   className="flex-shrink-0"
                   onClick={() => handleImageClick(product)}
                 />
-                <CardTitle className="text-sm line-clamp-2 flex-1">{product.name}</CardTitle>
+                <CardTitle className="text-xs line-clamp-2 flex-1 leading-tight">{product.name}</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="flex-1 py-1">
-              <div className="space-y-1">
-                <p className="text-lg font-bold">{formatCurrency(product.price)}</p>
+            <CardContent className="flex-1 py-0.5">
+              <div className="space-y-0.5">
+                <p className="text-sm font-bold">{formatCurrency(product.price)}</p>
                 <p className="text-xs text-muted-foreground">
                   Estoque: {product.stockQuantity}
                 </p>
               </div>
             </CardContent>
-            <CardFooter className="pt-1">
+            <CardFooter className="pt-0">
               <Button
                 variant="ghost"
                 className="h-7 w-7 p-0"
@@ -91,7 +91,7 @@ export function ProductGrid({ products, isLoading, onAddToCart }: ProductGridPro
                 aria-label={`Adicionar ${product.name}`}
                 title={`Adicionar ${product.name}`}
               >
-                <Plus className="h-4 w-4 text-blue-600" />
+                <Plus className="h-4 w-4 text-primary" />
               </Button>
             </CardFooter>
           </Card>

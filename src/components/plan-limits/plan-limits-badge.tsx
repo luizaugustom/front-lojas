@@ -30,6 +30,12 @@ export function PlanLimitsBadge({ plan, className = '' }: PlanLimitsBadgeProps) 
           icon: Crown,
           className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
         };
+      case PlanType.TRIAL_7_DAYS:
+        return {
+          label: 'Teste Grátis',
+          icon: Zap,
+          className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+        };
       default:
         return {
           label: 'Basic',

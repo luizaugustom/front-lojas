@@ -20,6 +20,7 @@ import {
   Download,
   Settings,
   AlertTriangle,
+  Trash2,
 } from 'lucide-react';
 import { printerApi } from '@/lib/api-endpoints';
 import { toast } from 'sonner';
@@ -65,6 +66,9 @@ export default function PrintersPage() {
   const [checkingDrivers, setCheckingDrivers] = useState(false);
   const [testingPrinter, setTestingPrinter] = useState<string | null>(null);
   const [showDriverModal, setShowDriverModal] = useState(false);
+  const [logsModal, setLogsModal] = useState<{ open: boolean; printer?: DBPrinter; logs: string[] }>()
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; printer?: DBPrinter }>()
+  const [testModal, setTestModal] = useState<{ open: boolean; selectedId?: string }>()
 
   useEffect(() => {
     loadData();
@@ -231,6 +235,34 @@ export default function PrintersPage() {
     }
   };
 
+  const handleDeletePrinter = (printer: DBPrinter) => {
+    setDeleteConfirm({ open: true, printer });
+  };
+
+  const confirmDeletePrinter = async () => {
+    if (!deleteConfirm?.printer) return;
+    try {
+      await printerApi.delete(deleteConfirm.printer.id);
+      toast.success('Impressora excluída com sucesso!');
+      setDeleteConfirm({ open: false });
+      await loadDBPrinters();
+    } catch (error) {
+      console.error('[Printers] Erro ao excluir impressora:', error);
+      handleApiError(error);
+    }
+  };
+
+  const handleShowLogs = async (printer: DBPrinter) => {
+    try {
+      toast.info('Carregando logs...');
+      const res = await printerApi.logs(printer.id);
+      setLogsModal({ open: true, printer, logs: res.data.logs || [] });
+    } catch (error) {
+      console.error('[Printers] Erro ao obter logs:', error);
+      handleApiError(error);
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'online':
@@ -298,6 +330,19 @@ export default function PrintersPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            onClick={() => {
+              if (dbPrinters.length === 0) {
+                toast.error('Nenhuma impressora cadastrada.');
+                return;
+              }
+              setTestModal({ open: true, selectedId: dbPrinters.find(p => p.isConnected)?.id || dbPrinters[0].id });
+            }}
+            variant="default"
+          >
+            <TestTube className="h-4 w-4 mr-2" />
+            Testar Impressora
+          </Button>
           <Button
             onClick={handleCheckDrivers}
             variant="outline"
@@ -400,6 +445,22 @@ export default function PrintersPage() {
                         <TestTube className="h-4 w-4 mr-2" />
                       )}
                       Testar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleShowLogs(printer)}
+                    >
+                      <AlertCircle className="h-4 w-4 mr-2" />
+                      Ver Logs
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeletePrinter(printer)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir
                     </Button>
                   </div>
                 </div>
@@ -529,6 +590,77 @@ export default function PrintersPage() {
         onInstall={handleInstallDrivers}
         loading={checkingDrivers}
       />
+
+      {/* Modal de Logs */}
+      {logsModal?.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setLogsModal({ open: false, logs: [] })} />
+          <div className="relative bg-white dark:bg-neutral-900 rounded-lg max-w-2xl w-full m-4 p-4 shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold">Logs da Impressora{logsModal?.printer ? `: ${logsModal.printer.name}` : ''}</h2>
+              <Button variant="ghost" size="sm" onClick={() => setLogsModal({ open: false, logs: [] })}>Fechar</Button>
+            </div>
+            {logsModal?.logs?.length ? (
+              <pre className="max-h-[60vh] overflow-auto text-sm whitespace-pre-wrap bg-muted p-3 rounded">{logsModal.logs.join('\n')}</pre>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem logs recentes.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Seleção para Teste */}
+      {testModal?.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setTestModal({ open: false })} />
+          <div className="relative bg-white dark:bg-neutral-900 rounded-lg max-w-md w-full m-4 p-6 shadow-lg">
+            <h2 className="text-lg font-semibold mb-3">Selecionar Impressora para Teste</h2>
+            <div className="space-y-2 mb-4">
+              <label className="text-sm text-muted-foreground">Impressora</label>
+              <select
+                className="w-full border rounded px-3 py-2 bg-background"
+                value={testModal.selectedId}
+                onChange={(e) => setTestModal({ open: true, selectedId: e.target.value })}
+              >
+                {dbPrinters.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} {p.isConnected ? '(online)' : '(offline)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setTestModal({ open: false })}>Cancelar</Button>
+              <Button
+                onClick={async () => {
+                  if (!testModal?.selectedId) return;
+                  await handleTestPrinter(testModal.selectedId);
+                  setTestModal({ open: false });
+                }}
+              >
+                Testar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão */}
+      {deleteConfirm?.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteConfirm({ open: false })} />
+          <div className="relative bg-white dark:bg-neutral-900 rounded-lg max-w-md w-full m-4 p-6 shadow-lg">
+            <h2 className="text-lg font-semibold mb-2">Excluir Impressora</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Tem certeza que deseja excluir a impressora "{deleteConfirm?.printer?.name}"? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteConfirm({ open: false })}>Cancelar</Button>
+              <Button variant="destructive" onClick={confirmDeletePrinter}>Excluir</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -177,14 +177,16 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
               Valor a Pagar <span className="text-destructive">*</span>
             </Label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
               <Input
                 id="amount"
                 type="number"
                 step="0.01"
                 min="0.01"
                 max={remainingAmount}
-                className="pl-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                placeholder="0,00"
+                style={{ paddingLeft: '2.75rem' }}
+                className="pr-3 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 {...register('amount', {
                   required: 'Valor é obrigatório',
                   min: { value: 0.01, message: 'Valor mínimo é R$ 0,01' },

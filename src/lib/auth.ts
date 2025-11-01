@@ -78,6 +78,7 @@ export function canAccessRoute(route: string): boolean {
     '/bills': ['admin', 'empresa'],
     '/cash-closure': ['admin', 'empresa', 'vendedor'],
     '/reports': ['admin', 'empresa'],
+    '/devices': ['empresa'],
     '/settings': ['admin', 'empresa'],
   };
 
