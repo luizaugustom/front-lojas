@@ -12,7 +12,7 @@ import {
   onAuthLoggedOut,
 } from '@/lib/apiClient';
 import { api } from '@/lib/api'; // ← API com todos os métodos incluindo notificações
-import { removeAuthToken } from '@/lib/auth';
+import { removeAuthToken, setUser as setUserStorage, getUser as getUserStorage, setAuthToken as setAuthTokenStorage, getAuthToken as getAuthTokenStorage } from '@/lib/auth';
 import { checkPrinterStatus } from '@/lib/printer-check';
 
 type AuthContextValue = {
@@ -31,12 +31,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const isAuthenticated = !!token && !!user;
 
-  // Inicializa token do sessionStorage se existir
+  // Inicializa token e user do storage se existirem
   useEffect(() => {
-    const existingToken = getMemToken();
-    if (existingToken) {
-      console.log('[AuthContext] Inicializando com token existente');
+    // Tenta primeiro do sessionStorage (memória), depois do localStorage
+    let existingToken = getMemToken();
+    if (!existingToken) {
+      existingToken = getAuthTokenStorage();
+      // Se encontrou no localStorage, também salva no sessionStorage para consistência
+      if (existingToken) {
+        setAccessToken(existingToken);
+      }
+    }
+    const existingUser = getUserStorage();
+    
+    if (existingToken && existingUser) {
+      console.log('[AuthContext] Inicializando com token e user existentes');
       setToken(existingToken);
+      setUser(existingUser);
+    } else if (existingToken) {
+      console.log('[AuthContext] Token encontrado mas user não encontrado, limpando token');
+      // Se há token mas não há user, limpa o token (estado inconsistente)
+      setAccessToken(null);
+      removeAuthToken();
     }
   }, []);
 
@@ -44,10 +60,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      // Primeiro verifica se já existe um token válido
+      // Primeiro verifica se já existe um token válido e user
       const existingToken = getMemToken();
-      if (existingToken) {
-        console.log('[AuthContext] Token existente encontrado, pulando refresh');
+      const existingUser = getUserStorage();
+      if (existingToken && existingUser) {
+        console.log('[AuthContext] Token e user existentes encontrados, pulando refresh');
+        // Garantir que o estado está sincronizado
+        setToken(existingToken);
+        setUser(existingUser);
         return;
       }
       
@@ -61,6 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAccessToken(data.access_token);
         setToken(data.access_token);
         setUser(data.user);
+        // Salvar token e user no localStorage para persistência
+        setAuthTokenStorage(data.access_token);
+        setUserStorage(data.user);
       } catch {
         // Fica deslogado em silêncio apenas se não havia token
         console.log('[AuthContext] Refresh falhou, mas não havia token para limpar');
@@ -71,6 +94,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const offRef = onAuthRefreshed(({ user, accessToken }) => {
       setUser(user);
       setToken(accessToken);
+      // Salvar token e user no localStorage quando há refresh
+      if (accessToken) {
+        setAuthTokenStorage(accessToken);
+      }
+      setUserStorage(user);
     });
     const offOut = onAuthLoggedOut(() => {
       setAccessToken(null);
@@ -99,7 +127,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(data.access_token);
       setToken(data.access_token);
       setUser(data.user);
-      console.log('[AuthContext.login] Token setado no contexto');
+      // Salvar token e user no localStorage para persistência
+      setAuthTokenStorage(data.access_token);
+      setUserStorage(data.user);
+      console.log('[AuthContext.login] Token e user setados no contexto e localStorage');
       
       // Verificar status da impressora após login bem-sucedido
       try {
@@ -131,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(null);
       setToken(null);
       setUser(null);
-      // Limpa também o localStorage
+      // Limpa também o localStorage (token e user)
       removeAuthToken();
       console.log('[AuthContext.logout] Logout concluído');
     }

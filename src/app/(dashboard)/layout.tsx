@@ -9,19 +9,41 @@ import { Header } from '@/components/layout/header';
 import { PrinterStatusMonitor } from '@/components/printer/printer-status-monitor';
 import { TrialConversionModal } from '@/components/trial/trial-conversion-modal';
 import { PlanType } from '@/types';
+import { getAuthToken, getUser } from '@/lib/auth';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const { sidebarCollapsed } = useUIStore();
   const [showTrialModal, setShowTrialModal] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  // Aguardar inicialização do estado do contexto antes de verificar autenticação
+  useEffect(() => {
+    // Verificar se há dados no localStorage (pode indicar que ainda está inicializando)
+    const storedToken = getAuthToken();
+    const storedUser = getUser();
+    
+    if (storedToken && storedUser) {
+      // Dar um tempo para o contexto inicializar do localStorage
+      const timer = setTimeout(() => {
+        setIsInitializing(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    } else {
+      setIsInitializing(false);
+    }
+  }, []);
 
   useEffect(() => {
+    // Não redirecionar enquanto estiver inicializando
+    if (isInitializing) return;
+    
     if (!isAuthenticated) {
       console.log('[DashboardLayout] Usuário não autenticado, redirecionando para login');
       router.replace('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isInitializing, router]);
 
   // Verificar se deve mostrar o modal de conversão do plano TRIAL
   useEffect(() => {
@@ -50,7 +72,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isAuthenticated, user]);
 
-  if (!isAuthenticated) {
+  // Mostrar nada enquanto inicializa ou não estiver autenticado
+  if (isInitializing || !isAuthenticated) {
     return null;
   }
 

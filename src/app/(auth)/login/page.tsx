@@ -82,7 +82,11 @@ export default function LoginPage() {
           // storage pode falhar (quota, privacidade) — ignora silenciosamente
         }
       }
-      router.push(logged.role === 'vendedor' ? '/sales' : '/dashboard');
+      // Usar replace para evitar problemas de navegação e garantir que o estado foi atualizado
+      const redirectPath = logged.role === 'vendedor' ? '/sales' : '/dashboard';
+      // Pequeno delay para garantir que o estado foi propagado
+      await new Promise(resolve => setTimeout(resolve, 50));
+      router.replace(redirectPath);
     } catch (error) {
       console.error('Login error:', error);
       handleApiError(error);
