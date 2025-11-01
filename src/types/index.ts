@@ -321,11 +321,14 @@ export interface CreateProductDto {
   price: number;
   stockQuantity: number;
   category?: string;
+  description?: string;
   photos?: string[];
   expirationDate?: string;
   unitOfMeasure?: string;
   ncm?: string;
   cfop?: string;
+  costPrice?: number;
+  minStockQuantity?: number;
 }
 
 export interface InstallmentData {
@@ -407,7 +410,7 @@ export interface CreateCompanyDto {
   // Campos obrigatórios
   name: string;
   login: string;
-  password: string;
+  password?: string;
   cnpj: string;
   email: string;
   

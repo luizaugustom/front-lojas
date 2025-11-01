@@ -283,12 +283,12 @@ export default function PrintersPage() {
       return <Badge variant="destructive">Sem Papel</Badge>;
     }
     if (paperStatus === 'LOW') {
-      return <Badge variant="warning">Papel Baixo</Badge>;
+      return <Badge variant="destructive">Papel Baixo</Badge>;
     }
     
     switch (status) {
       case 'online':
-        return <Badge variant="success">Online</Badge>;
+        return <Badge variant="default">Online</Badge>;
       case 'offline':
         return <Badge variant="secondary">Offline</Badge>;
       case 'error':

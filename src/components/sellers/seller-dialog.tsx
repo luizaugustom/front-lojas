@@ -41,7 +41,6 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
     defaultValues: {
       login: '',
       password: '',
-      confirmPassword: '',
       name: '',
       cpf: '',
       birthDate: '',
@@ -62,7 +61,6 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
         email: seller.email || '',
         phone: seller.phone || '',
         password: '',
-        confirmPassword: '',
         commissionRate: seller.commissionRate || 0,
         hasIndividualCash: seller.hasIndividualCash || false,
       });
@@ -70,7 +68,6 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
       reset({
         login: '',
         password: '',
-        confirmPassword: '',
         name: '',
         cpf: '',
         birthDate: '',
@@ -91,8 +88,8 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
       delete (payload as any).confirmPassword;
       
       // Se estiver editando e a senha estiver vazia, remove do payload
-      if (isEditing && (!payload.password || payload.password === '')) {
-        delete payload.password;
+      if (isEditing && (payload as any).password !== undefined && ((payload as any).password === '' || !(payload as any).password)) {
+        delete (payload as any).password;
       }
       
       // Tratar data de nascimento
@@ -177,10 +174,10 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
                   type="email"
                   placeholder="vendedor@empresa.com"
                   {...register('login')}
-                  className={`text-foreground ${errors.login ? 'border-destructive' : ''}`}
+                  className={`text-foreground ${(errors as any).login ? 'border-destructive' : ''}`}
                 />
-                {errors.login && (
-                  <p className="text-sm text-destructive mt-1">{errors.login.message}</p>
+                {(errors as any).login && (
+                  <p className="text-sm text-destructive mt-1">{(errors as any).login.message}</p>
                 )}
               </div>
             )}
@@ -194,10 +191,10 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
                   type="password"
                   placeholder="Mínimo 6 caracteres"
                   {...register('password')}
-                  className={`text-foreground ${errors.password ? 'border-destructive' : ''}`}
+                  className={`text-foreground ${(errors as any).password ? 'border-destructive' : ''}`}
                 />
-                {errors.password && (
-                  <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
+                {(errors as any).password && (
+                  <p className="text-sm text-destructive mt-1">{(errors as any).password.message}</p>
                 )}
               </div>
             )}
@@ -345,10 +342,10 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
                     type="password"
                     placeholder="Deixe em branco para não alterar"
                     {...register('password')}
-                    className={`text-foreground ${errors.password ? 'border-destructive' : ''}`}
+                    className={`text-foreground ${(errors as any).password ? 'border-destructive' : ''}`}
                   />
-                  {errors.password && (
-                    <p className="text-sm text-destructive mt-1">{errors.password.message}</p>
+                  {(errors as any).password && (
+                    <p className="text-sm text-destructive mt-1">{(errors as any).password.message}</p>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
                     Deixe em branco se não quiser alterar a senha
@@ -364,11 +361,11 @@ export function SellerDialog({ isOpen, onClose, onSuccess, seller }: SellerDialo
                     id="confirmPassword"
                     type="password"
                     placeholder="Digite a senha novamente"
-                    {...register('confirmPassword')}
-                    className={`text-foreground ${errors.confirmPassword ? 'border-destructive' : ''}`}
+                    {...(register as any)('confirmPassword')}
+                    className={`text-foreground ${(errors as any).confirmPassword ? 'border-destructive' : ''}`}
                   />
-                  {errors.confirmPassword && (
-                    <p className="text-sm text-destructive mt-1">{errors.confirmPassword.message}</p>
+                  {(errors as any).confirmPassword && (
+                    <p className="text-sm text-destructive mt-1">{(errors as any).confirmPassword.message}</p>
                   )}
                 </div>
               </>

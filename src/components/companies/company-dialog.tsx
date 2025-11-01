@@ -145,7 +145,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
         phone: formData.phone || undefined,
         brandColor: formData.brandColor,
         // Only include password if it's not empty (required for creation, optional for update)
-        ...(formData.password.trim() && { password: formData.password.trim() }),
+        ...(formData.password && formData.password.trim() && { password: formData.password.trim() }),
         ...(formData.stateRegistration && { stateRegistration: formData.stateRegistration.trim() }),
         ...(formData.municipalRegistration && { municipalRegistration: formData.municipalRegistration.trim() }),
         ...(formData.plan && { plan: formData.plan }),

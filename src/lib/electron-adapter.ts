@@ -4,13 +4,13 @@
 
 // Verificar se está rodando no Electron
 export const isElectron = (): boolean => {
-  return typeof window !== 'undefined' && window.electron?.isElectron === true;
+  return typeof window !== 'undefined' && (window as any).electron?.isElectron === true;
 };
 
 // Obter plataforma
 export const getPlatform = (): string => {
   if (isElectron()) {
-    return window.electron.platform;
+    return (window as any).electron.platform;
   }
   return 'web';
 };
@@ -18,7 +18,7 @@ export const getPlatform = (): string => {
 // API Configuration
 export const getApiConfig = async () => {
   if (isElectron()) {
-    return await window.electron.getApiConfig();
+    return await (window as any).electron.getApiConfig();
   }
   return {
     url: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
@@ -33,7 +33,7 @@ export const setApiConfig = async (config: {
   retryAttempts?: number;
 }) => {
   if (isElectron()) {
-    return await window.electron.setApiConfig(config);
+    return await (window as any).electron.setApiConfig(config);
   }
   console.warn('setApiConfig só funciona no Electron');
   return { success: false };
@@ -42,7 +42,7 @@ export const setApiConfig = async (config: {
 // Offline Operations
 export const saveOffline = async (type: string, data: any) => {
   if (isElectron()) {
-    return await window.electron.saveOffline({ type, data });
+    return await (window as any).electron.saveOffline({ type, data });
   }
   
   // Fallback para localStorage no browser
@@ -60,7 +60,7 @@ export const saveOffline = async (type: string, data: any) => {
 
 export const getOfflineData = async (type: string) => {
   if (isElectron()) {
-    return await window.electron.getOfflineData(type);
+    return await (window as any).electron.getOfflineData(type);
   }
   
   // Fallback para localStorage no browser
@@ -76,7 +76,7 @@ export const getOfflineData = async (type: string) => {
 
 export const syncNow = async () => {
   if (isElectron()) {
-    return await window.electron.syncNow();
+    return await (window as any).electron.syncNow();
   }
   console.warn('syncNow só funciona no Electron');
   return { success: false };
@@ -85,7 +85,7 @@ export const syncNow = async () => {
 // Connection Status
 export const checkConnection = async (): Promise<boolean> => {
   if (isElectron()) {
-    return await window.electron.checkConnection();
+    return await (window as any).electron.checkConnection();
   }
   
   // Fallback para browser
@@ -95,7 +95,7 @@ export const checkConnection = async (): Promise<boolean> => {
 // Event Listeners
 export const onConnectionStatus = (callback: (status: { isOnline: boolean }) => void) => {
   if (isElectron()) {
-    return window.electron.onConnectionStatus(callback);
+    return (window as any).electron.onConnectionStatus(callback);
   }
   
   // Fallback para browser
@@ -113,7 +113,7 @@ export const onSyncStatus = (
   callback: (status: { syncing: boolean; success?: boolean; error?: any }) => void
 ) => {
   if (isElectron()) {
-    return window.electron.onSyncStatus(callback);
+    return (window as any).electron.onSyncStatus(callback);
   }
   
   // No browser, não há sincronização automática
@@ -128,7 +128,7 @@ export const apiRequestWithOfflineSupport = async (params: {
   config?: any;
 }) => {
   if (isElectron()) {
-    return await window.electron.apiRequest(params);
+    return await (window as any).electron.apiRequest(params);
   }
   
   // No browser, usar API normal

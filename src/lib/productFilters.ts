@@ -16,7 +16,7 @@ export function applyProductFilters(products: Product[], filters: ProductFilters
     // Filtro de validade próxima/vencidos
     if (filters.expiringSoon) {
       const hasExpirationDate = product.expirationDate && product.expirationDate !== 'null';
-      if (hasExpirationDate) {
+      if (hasExpirationDate && product.expirationDate) {
         const expirationDate = new Date(product.expirationDate);
         const now = new Date();
         const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);

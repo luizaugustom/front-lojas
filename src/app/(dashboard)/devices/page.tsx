@@ -197,7 +197,7 @@ function PrintersTab() {
             {drivers.map((d, i) => (
               <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center gap-2"><CheckCircle2 className={`h-4 w-4 ${d.installed ? 'text-green-600' : 'text-muted-foreground'}`} /> {d.name}</div>
-                <Badge variant={d.installed ? 'success' : 'secondary'}>{d.installed ? 'Instalado' : 'Não encontrado'}</Badge>
+                <Badge variant={d.installed ? 'default' : 'secondary'}>{d.installed ? 'Instalado' : 'Não encontrado'}</Badge>
               </div>
             ))}
           </CardContent>
@@ -212,7 +212,7 @@ function PrintersTab() {
               <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">{getConnectionIcon(p.connection)} <span>{p.name}</span></div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={p.status === 'online' ? 'success' : 'secondary'}>{p.status}</Badge>
+                  <Badge variant={p.status === 'online' ? 'default' : 'secondary'}>{p.status}</Badge>
                   <Button size="sm" variant="outline" onClick={() => openAddDialog(p)}>
                     Adicionar
                   </Button>
@@ -229,7 +229,7 @@ function PrintersTab() {
               <div key={p.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-2"><Printer className="h-4 w-4" /> <span>{p.name}</span></div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={p.isConnected ? 'success' : 'secondary'}>{p.isConnected ? 'Conectada' : 'Desconectada'}</Badge>
+                  <Badge variant={p.isConnected ? 'default' : 'secondary'}>{p.isConnected ? 'Conectada' : 'Desconectada'}</Badge>
                   <Button size="sm" variant="outline" onClick={async () => {
                     try { await printerApi.test(p.id); toast.success('Teste enviado'); } catch (e) { handleApiError(e); }
                   }}>
@@ -402,7 +402,7 @@ function ScalesTab() {
             {drivers.map((d: any, i: number) => (
               <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center gap-2"><CheckCircle2 className={`h-4 w-4 ${d.installed ? 'text-green-600' : 'text-muted-foreground'}`} /> {d.name}</div>
-                <Badge variant={d.installed ? 'success' : 'secondary'}>{d.installed ? 'OK' : 'Faltando'}</Badge>
+                <Badge variant={d.installed ? 'default' : 'secondary'}>{d.installed ? 'OK' : 'Faltando'}</Badge>
               </div>
             ))}
             <Alert className="mt-2"><AlertDescription>Se sua balança usa USB-Serial, conecte-a e verifique se surge uma porta COM no Windows.</AlertDescription></Alert>
@@ -432,7 +432,7 @@ function ScalesTab() {
               <div key={s.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-2"><ScaleIcon className="h-4 w-4" /> <span>{s.name}</span> <Badge variant="secondary">{s.connectionInfo}</Badge></div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={s.isConnected ? 'success' : 'secondary'}>{s.isConnected ? 'Conectada' : 'Desconectada'}</Badge>
+                  <Badge variant={s.isConnected ? 'default' : 'secondary'}>{s.isConnected ? 'Conectada' : 'Desconectada'}</Badge>
                   <Button size="sm" variant="outline" onClick={() => testScale(s.id)}>
                     <TestTube className="h-4 w-4 mr-2" /> Testar
                   </Button>

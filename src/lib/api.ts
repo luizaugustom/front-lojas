@@ -1,7 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { toast } from 'react-hot-toast';
 import type { UserRole } from '@/types';
-import { createAxiosUUIDInterceptor } from './api-uuid-interceptor';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const USE_MOCK = false; // Sempre usar backend real
@@ -18,14 +17,10 @@ class ApiClient {
       },
     });
 
-    // UUID Validation interceptor (primeiro - valida antes de tudo)
-    const uuidInterceptor = createAxiosUUIDInterceptor();
+    // Request interceptor
     this.client.interceptors.request.use(
       (config) => {
-        // Validar UUIDs primeiro
-        config = uuidInterceptor.request(config);
-        
-        // Depois adicionar token
+        // Adicionar token
         const token = this.getToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
@@ -40,8 +35,7 @@ class ApiClient {
     // Response interceptor
     this.client.interceptors.response.use(
       (response) => {
-        // Validar UUIDs na resposta
-        return uuidInterceptor.response(response);
+        return response;
       },
       (error: AxiosError) => {
         if (error.response?.status === 401) {
@@ -79,7 +73,6 @@ class ApiClient {
    */
   async login(login: string, password: string) {
     const response = await this.client.post('/auth/login', { login, password });
-    console.log('API login response:', response.data);
     
     // Normalizar resposta da API
     const data = response.data.data || response.data;

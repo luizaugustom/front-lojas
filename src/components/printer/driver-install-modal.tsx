@@ -149,7 +149,7 @@ export function DriverInstallModal({
                         )}
                       </div>
                     </div>
-                    <Badge variant="success">Instalado</Badge>
+                    <Badge variant="default">Instalado</Badge>
                   </div>
                 ))}
               </div>

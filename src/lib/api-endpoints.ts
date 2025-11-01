@@ -4,7 +4,6 @@
  */
 
 import { api } from './apiClient';
-import { fixedApiEndpoints } from './api-fixes';
 
 // ============================================================================
 // AUTH
@@ -34,7 +33,7 @@ export const authApi = {
    * Body: Vazio
    * @returns { message: 'Logged out' }
    */
-  logout: () => fixedApiEndpoints.authLogout(),
+  logout: () => api.post('/auth/logout'),
 };
 
 // ============================================================================
@@ -65,7 +64,7 @@ export const productApi = {
    * Query: page, limit, search
    */
   list: (params?: { page?: number; limit?: number; search?: string }) =>
-    fixedApiEndpoints.productList(params),
+    api.get('/product', { params }),
 
   /**
    * GET /product/stats
@@ -87,7 +86,7 @@ export const productApi = {
    * Query: days
    */
   expiring: (days?: number) =>
-    fixedApiEndpoints.productExpiring(days),
+    api.get('/product/expiring', { params: { days } }),
 
   /**
    * GET /product/categories
@@ -99,7 +98,7 @@ export const productApi = {
    * GET /product/barcode/:barcode
    * Roles: ADMIN, COMPANY, SELLER - Buscar por código de barras
    */
-  byBarcode: (barcode: string) => fixedApiEndpoints.productByBarcode(barcode),
+  byBarcode: (barcode: string) => api.get(`/product/barcode/${barcode}`),
 
   /**
    * GET /product/:id
@@ -155,13 +154,13 @@ export const companyApi = {
    * GET /company
    * Roles: ADMIN, COMPANY - Lista empresas
    */
-  list: () => fixedApiEndpoints.companyList(),
+  list: () => api.get('/company'),
 
   /**
    * GET /company/my-company
    * Roles: COMPANY, SELLER - Dados da própria empresa
    */
-  myCompany: () => fixedApiEndpoints.companyMyCompany(),
+  myCompany: () => api.get('/company/my-company'),
 
   /**
    * GET /company/stats
@@ -253,13 +252,13 @@ export const sellerApi = {
    * GET /seller/my-profile
    * Roles: SELLER - Perfil do vendedor logado
    */
-  myProfile: () => fixedApiEndpoints.sellerProfile(),
+  myProfile: () => api.get('/seller/my-profile'),
 
   /**
    * GET /seller/my-stats
    * Roles: SELLER
    */
-  myStats: () => fixedApiEndpoints.sellerStats(),
+  myStats: () => api.get('/seller/my-stats'),
 
   /**
    * GET /seller/my-sales
@@ -339,7 +338,7 @@ export const saleApi = {
    * GET /sale/stats
    * Roles: ADMIN, COMPANY
    */
-  stats: () => fixedApiEndpoints.salesStats(),
+  stats: () => api.get('/sale/stats'),
 
   /**
    * GET /sale/my-sales
@@ -623,8 +622,13 @@ export const fiscalApi = {
    * - Tamanho máximo: 10MB
    * - Formatos: NFe, NFSe, NFCe
    */
-  uploadXml: (file: File, documentType: string = 'inbound') => 
-    fixedApiEndpoints.fiscalUploadXml(file, documentType),
+  uploadXml: (file: File, documentType: string = 'inbound') => {
+    const formData = new FormData();
+    formData.append('xmlFile', file);
+    return api.post('/fiscal/upload-xml', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 
   /**
    * GET /fiscal
@@ -716,7 +720,7 @@ export const cashClosureApi = {
    * Roles: COMPANY - Paginação
    */
   history: (params?: { page?: number; limit?: number }) =>
-    fixedApiEndpoints.cashClosureHistory(params),
+    api.get('/cash-closure/history', { params }),
 
   /**
    * GET /cash-closure/:id
@@ -780,7 +784,7 @@ export const billToPayApi = {
    * Roles: ADMIN, COMPANY
    */
   upcoming: (days?: number) =>
-    fixedApiEndpoints.billsUpcoming(days),
+    api.get('/bill-to-pay/upcoming', { params: { days } }),
 
   /**
    * GET /bill-to-pay/:id
@@ -820,7 +824,13 @@ export const uploadApi = {
    * multipart/form-data (file) - retorna URL
    * Body: Arquivo + subfolder (opcional)
    */
-  single: (file: File) => fixedApiEndpoints.uploadSingle(file),
+  single: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/upload/single', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 
   /**
    * POST /upload/multiple
@@ -996,7 +1006,7 @@ export const adminApi = {
    * Roles: ADMIN - Lista administradores
    * Query: page, limit
    */
-  list: () => fixedApiEndpoints.adminList(),
+  list: () => api.get('/admin'),
 
   /**
    * GET /admin/:id

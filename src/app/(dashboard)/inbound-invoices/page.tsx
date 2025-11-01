@@ -439,7 +439,7 @@ export default function InboundInvoicesPage() {
                     if (manualAttachment) {
                       try {
                         const uploaded = await uploadApi.single(manualAttachment);
-                        attachmentUrl = uploaded?.url || uploaded?.data?.url;
+                        attachmentUrl = uploaded.data?.url;
                       } catch (e) {
                         console.warn('Falha no upload do anexo. Continuando sem anexo.', e);
                       }
@@ -480,7 +480,7 @@ export default function InboundInvoicesPage() {
                       toast.success('XML de nota fiscal de entrada enviado e processado com sucesso');
                     } else if (isPdf) {
                       const uploaded = await uploadApi.single(selectedFile);
-                      const url = uploaded?.url || uploaded?.data?.url;
+                      const url = uploaded.data?.url;
                       if (url) {
                         toast.success('PDF enviado e armazenado como anexo');
                       } else {

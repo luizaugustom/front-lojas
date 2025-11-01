@@ -1,12 +1,13 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import type { User, UserRole } from '@/types';
 import { logApiError } from './error-logger';
+import { logger } from './logger';
 
 // Configurações de ambiente
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const USE_HTTPS = process.env.NEXT_PUBLIC_USE_HTTPS === 'true';
 
-console.log('[API Client] Configuração:', { 
+logger.log('[API Client] Configuração:', { 
   API_BASE_URL, 
   USE_HTTPS,
   NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
@@ -17,7 +18,7 @@ console.log('[API Client] Configuração:', {
 let accessToken: string | null = null;
 
 export function setAccessToken(token: string | null) {
-  console.log('[setAccessToken]', {
+  logger.log('[setAccessToken]', {
     hasToken: !!token,
     tokenPreview: token ? `${token.substring(0, 20)}...` : null,
   });
@@ -27,10 +28,10 @@ export function setAccessToken(token: string | null) {
   if (typeof window !== 'undefined') {
     if (token) {
       sessionStorage.setItem('access_token', token);
-      console.log('[setAccessToken] Token salvo no sessionStorage');
+      logger.log('[setAccessToken] Token salvo no sessionStorage');
     } else {
       sessionStorage.removeItem('access_token');
-      console.log('[setAccessToken] Token removido do sessionStorage');
+      logger.log('[setAccessToken] Token removido do sessionStorage');
     }
   }
 }
@@ -38,27 +39,27 @@ export function setAccessToken(token: string | null) {
 export function getAccessToken(): string | null {
   // Tenta memória primeiro, depois sessionStorage
   if (accessToken) {
-    console.log('[getAccessToken] Token encontrado na memória');
+    logger.log('[getAccessToken] Token encontrado na memória');
     return accessToken;
   }
   
   // Fallback para sessionStorage se token foi perdido da memória
   if (typeof window !== 'undefined') {
     const storedToken = sessionStorage.getItem('access_token');
-    console.log('[getAccessToken] Verificando sessionStorage:', { hasStoredToken: !!storedToken });
+    logger.log('[getAccessToken] Verificando sessionStorage:', { hasStoredToken: !!storedToken });
     if (storedToken) {
-      console.log('[getAccessToken] Token recuperado do sessionStorage');
+      logger.log('[getAccessToken] Token recuperado do sessionStorage');
       accessToken = storedToken; // Restaura na memória
       return storedToken;
     }
   }
   
-  console.log('[getAccessToken] Nenhum token encontrado');
+  logger.log('[getAccessToken] Nenhum token encontrado');
   return null;
 }
 
 export function clearAccessToken() {
-  console.log('[clearAccessToken] Limpando token');
+  logger.log('[clearAccessToken] Limpando token');
   accessToken = null;
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem('access_token');
@@ -150,14 +151,14 @@ instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const urlMatch = url.match(/\/([a-z0-9]{25})\/?$/i);
     if (urlMatch) {
       const cuidId = urlMatch[1];
-      console.log(`[UUID Interceptor] Detectado CUID ${cuidId} em ${config.method?.toUpperCase()} ${url}`);
+      logger.log(`[UUID Interceptor] Detectado CUID ${cuidId} em ${config.method?.toUpperCase()} ${url}`);
       
       // Converter CUID para UUID
       const uuidId = cuidToUuid(cuidId);
       const newUrl = url.replace(cuidId, uuidId);
       
-      console.log(`[UUID Interceptor] Convertendo ${cuidId} -> ${uuidId}`);
-      console.log(`[UUID Interceptor] Nova URL: ${newUrl}`);
+      logger.log(`[UUID Interceptor] Convertendo ${cuidId} -> ${uuidId}`);
+      logger.log(`[UUID Interceptor] Nova URL: ${newUrl}`);
       
       config.url = newUrl;
     }
@@ -176,11 +177,11 @@ instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const needsConversion = requiresUuidEndpoints.some(endpoint => url.includes(endpoint));
     
     if (needsConversion) {
-      console.log(`[UUID Interceptor] Dados originais antes da conversão:`, JSON.stringify(config.data));
+      logger.log(`[UUID Interceptor] Dados originais antes da conversão:`, JSON.stringify(config.data));
       const convertedData = convertIdsInRequestBody(config.data, url);
-      console.log(`[UUID Interceptor] Dados após conversão:`, JSON.stringify(convertedData));
+      logger.log(`[UUID Interceptor] Dados após conversão:`, JSON.stringify(convertedData));
       if (convertedData !== config.data) {
-        console.log(`[UUID Interceptor] Convertendo IDs no body da requisição ${config.method?.toUpperCase()} ${url}`);
+        logger.log(`[UUID Interceptor] Convertendo IDs no body da requisição ${config.method?.toUpperCase()} ${url}`);
         config.data = convertedData;
       }
     }
@@ -229,7 +230,7 @@ instance.interceptors.response.use((response) => {
 // Função para buscar UUID real do backend através de listagem
 async function findRealUuidFromBackend(cuid: string, endpoint: string): Promise<string | null> {
   try {
-    console.log(`[ID Mapping] Buscando UUID real para ${cuid} em ${endpoint}`);
+    logger.log(`[ID Mapping] Buscando UUID real para ${cuid} em ${endpoint}`);
     
     // Buscar todos os registros do endpoint
     const response = await instance.get(endpoint);
@@ -239,17 +240,17 @@ async function findRealUuidFromBackend(cuid: string, endpoint: string): Promise<
     const foundItem = items.find((item: any) => item.id === cuid);
     if (foundItem) {
       // Se encontrou, o ID já é o correto (pode ser que o backend aceite CUIDs)
-      console.log(`[ID Mapping] Encontrado registro com CUID original: ${cuid}`);
+      logger.log(`[ID Mapping] Encontrado registro com CUID original: ${cuid}`);
       return cuid;
     }
     
     // Se não encontrou com CUID, pode ser que o backend tenha convertido internamente
     // Vamos tentar uma abordagem diferente: buscar por outros campos únicos
-    console.log(`[ID Mapping] CUID ${cuid} não encontrado diretamente`);
+    logger.log(`[ID Mapping] CUID ${cuid} não encontrado diretamente`);
     return null;
     
   } catch (error) {
-    console.warn(`[ID Mapping] Erro ao buscar UUID real para ${cuid}:`, error);
+    logger.warn(`[ID Mapping] Erro ao buscar UUID real para ${cuid}:`, error);
     return null;
   }
 }
@@ -310,27 +311,27 @@ async function convertIdsInData(data: any, endpoint: string): Promise<any> {
 
 // Função para converter IDs no body da requisição (síncrona)
 function convertIdsInRequestBody(data: any, url: string): any {
-  console.log(`[convertIdsInRequestBody] Entrada:`, JSON.stringify(data));
+  logger.log(`[convertIdsInRequestBody] Entrada:`, JSON.stringify(data));
   
   if (!data || typeof data !== 'object') {
-    console.log(`[convertIdsInRequestBody] Retornando dados originais (não é objeto):`, data);
+    logger.log(`[convertIdsInRequestBody] Retornando dados originais (não é objeto):`, data);
     return data;
   }
   
   if (Array.isArray(data)) {
-    console.log(`[convertIdsInRequestBody] Processando array com ${data.length} itens`);
+    logger.log(`[convertIdsInRequestBody] Processando array com ${data.length} itens`);
     return data.map(item => convertIdsInRequestBody(item, url));
   }
   
   const converted: any = {};
   for (const [key, value] of Object.entries(data)) {
-    console.log(`[convertIdsInRequestBody] Processando campo: ${key} = ${value} (tipo: ${typeof value})`);
+    logger.log(`[convertIdsInRequestBody] Processando campo: ${key} = ${value} (tipo: ${typeof value})`);
     
     if (typeof value === 'string' && /^[a-z0-9]{25}$/i.test(value)) {
       // É um CUID, converter para UUID se for campo de ID
       if (key.endsWith('Id') || key === 'id' || key === 'productId' || key === 'customerId' || key === 'sellerId' || key === 'companyId') {
         converted[key] = cuidToUuid(value);
-        console.log(`[UUID Interceptor] Convertendo ${key}: ${value} -> ${converted[key]}`);
+        logger.log(`[UUID Interceptor] Convertendo ${key}: ${value} -> ${converted[key]}`);
       } else {
         converted[key] = value;
       }
@@ -341,7 +342,7 @@ function convertIdsInRequestBody(data: any, url: string): any {
     }
   }
   
-  console.log(`[convertIdsInRequestBody] Resultado:`, JSON.stringify(converted));
+  logger.log(`[convertIdsInRequestBody] Resultado:`, JSON.stringify(converted));
   return converted;
 }
 
@@ -366,14 +367,14 @@ export async function apiCallWithIdConversion<T = any>(
       return await instance.delete(url, config);
     }
   } catch (error: any) {
-    console.log(`[API Fallback] Tentativa original falhou para ${url}: ${error.response?.data?.message || error.message}`);
+    logger.log(`[API Fallback] Tentativa original falhou para ${url}: ${error.response?.data?.message || error.message}`);
     
     // Se erro de UUID, implementar fallback específico por endpoint
     if (error.response?.status === 400 && 
         (error.response?.data?.message?.includes('uuid is expected') ||
          error.response?.data?.message?.includes('must be a UUID'))) {
       
-      console.log(`[API Fallback] Implementando fallback para ${url}`);
+      logger.log(`[API Fallback] Implementando fallback para ${url}`);
       
       // Para endpoints problemáticos, vamos implementar uma solução específica
       const urlParts = url.split('/');
@@ -382,21 +383,21 @@ export async function apiCallWithIdConversion<T = any>(
       // Estratégia específica por endpoint
       if (endpoint === '/customer') {
         // Para clientes, vamos tentar uma abordagem diferente
-        console.log(`[API Fallback] Estratégia específica para clientes`);
+        logger.log(`[API Fallback] Estratégia específica para clientes`);
         
         // Tentar buscar o cliente por outros campos se possível
         // Por enquanto, vamos aceitar que algumas operações podem falhar
-        console.log(`[API Fallback] Operação de cliente não suportada com IDs atuais`);
+        logger.log(`[API Fallback] Operação de cliente não suportada com IDs atuais`);
         throw new Error('Operação não suportada: Backend requer UUIDs para clientes');
         
       } else if (endpoint === '/bill-to-pay') {
         // Para contas a pagar, estratégia específica
-        console.log(`[API Fallback] Estratégia específica para contas a pagar`);
+        logger.log(`[API Fallback] Estratégia específica para contas a pagar`);
         throw new Error('Operação não suportada: Backend requer UUIDs para contas a pagar');
         
       } else if (endpoint === '/sale') {
         // Para vendas, converter productIds
-        console.log(`[API Fallback] Estratégia específica para vendas`);
+        logger.log(`[API Fallback] Estratégia específica para vendas`);
         
         if (data && data.items) {
           const convertedData = { ...data };
@@ -405,12 +406,12 @@ export async function apiCallWithIdConversion<T = any>(
             productId: cuidToUuid(item.productId)
           }));
           
-          console.log(`[API Fallback] Convertendo productIds para vendas`);
+          logger.log(`[API Fallback] Convertendo productIds para vendas`);
           
           try {
             return await instance.post(url, convertedData, config);
           } catch (retryError: any) {
-            console.log(`[API Fallback] Conversão de productIds falhou: ${retryError.response?.data?.message || retryError.message}`);
+            logger.log(`[API Fallback] Conversão de productIds falhou: ${retryError.response?.data?.message || retryError.message}`);
             throw retryError;
           }
         }
@@ -523,7 +524,7 @@ instance.interceptors.response.use(
  * Resposta: { access_token: string, user: { id, login, role, companyId, name } }
  */
 export async function authLogin(login: string, password: string): Promise<{ access_token: string; user: User }> {
-  console.log('[authLogin] Tentando login:', { 
+  logger.log('[authLogin] Tentando login:', { 
     login, 
     url: `${API_BASE_URL}/auth/login`,
     baseURL: API_BASE_URL,
@@ -531,7 +532,7 @@ export async function authLogin(login: string, password: string): Promise<{ acce
   });
   try {
     const res = await instance.post('/auth/login', { login, password });
-    console.log('[authLogin] Sucesso:', res.data);
+    logger.log('[authLogin] Sucesso:', res.data);
     
     // Normalizar role da API para o frontend
     if (res.data.user && res.data.user.role) {
@@ -541,7 +542,7 @@ export async function authLogin(login: string, password: string): Promise<{ acce
         'seller': 'vendedor',
       };
       res.data.user.role = (roleMap[res.data.user.role] || res.data.user.role) as UserRole;
-      console.log('[authLogin] Role normalizado:', res.data.user.role);
+      logger.log('[authLogin] Role normalizado:', res.data.user.role);
     }
     
     return res.data;
@@ -592,7 +593,7 @@ export async function authRefresh(): Promise<{ access_token: string; user: User 
       'seller': 'vendedor',
     };
     data.user.role = (roleMap[data.user.role] || data.user.role) as UserRole;
-    console.log('[authRefresh] Role normalizado:', data.user.role);
+    logger.log('[authRefresh] Role normalizado:', data.user.role);
   }
   
   return data;

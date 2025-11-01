@@ -424,7 +424,7 @@ export type UUID = string & { readonly __brand: unique symbol };
  * @returns UUID tipado ou null
  */
 export function asUUID(value: string | null | undefined): UUID | null {
-  return isUUID(value) ? (value as UUID) : null;
+  return value && isUUID(value) ? (value as UUID) : null;
 }
 
 /**

@@ -129,7 +129,7 @@ export default function DashboardPage() {
       const response = await customerApi.list({ 
         page: 1, 
         limit: 1000,
-        companyId: user?.companyId 
+        companyId: user?.companyId || undefined
       });
       return response.data || response;
     },

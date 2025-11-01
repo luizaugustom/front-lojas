@@ -14,6 +14,7 @@ import { companyApi } from '@/lib/api-endpoints';
 import { getImageUrl } from '@/lib/image-utils';
 import { checkPrinterStatus } from '@/lib/printer-check';
 import { toast } from 'react-hot-toast';
+import { logger } from '@/lib/logger';
 
 export function Header() {
   const router = useRouter();
@@ -26,42 +27,42 @@ export function Header() {
 
   useEffect(() => {
     async function fetchCompanyLogo() {
-      console.log('🔍 [Header] Verificando usuário:', { 
+      logger.log('🔍 [Header] Verificando usuário:', { 
         user, 
         companyId: user?.companyId, 
         role: user?.role,
-        isCompany: user?.role === 'empresa' || user?.role === 'company',
-        isSeller: user?.role === 'vendedor' || user?.role === 'seller'
+        isCompany: user?.role === 'empresa',
+        isSeller: user?.role === 'vendedor'
       });
       
-      if (user?.companyId && (user.role === 'empresa' || user.role === 'vendedor' || user.role === 'company' || user.role === 'seller')) {
+      if (user?.companyId && (user.role === 'empresa' || user.role === 'vendedor')) {
         try {
-          console.log('🔍 [Header] Buscando logo da empresa...', { companyId: user.companyId, role: user.role });
+          logger.log('🔍 [Header] Buscando logo da empresa...', { companyId: user.companyId, role: user.role });
           const response = await companyApi.myCompany();
-          console.log('🔍 [Header] Resposta completa da API:', JSON.stringify(response, null, 2));
+          logger.log('🔍 [Header] Resposta completa da API:', JSON.stringify(response, null, 2));
           
-          // fixedCompanyMyCompany retorna response.data diretamente, então response já é os dados
-          const logoUrl = response?.logoUrl;
+          // response é um AxiosResponse, precisa acessar data
+          const logoUrl = response.data?.logoUrl;
           
-          console.log('🔍 [Header] Logo recebido:', logoUrl, 'tipo:', typeof logoUrl);
-          console.log('🔍 [Header] Estrutura da resposta:', {
-            responseKeys: response ? Object.keys(response) : [],
+          logger.log('🔍 [Header] Logo recebido:', logoUrl, 'tipo:', typeof logoUrl);
+          logger.log('🔍 [Header] Estrutura da resposta:', {
+            responseKeys: response.data ? Object.keys(response.data) : [],
             hasLogoUrl: !!logoUrl
           });
           
           if (logoUrl && logoUrl.trim() !== '' && logoUrl !== 'null' && logoUrl !== 'undefined') {
-            console.log('🔍 [Header] ✅ Logo válido encontrado');
+            logger.log('🔍 [Header] ✅ Logo válido encontrado');
             setCompanyLogoUrl(logoUrl);
           } else {
-            console.log('🔍 [Header] ❌ Logo inválido ou vazio');
+            logger.log('🔍 [Header] ❌ Logo inválido ou vazio');
             setCompanyLogoUrl(null);
           }
         } catch (err) {
-          console.error('🔍 [Header] Erro ao buscar logo da empresa:', err);
+          logger.error('🔍 [Header] Erro ao buscar logo da empresa:', err);
           setCompanyLogoUrl(null);
         }
       } else {
-        console.log('🔍 [Header] Usuário não é empresa/vendedor ou não tem companyId:', { 
+        logger.log('🔍 [Header] Usuário não é empresa/vendedor ou não tem companyId:', { 
           hasCompanyId: !!user?.companyId,
           role: user?.role 
         });
@@ -77,7 +78,7 @@ export function Header() {
       // Redireciona após o logout
       router.push('/login');
     } catch (error) {
-      console.error('Erro durante logout:', error);
+      logger.error('Erro durante logout:', error);
       // Mesmo com erro, redireciona para login
       router.push('/login');
     }
@@ -95,7 +96,7 @@ export function Header() {
         toast.error(result.message, { id: 'printer-check' });
       }
     } catch (error) {
-      console.error('Erro ao verificar impressoras:', error);
+      logger.error('Erro ao verificar impressoras:', error);
       toast.error('Erro ao verificar impressoras', { id: 'printer-check' });
     } finally {
       setCheckingPrinter(false);
@@ -121,20 +122,19 @@ export function Header() {
         {/* Logomarca centralizada se existir */}
         {companyLogoUrl && companyLogoUrl.trim() !== '' && companyLogoUrl !== 'null' && companyLogoUrl !== 'undefined' ? (
           <div className="relative flex items-center justify-center h-14 w-[40%] max-w-[250px] mx-auto">
-            {console.log('🔍 [Header] Renderizando logo:', { companyLogoUrl, fullUrl: getImageUrl(companyLogoUrl) })}
             <img
               src={getImageUrl(companyLogoUrl)}
               alt="Logomarca da empresa"
               className="h-full w-full object-contain max-h-full"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                console.error('🔍 [Header] Erro ao carregar imagem:', {
+                logger.error('🔍 [Header] Erro ao carregar imagem:', {
                   src: target.src,
                   originalUrl: companyLogoUrl
                 });
                 setCompanyLogoUrl(null);
               }}
-              onLoad={() => console.log('🔍 [Header] Imagem carregada com sucesso:', getImageUrl(companyLogoUrl))}
+              onLoad={() => logger.log('🔍 [Header] Imagem carregada com sucesso:', getImageUrl(companyLogoUrl))}
             />
           </div>
         ) : (

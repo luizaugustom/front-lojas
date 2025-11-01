@@ -19,17 +19,8 @@ const queryClient = new QueryClient({
         }
         return failureCount < 2; // Máximo 2 tentativas
       },
-      onError: (error: any) => {
-        // Loga erros de query automaticamente
-        console.error('[React Query Error]', error);
-      },
     },
-    mutations: {
-      onError: (error: any) => {
-        // Loga erros de mutations automaticamente
-        console.error('[React Query Mutation Error]', error);
-      },
-    },
+    mutations: {},
   },
 });
 

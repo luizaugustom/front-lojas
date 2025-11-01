@@ -38,7 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       // Mostrar modal se for empresa com plano TRIAL_7_DAYS
       if (
-        (user.role === 'empresa' || user.role === 'company') &&
+        user.role === 'empresa' &&
         user.plan === PlanType.TRIAL_7_DAYS
       ) {
         // Aguardar um pouco antes de mostrar o modal para dar tempo da página carregar

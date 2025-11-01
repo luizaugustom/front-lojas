@@ -142,7 +142,7 @@ export default function ElectronSettingsPage() {
           <dl className="space-y-2">
             <div>
               <dt className="font-semibold">Plataforma:</dt>
-              <dd>{typeof window !== 'undefined' && window.electron?.platform}</dd>
+              <dd>{typeof window !== 'undefined' && (window as any).electron?.platform}</dd>
             </div>
             <div>
               <dt className="font-semibold">Modo:</dt>
