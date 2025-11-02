@@ -226,6 +226,18 @@ export const companyApi = {
    * Roles: COMPANY - Remover logo da empresa
    */
   removeLogo: () => api.delete('/company/my-company/logo'),
+
+  /**
+   * GET /company/my-company/fiscal-config
+   * Roles: COMPANY - Obter configurações fiscais
+   */
+  getFiscalConfig: () => api.get('/company/my-company/fiscal-config'),
+
+  /**
+   * GET /company/my-company/fiscal-config/valid
+   * Roles: COMPANY - Verificar se tem configuração fiscal válida para NFCe
+   */
+  hasValidFiscalConfig: () => api.get('/company/my-company/fiscal-config/valid'),
 };
 
 // ============================================================================
@@ -487,6 +499,12 @@ export const printerApi = {
   available: () => api.get('/printer/available'),
 
   /**
+   * POST /printer/register-devices
+   * Roles: ADMIN, COMPANY - Registra impressoras detectadas do computador do cliente
+   */
+  registerDevices: (data: { computerId: string; printers: any[] }) => api.post('/printer/register-devices', data),
+
+  /**
    * GET /printer/check-drivers
    * Roles: ADMIN, COMPANY - Verifica drivers instalados
    */
@@ -557,6 +575,12 @@ export const scaleApi = {
    * Roles: ADMIN, COMPANY - Lista balanças disponíveis no sistema
    */
   available: () => api.get('/scale/available'),
+
+  /**
+   * POST /scale/register-devices
+   * Roles: ADMIN, COMPANY - Registra balanças detectadas do computador do cliente
+   */
+  registerDevices: (data: { computerId: string; scales: any[] }) => api.post('/scale/register-devices', data),
 
   /**
    * POST /scale/discover

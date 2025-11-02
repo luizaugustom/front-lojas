@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { handleApiError } from '@/lib/handleApiError';
-import { saleApi, sellerApi } from '@/lib/api-endpoints';
+import { saleApi, sellerApi, companyApi } from '@/lib/api-endpoints';
 import { saleSchema } from '@/lib/validations';
 import { formatCurrency, calculateChange, calculateMultiplePaymentChange, handleNumberInputChange, isValidId, validateUUID } from '@/lib/utils-clean';
 import { useCartStore } from '@/store/cart-store';
@@ -55,6 +55,8 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const [showPrintConfirmation, setShowPrintConfirmation] = useState(false);
   const [createdSaleId, setCreatedSaleId] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
+  const [hasValidFiscalConfig, setHasValidFiscalConfig] = useState<boolean | null>(null);
+  const [loadingFiscalConfig, setLoadingFiscalConfig] = useState(false);
   const { items, discount, getTotal, clearCart } = useCartStore();
   const { user, isAuthenticated, api } = useAuth();
 
@@ -66,8 +68,25 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   useEffect(() => {
     if (open && isCompany) {
       loadSellers();
+      checkFiscalConfig();
     }
   }, [open, isCompany]);
+
+  // Verificar configuração fiscal
+  const checkFiscalConfig = async () => {
+    if (!isCompany) return;
+    
+    setLoadingFiscalConfig(true);
+    try {
+      const response = await companyApi.hasValidFiscalConfig();
+      setHasValidFiscalConfig(response.data?.hasValidConfig ?? false);
+    } catch (error) {
+      console.error('Erro ao verificar configuração fiscal:', error);
+      setHasValidFiscalConfig(false);
+    } finally {
+      setLoadingFiscalConfig(false);
+    }
+  };
 
   // Resetar estado quando o modal fechar
   useEffect(() => {
@@ -460,6 +479,25 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Aviso sobre configuração fiscal */}
+          {isCompany && hasValidFiscalConfig === false && (
+            <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
+                    Configuração Fiscal Incompleta
+                  </h4>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                    A empresa não possui configuração fiscal completa para emissão de NFCe. 
+                    Será impresso um <strong>cupom não fiscal</strong> ao invés de uma NFCe válida. 
+                    Configure os dados fiscais nas Configurações para emitir NFCe válida.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="clientName">Nome do Cliente (Opcional)</Label>
             <Input id="clientName" {...register('clientName')} disabled={loading} />

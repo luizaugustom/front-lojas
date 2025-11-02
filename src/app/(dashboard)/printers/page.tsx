@@ -91,6 +91,7 @@ export default function PrintersPage() {
 
   const loadSystemPrinters = async () => {
     try {
+      // O header x-computer-id é adicionado automaticamente pelo apiClient
       const response = await printerApi.available();
       setSystemPrinters(response.data || []);
     } catch (error) {

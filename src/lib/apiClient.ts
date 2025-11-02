@@ -2,6 +2,7 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, InternalAxiosRequ
 import type { User, UserRole } from '@/types';
 import { logApiError } from './error-logger';
 import { logger } from './logger';
+import { getComputerId } from './device-detection';
 
 // Configurações de ambiente
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -141,6 +142,18 @@ instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (token) {
     config.headers = config.headers ?? {};
     (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+  }
+  
+  // Adiciona identificador do computador em todas as requisições
+  if (typeof window !== 'undefined') {
+    try {
+      const computerId = getComputerId();
+      config.headers = config.headers ?? {};
+      (config.headers as Record<string, string>)['x-computer-id'] = computerId;
+    } catch (error) {
+      // Se falhar, continua sem o header
+      logger.log('[API Client] Erro ao obter computerId:', error);
+    }
   }
   
   // Conversão automática de IDs para operações que requerem UUID
