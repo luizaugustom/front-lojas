@@ -117,10 +117,31 @@ export default function PrintersPage() {
       const discovered = response.data || [];
       
       setSystemPrinters(discovered);
-      toast.success(`${discovered.length} impressora(s) encontrada(s)!`);
       
-      // Recarrega impressoras do banco
-      await loadDBPrinters();
+      // Se há impressoras descobertas, tenta registrá-las no banco
+      if (discovered.length > 0) {
+        try {
+          const computerId = localStorage.getItem('montshop_computer_id') || 'unknown';
+          const registerResponse = await printerApi.registerDevices({
+            computerId,
+            printers: discovered,
+          });
+          
+          if (registerResponse.data?.success) {
+            toast.success(registerResponse.data.message || `${discovered.length} impressora(s) encontrada(s) e salva(s)!`);
+          } else {
+            toast.success(`${discovered.length} impressora(s) encontrada(s)!`);
+          }
+        } catch (registerError) {
+          console.warn('[Printers] Erro ao registrar impressoras no banco:', registerError);
+          toast.success(`${discovered.length} impressora(s) encontrada(s)!`);
+        }
+      } else {
+        toast.info('Nenhuma impressora encontrada no sistema');
+      }
+      
+      // Recarrega impressoras do banco e do sistema
+      await Promise.all([loadDBPrinters(), loadSystemPrinters()]);
     } catch (error) {
       console.error('[Printers] Erro ao descobrir impressoras:', error);
       handleApiError(error);
@@ -191,11 +212,26 @@ export default function PrintersPage() {
       if (response.data.success) {
         toast.success('Teste de impressão enviado com sucesso!');
       } else {
-        toast.error('Falha no teste de impressão');
+        const errorMessage = response.data.message || 'Falha no teste de impressão';
+        toast.error(errorMessage, {
+          duration: 6000, // Mostra por mais tempo para o usuário ler
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Printers] Erro ao testar impressora:', error);
-      handleApiError(error);
+      
+      // Extrai mensagem de erro detalhada do backend
+      let errorMessage = 'Falha no teste de impressão';
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      // Exibe mensagem de erro detalhada
+      toast.error(errorMessage, {
+        duration: 6000, // Mostra por mais tempo para o usuário ler
+      });
     } finally {
       setTestingPrinter(null);
     }

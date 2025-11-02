@@ -263,12 +263,26 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     try {
       await saleApi.reprint(createdSaleId);
       toast.success('NFC-e enviada para impressão!');
-    } catch (error) {
+      handlePrintComplete();
+    } catch (error: any) {
       console.error('[Checkout] Erro ao imprimir NFC-e:', error);
-      handleApiError(error);
+      
+      // Extrai mensagem de erro detalhada do backend
+      let errorMessage = 'Erro ao imprimir NFC-e';
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      // Exibe mensagem de erro detalhada
+      toast.error(errorMessage, {
+        duration: 6000, // Mostra por mais tempo para o usuário ler
+      });
+      
+      handlePrintComplete();
     } finally {
       setPrinting(false);
-      handlePrintComplete();
     }
   };
 

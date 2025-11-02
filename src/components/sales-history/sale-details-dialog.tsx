@@ -55,8 +55,19 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
     try {
       await api.post(`/sale/${saleId}/reprint`);
       toast.success('Cupom reenviado para impressão!');
-    } catch (error) {
-      handleApiError(error);
+    } catch (error: any) {
+      // Extrai mensagem de erro detalhada do backend
+      let errorMessage = 'Erro ao reimprimir cupom';
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      // Exibe mensagem de erro detalhada
+      toast.error(errorMessage, {
+        duration: 6000, // Mostra por mais tempo para o usuário ler
+      });
     }
   };
 
