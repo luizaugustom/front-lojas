@@ -85,6 +85,24 @@ Consulte [DEPLOY.md](./DEPLOY.md) para mais informações.
 - Validação de dados
 - HTTPS recomendado
 
+## 🎨 Ícones do App
+
+Os ícones do aplicativo são gerados automaticamente a partir do `logo.png` durante o build de produção.
+
+### Gerar ícones manualmente
+
+```bash
+npm run generate-icons
+```
+
+Isso gerará os seguintes ícones:
+- `favicon-32x32.png` - Favicon 32x32
+- `favicon-64x64.png` - Favicon 64x64
+- `icon-192x192.png` - PWA icon 192x192
+- `icon-512x512.png` - PWA icon 512x512
+
+Os ícones são gerados automaticamente antes de cada build através do script `prebuild`.
+
 ## 📝 Licença
 
 Este projeto é privado.

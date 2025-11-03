@@ -1,10 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp');
 
-// Função para criar um ícone PNG simples
+// Função para criar um ícone PNG simples (fallback)
 function createSimpleIcon(size, filename) {
-  // Criar um canvas simples usando dados PNG básicos
-  // Este é um PNG 1x1 pixel transparente que será redimensionado pelo navegador
   const pngData = Buffer.from([
     0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
     0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
@@ -19,19 +18,52 @@ function createSimpleIcon(size, filename) {
   console.log(`✅ Criado ${filename} (${size}x${size})`);
 }
 
-// Criar ícones para PWA
-console.log('🎨 Criando ícones para PWA...');
+// Função para criar ícone do logo
+async function createIconFromLogo(size, filename) {
+  try {
+    const logoPath = path.join(__dirname, 'public', 'logo.png');
+    const outputPath = path.join(__dirname, 'public', filename);
+    
+    // Verificar se o logo existe
+    if (!fs.existsSync(logoPath)) {
+      console.warn(`⚠️  Logo não encontrado em ${logoPath}, criando ícone básico`);
+      createSimpleIcon(size, filename);
+      return;
+    }
 
-try {
-  createSimpleIcon(192, 'icon-192x192.png');
-  createSimpleIcon(512, 'icon-512x512.png');
-  
-  console.log('✅ Ícones criados com sucesso!');
-  console.log('📝 Nota: Estes são ícones básicos. Para produção, substitua por ícones personalizados.');
-} catch (error) {
-  console.error('❌ Erro ao criar ícones:', error);
+    // Carregar e redimensionar o logo usando Sharp
+    await sharp(logoPath)
+      .resize(size, size, {
+        fit: 'contain',
+        background: { r: 255, g: 255, b: 255, alpha: 0 } // Fundo transparente
+      })
+      .png()
+      .toFile(outputPath);
+    
+    console.log(`✅ Criado ${filename} (${size}x${size}) a partir do logo`);
+  } catch (error) {
+    console.error(`❌ Erro ao criar ${filename}:`, error.message);
+    console.log(`📝 Criando ícone básico como fallback...`);
+    createSimpleIcon(size, filename);
+  }
 }
 
+// Função principal
+async function main() {
+  console.log('🎨 Criando ícones para PWA a partir do logo.png...\n');
 
+  try {
+    await createIconFromLogo(32, 'favicon-32x32.png');
+    await createIconFromLogo(64, 'favicon-64x64.png');
+    await createIconFromLogo(192, 'icon-192x192.png');
+    await createIconFromLogo(512, 'icon-512x512.png');
+    
+    console.log('\n✅ Ícones criados com sucesso!');
+    console.log('📝 Pronto para produção!');
+  } catch (error) {
+    console.error('❌ Erro ao criar ícones:', error);
+    process.exit(1);
+  }
+}
 
-
+main();

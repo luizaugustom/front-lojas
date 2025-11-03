@@ -94,10 +94,24 @@ export function CustomerDialog({ open, onClose, customer }: CustomerDialogProps)
   const onSubmit = async (data: CreateCustomerDto) => {
     setLoading(true);
     try {
+      // Preparar dados: enviar apenas nome (obrigatório) e campos preenchidos
+      const customerData: CreateCustomerDto = {
+        name: data.name.trim(),
+        ...(data.email && data.email.trim() && { email: data.email.trim() }),
+        ...(data.phone && data.phone.trim() && { phone: data.phone.trim() }),
+        ...(data.cpfCnpj && data.cpfCnpj.trim() && { cpfCnpj: data.cpfCnpj.trim() }),
+        ...(data.zipCode && data.zipCode.trim() && { zipCode: data.zipCode.trim() }),
+        ...(data.state && data.state.trim() && { state: data.state.trim() }),
+        ...(data.city && data.city.trim() && { city: data.city.trim() }),
+        ...(data.street && data.street.trim() && { street: data.street.trim() }),
+        ...(data.number && data.number.trim() && { number: data.number.trim() }),
+        ...(data.complement && data.complement.trim() && { complement: data.complement.trim() }),
+      };
+
       if (isEditing) {
         // Tentar usar ID original primeiro
         try {
-          await api.patch(`/customer/${customer!.id}`, data);
+          await api.patch(`/customer/${customer!.id}`, customerData);
           toast.success('Cliente atualizado com sucesso!');
           onClose();
         } catch (error: any) {
@@ -110,7 +124,7 @@ export function CustomerDialog({ open, onClose, customer }: CustomerDialogProps)
           }
         }
       } else {
-        await api.post('/customer', data);
+        await api.post('/customer', customerData);
         toast.success('Cliente criado com sucesso!');
         onClose();
       }

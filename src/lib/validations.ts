@@ -100,11 +100,8 @@ export const customerAddressSchema = z.object({
 
 export const customerSchema = z.object({
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres').max(255),
-  email: z.string().email('Email inválido').optional().or(z.literal('')),
-  phone: z.string()
-    .regex(/^\(\d{2}\) \d{4,5}-\d{4}$/, 'Telefone deve estar no formato (XX) XXXXX-XXXX')
-    .optional()
-    .or(z.literal('')),
+  email: z.string().optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
   cpfCnpj: z.string().optional(),
   // Campos de endereço individuais para o formulário
   street: z.string().optional(),

@@ -52,7 +52,7 @@ const navigation = [
   // Testes da API - visível apenas para admin
   { name: 'Testes da API', href: '/test-api', icon: TestTube, roles: ['admin'] },
   // Dispositivos - página dedicada
-  { name: 'Dispositivos', href: '/devices', icon: Printer, roles: ['empresa'] },
+  { name: 'Dispositivos', href: '/devices', icon: Printer, roles: ['empresa', 'vendedor'] },
   { name: 'Configurações', href: '/settings', icon: Settings, roles: ['admin', 'empresa'] },
 ];
 

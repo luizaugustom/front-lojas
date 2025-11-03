@@ -13,6 +13,7 @@ import { AdminBroadcastDialog } from '@/components/admin-broadcast-dialog';
 import { companyApi } from '@/lib/api-endpoints';
 import { getImageUrl } from '@/lib/image-utils';
 import { checkPrinterStatus } from '@/lib/printer-check';
+import { useIsDesktop } from '@/hooks/useResponsive';
 import { toast } from 'react-hot-toast';
 import { logger } from '@/lib/logger';
 
@@ -21,6 +22,7 @@ export function Header() {
   const { theme, toggleTheme, toggleSidebar } = useUIStore();
   const { logout, user, api } = useAuth();
   const { barcodeBuffer, scanSuccess, printerStatus, printerName } = useDeviceStore();
+  const isDesktop = useIsDesktop();
 
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
   const [checkingPrinter, setCheckingPrinter] = useState(false);
@@ -105,7 +107,7 @@ export function Header() {
 
   return (
     <header 
-      className="sticky top-0 z-30 flex h-16 items-center gap-2 sm:gap-4 border-b bg-background px-2 sm:px-4 lg:px-6"
+      className="sticky top-0 z-30 flex h-16 items-center gap-2 sm:gap-4 border-b bg-background px-2 sm:px-4 lg:px-6 relative"
       role="banner"
     >
       <Button 
@@ -118,7 +120,7 @@ export function Header() {
         <Menu className="h-5 w-5" aria-hidden="true" />
       </Button>
 
-      <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 justify-center">
+      <div className={isDesktop ? "absolute left-1/2 transform -translate-x-1/2" : "flex items-center gap-2 sm:gap-4 min-w-0 flex-1 justify-center"}>
         {/* Logomarca centralizada se existir */}
         {companyLogoUrl && companyLogoUrl.trim() !== '' && companyLogoUrl !== 'null' && companyLogoUrl !== 'undefined' ? (
           <div className="relative flex items-center justify-center h-14 w-[40%] max-w-[250px] mx-auto">
