@@ -379,6 +379,18 @@ export const saleApi = {
 
   /**
    * POST /sale/:id/reprint
+   * Roles: ADMIN, COMPANY, SELLER - Reimprimir cupom da venda
+   */
+  reprint: (id: string) => api.post(`/sale/${id}/reprint`),
+
+  /**
+   * GET /sale/:id/print-content
+   * Roles: ADMIN, COMPANY, SELLER - Obter conteúdo de impressão para venda
+   */
+  getPrintContent: (id: string) => api.get(`/sale/${id}/print-content`),
+
+  /**
+   * POST /sale/:id/reprint
    * Roles: ADMIN, COMPANY, SELLER - Reimprimir cupom
    */
   reprint: (id: string) => api.post(`/sale/${id}/reprint`),

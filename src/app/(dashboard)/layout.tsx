@@ -10,6 +10,7 @@ import { PrinterStatusMonitor } from '@/components/printer/printer-status-monito
 import { TrialConversionModal } from '@/components/trial/trial-conversion-modal';
 import { PlanType } from '@/types';
 import { getAuthToken, getUser } from '@/lib/auth';
+import { useAutoRegisterPrinters } from '@/hooks/useAutoRegisterPrinters';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -17,6 +18,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { sidebarCollapsed } = useUIStore();
   const [showTrialModal, setShowTrialModal] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  
+  // Registrar impressoras automaticamente no desktop
+  useAutoRegisterPrinters();
 
   // Aguardar inicialização do estado do contexto antes de verificar autenticação
   useEffect(() => {

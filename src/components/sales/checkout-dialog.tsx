@@ -57,6 +57,8 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const [printing, setPrinting] = useState(false);
   const [hasValidFiscalConfig, setHasValidFiscalConfig] = useState<boolean | null>(null);
   const [loadingFiscalConfig, setLoadingFiscalConfig] = useState(false);
+  // Cache do conteúdo de impressão para reimpressão
+  const [cachedPrintContent, setCachedPrintContent] = useState<{ content: string; type: string } | null>(null);
   const { items, discount, getTotal, clearCart } = useCartStore();
   const { user, isAuthenticated, api } = useAuth();
 
@@ -100,6 +102,8 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       setShowPrintConfirmation(false);
       setCreatedSaleId(null);
       setPrinting(false);
+      // Limpar cache de impressão após finalizar
+      setCachedPrintContent(null);
     }
   }, [open]);
 
@@ -256,12 +260,98 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     setValue,
   } = useForm<{ clientName?: string; clientCpfCnpj?: string }>({});
 
+  // Função auxiliar para imprimir usando Electron API
+  const printWithElectron = async (content: string): Promise<boolean> => {
+    if (typeof window === 'undefined' || !(window as any).electronAPI) {
+      return false;
+    }
+
+    try {
+      const availablePrinters = await (window as any).electronAPI.printers.list();
+      
+      if (!availablePrinters || availablePrinters.length === 0) {
+        console.warn('[Checkout] Nenhuma impressora disponível no desktop');
+        return false;
+      }
+
+      // Pegar impressora padrão ou primeira disponível online
+      const defaultPrinter = availablePrinters.find((p: any) => p.isDefault && p.status === 'online') ||
+                              availablePrinters.find((p: any) => p.status === 'online') ||
+                              availablePrinters[0];
+
+      if (!defaultPrinter) {
+        console.warn('[Checkout] Nenhuma impressora online encontrada');
+        return false;
+      }
+
+      console.log(`[Checkout] Imprimindo na impressora: ${defaultPrinter.name}`);
+      await (window as any).electronAPI.printers.print(
+        defaultPrinter.name,
+        content,
+        {
+          brand: defaultPrinter.driver,
+          port: defaultPrinter.port,
+        }
+      );
+      
+      return true;
+    } catch (error: any) {
+      console.error('[Checkout] Erro ao imprimir com Electron:', error);
+      return false;
+    }
+  };
+
   const handlePrintConfirm = async () => {
     if (!createdSaleId) return;
     
     setPrinting(true);
     try {
-      await saleApi.reprint(createdSaleId);
+      // Primeiro, tentar usar conteúdo em cache se disponível
+      if (cachedPrintContent?.content) {
+        console.log('[Checkout] Usando conteúdo de impressão em cache');
+        
+        // Tentar imprimir com Electron se disponível
+        if (typeof window !== 'undefined' && (window as any).electronAPI) {
+          const success = await printWithElectron(cachedPrintContent.content);
+          if (success) {
+            toast.success('Cupom reimpresso com sucesso!');
+            handlePrintComplete();
+            return;
+          }
+        }
+        
+        // Se não conseguiu com Electron, tentar via API
+        await saleApi.reprint(createdSaleId);
+        toast.success('NFC-e enviada para impressão!');
+        handlePrintComplete();
+        return;
+      }
+
+      // Se não tem cache, buscar do backend
+      console.log('[Checkout] Buscando conteúdo de impressão do backend');
+      const response = await saleApi.reprint(createdSaleId);
+      const responseData = response.data?.data || response.data;
+      
+      // Verificar se retornou conteúdo de impressão
+      if (responseData?.printContent) {
+        // Armazenar em cache para futuras reimpressões
+        setCachedPrintContent({
+          content: responseData.printContent,
+          type: responseData.printType || 'nfce',
+        });
+
+        // Tentar imprimir com Electron se disponível
+        if (typeof window !== 'undefined' && (window as any).electronAPI) {
+          const success = await printWithElectron(responseData.printContent);
+          if (success) {
+            toast.success('Cupom reimpresso com sucesso!');
+            handlePrintComplete();
+            return;
+          }
+        }
+      }
+
+      // Se não conseguiu imprimir com Electron, o backend já tentou imprimir
       toast.success('NFC-e enviada para impressão!');
       handlePrintComplete();
     } catch (error: any) {
@@ -455,16 +545,14 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       });
 
       // Criar venda - IDs já são UUID v4 válidos
-      // Enviar skipPrint: true para não imprimir automaticamente
-      const saleDataWithSkipPrint = {
-        ...saleData,
-        skipPrint: true,
-      };
+      // Não usar skipPrint para que o backend gere o conteúdo de impressão
+      const response = await saleApi.create(saleData);
       
-      const response = await saleApi.create(saleDataWithSkipPrint);
-      
-      // Extrair ID da venda da resposta
-  const saleId = response.data?.id || (response.data?.data && response.data.data.id);
+      // Extrair ID da venda e conteúdo de impressão da resposta
+      const saleData_resp = response.data?.data || response.data;
+      const saleId = saleData_resp?.id;
+      const printContent = saleData_resp?.printContent;
+      const printType = saleData_resp?.printType || 'nfce';
       
       if (!saleId) {
         console.error('[Checkout] Venda criada mas ID não foi retornado:', response);
@@ -475,9 +563,47 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       console.log('[Checkout] Venda criada com sucesso:', saleId);
       toast.success('Venda realizada com sucesso!');
       
-      // Armazenar ID da venda e mostrar diálogo de confirmação
-      setCreatedSaleId(saleId);
-      setShowPrintConfirmation(true);
+      // Armazenar conteúdo de impressão em cache para reimpressão posterior
+      if (printContent) {
+        setCachedPrintContent({
+          content: printContent,
+          type: printType,
+        });
+      }
+      
+      // Tentar imprimir automaticamente no desktop (Electron)
+      if (printContent && typeof window !== 'undefined' && (window as any).electronAPI) {
+        try {
+          console.log('[Checkout] Tentando imprimir automaticamente no desktop...');
+          const success = await printWithElectron(printContent);
+          
+          if (success) {
+            toast.success('Cupom impresso com sucesso!');
+            console.log('[Checkout] ✅ Impressão concluída no desktop');
+            // Finalizar após impressão bem-sucedida
+            handlePrintComplete();
+            return; // Retornar para não continuar o fluxo
+          } else {
+            console.warn('[Checkout] Não foi possível imprimir automaticamente, mostrando modal');
+            // Continuar para mostrar modal de confirmação
+            setCreatedSaleId(saleId);
+            setShowPrintConfirmation(true);
+          }
+        } catch (printError: any) {
+          console.error('[Checkout] Erro ao imprimir automaticamente:', printError);
+          // Continuar para mostrar modal de confirmação em caso de erro
+          setCreatedSaleId(saleId);
+          setShowPrintConfirmation(true);
+        }
+      } else if (printContent) {
+        // Não está no desktop ou não há Electron API - mostrar modal de confirmação
+        console.log('[Checkout] Desktop não detectado, mostrando modal de confirmação');
+        setCreatedSaleId(saleId);
+        setShowPrintConfirmation(true);
+      } else {
+        // Sem conteúdo de impressão - apenas finalizar
+        handlePrintComplete();
+      }
     } catch (error) {
       console.error('[Checkout] Error details:', error);
       console.error('[Checkout] Error type:', typeof error);
