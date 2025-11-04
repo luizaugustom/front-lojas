@@ -421,14 +421,19 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
             // Garantir que a data seja enviada como ISO string
             paymentMethod.firstDueDate = installmentData.firstDueDate.toISOString();
             
-            paymentMethod.description = installmentData.description || `Parcelado em ${installmentData.installments}x de ${formatCurrency(installmentData.installmentValue)}`;
+            paymentMethod.description = installmentData.description ?? `Parcelado em ${installmentData.installments}x de ${formatCurrency(installmentData.installmentValue)}`;
             paymentMethod.additionalInfo = `Parcelado em ${installmentData.installments}x de ${formatCurrency(installmentData.installmentValue)}`;
+          }
+          
+          // Garantir que additionalInfo seja string vazia se null/undefined
+          if (!paymentMethod.additionalInfo) {
+            paymentMethod.additionalInfo = '';
           }
           
           return paymentMethod;
         }),
-        clientName: data.clientName,
-        clientCpfCnpj: data.clientCpfCnpj,
+        clientName: data.clientName ?? '',
+        clientCpfCnpj: data.clientCpfCnpj ?? '',
         sellerId: selectedSellerId || undefined, // Usar ID EXATAMENTE como está
       };
       
