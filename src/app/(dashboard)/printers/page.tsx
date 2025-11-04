@@ -113,15 +113,46 @@ export default function PrintersPage() {
       setDiscovering(true);
       toast.info('Descobrindo impressoras...');
       
-      const response = await printerApi.discover();
-      const discovered = response.data || [];
+      let discovered: any[] = [];
+      
+      // No desktop (Electron), detecta impressoras localmente
+      if (typeof window !== 'undefined' && (window as any).electronAPI?.printers?.list) {
+        try {
+          console.log('[Printers] Detectando impressoras via Electron...');
+          const electronPrinters = await (window as any).electronAPI.printers.list();
+          
+          // Converte para formato esperado
+          discovered = electronPrinters.map((printer: any) => ({
+            name: printer.name || printer.Name,
+            type: printer.connection || 'usb',
+            connectionInfo: printer.port || printer.PortName || 'Unknown',
+            driver: printer.driver || printer.DriverName || 'Unknown',
+            status: printer.status || 'online',
+            isDefault: printer.isDefault || printer.IsDefault || false,
+          }));
+          
+          console.log(`[Printers] ${discovered.length} impressora(s) detectada(s) via Electron`);
+        } catch (electronError) {
+          console.error('[Printers] Erro ao detectar via Electron:', electronError);
+          toast.warning('Erro ao detectar impressoras localmente. Tentando via servidor...');
+          // Fallback: usar endpoint do servidor
+          const response = await printerApi.discover();
+          discovered = response.data || [];
+        }
+      } else {
+        // No web, usa endpoint do servidor (detecta no servidor)
+        console.log('[Printers] Detectando impressoras via servidor...');
+        const response = await printerApi.discover();
+        discovered = response.data || [];
+      }
       
       setSystemPrinters(discovered);
       
       // Se há impressoras descobertas, tenta registrá-las no banco
       if (discovered.length > 0) {
         try {
-          const computerId = localStorage.getItem('montshop_computer_id') || 'unknown';
+          const { getComputerId } = await import('@/lib/device-detection');
+          const computerId = getComputerId();
           const registerResponse = await printerApi.registerDevices({
             computerId,
             printers: discovered,

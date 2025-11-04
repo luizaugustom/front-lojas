@@ -107,9 +107,10 @@ export function Header() {
 
   return (
     <header 
-      className="sticky top-0 z-30 flex h-16 items-center gap-2 sm:gap-4 border-b bg-background px-2 sm:px-4 lg:px-6 relative"
+      className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 sm:gap-4 border-b bg-background px-2 sm:px-4 lg:px-6"
       role="banner"
     >
+      {/* Botão de menu (apenas mobile) */}
       <Button 
         variant="ghost" 
         size="icon" 
@@ -120,10 +121,13 @@ export function Header() {
         <Menu className="h-5 w-5" aria-hidden="true" />
       </Button>
 
-      <div className={isDesktop ? "absolute left-1/2 transform -translate-x-1/2" : "flex items-center gap-2 sm:gap-4 min-w-0 flex-1 justify-center"}>
-        {/* Logomarca centralizada se existir */}
+      {/* Espaço vazio no desktop para compensar o botão de menu no mobile */}
+      <div className="hidden lg:block w-10"></div>
+
+      {/* Logomarca centralizada */}
+      <div className="flex items-center justify-center flex-1 min-w-0">
         {companyLogoUrl && companyLogoUrl.trim() !== '' && companyLogoUrl !== 'null' && companyLogoUrl !== 'undefined' ? (
-          <div className="relative flex items-center justify-center h-14 w-[40%] max-w-[250px] mx-auto">
+          <div className="relative flex items-center justify-center h-14 w-full max-w-[250px]">
             <img
               src={getImageUrl(companyLogoUrl)}
               alt="Logomarca da empresa"
@@ -146,60 +150,61 @@ export function Header() {
         )}
       </div>
 
-      {/* Device Status Indicators - Discreet */}
-      <div className="hidden sm:flex items-center gap-2 mr-2">
-        {/* Scanner Status */}
-        <div 
-          className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-all ${
-            scanSuccess 
-              ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' 
-              : barcodeBuffer 
-                ? 'bg-green-500/10 text-green-600 dark:text-green-400' 
-                : 'bg-gray-500/10 text-gray-600 dark:text-gray-400'
-          }`}
-          title={scanSuccess ? 'Código lido' : barcodeBuffer ? `Lendo: ${barcodeBuffer.length} chars` : 'Scanner aguardando'}
-        >
-          <span className="text-[10px]">📱</span>
-        </div>
-
-        {/* Printer Status */}
-        <div 
-          className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-all ${
-            printerStatus === 'connected' 
-              ? 'bg-green-500/10 text-green-600 dark:text-green-400' 
-              : printerStatus === 'checking'
-                ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
-                : printerStatus === 'error'
-                  ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
-                  : 'bg-red-500/10 text-red-600 dark:text-red-400'
-          }`}
-          title={
-            printerStatus === 'connected' 
-              ? `Impressora: ${printerName || 'Conectada'}` 
-              : printerStatus === 'checking'
-                ? 'Verificando impressora'
-                : printerStatus === 'error'
-                  ? 'Impressora com erro'
-                  : 'Impressora desconectada'
-          }
-        >
-          <span className="text-[10px]">🖨️</span>
-        </div>
-
-        {/* Botão de atualizar impressora */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={handleCheckPrinter}
-          disabled={checkingPrinter}
-          title="Verificar impressoras manualmente"
-        >
-          <RefreshCw className={`h-4 w-4 ${checkingPrinter ? 'animate-spin' : ''}`} />
-        </Button>
-      </div>
-
+      {/* Botões alinhados à direita */}
       <div className="flex items-center gap-1 sm:gap-2">
+        {/* Device Status Indicators - Discreet */}
+        <div className="hidden sm:flex items-center gap-2">
+          {/* Scanner Status */}
+          <div 
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-all ${
+              scanSuccess 
+                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' 
+                : barcodeBuffer 
+                  ? 'bg-green-500/10 text-green-600 dark:text-green-400' 
+                  : 'bg-gray-500/10 text-gray-600 dark:text-gray-400'
+            }`}
+            title={scanSuccess ? 'Código lido' : barcodeBuffer ? `Lendo: ${barcodeBuffer.length} chars` : 'Scanner aguardando'}
+          >
+            <span className="text-[10px]">📱</span>
+          </div>
+
+          {/* Printer Status */}
+          <div 
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-all ${
+              printerStatus === 'connected' 
+                ? 'bg-green-500/10 text-green-600 dark:text-green-400' 
+                : printerStatus === 'checking'
+                  ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                  : printerStatus === 'error'
+                    ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
+                    : 'bg-red-500/10 text-red-600 dark:text-red-400'
+            }`}
+            title={
+              printerStatus === 'connected' 
+                ? `Impressora: ${printerName || 'Conectada'}` 
+                : printerStatus === 'checking'
+                  ? 'Verificando impressora'
+                  : printerStatus === 'error'
+                    ? 'Impressora com erro'
+                    : 'Impressora desconectada'
+            }
+          >
+            <span className="text-[10px]">🖨️</span>
+          </div>
+
+          {/* Botão de atualizar impressora */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleCheckPrinter}
+            disabled={checkingPrinter}
+            title="Verificar impressoras manualmente"
+          >
+            <RefreshCw className={`h-4 w-4 ${checkingPrinter ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+
         {/* Notificações */}
         <NotificationBell />
 
@@ -218,6 +223,7 @@ export function Header() {
           </AdminBroadcastDialog>
         )}
 
+        {/* Botão de tema */}
         <Button 
           variant="ghost" 
           size="icon" 
@@ -232,6 +238,7 @@ export function Header() {
           )}
         </Button>
 
+        {/* Botão de logout */}
         <Button 
           variant="ghost" 
           size="icon" 
