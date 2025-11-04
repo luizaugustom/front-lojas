@@ -390,12 +390,6 @@ export const saleApi = {
   getPrintContent: (id: string) => api.get(`/sale/${id}/print-content`),
 
   /**
-   * POST /sale/:id/reprint
-   * Roles: ADMIN, COMPANY, SELLER - Reimprimir cupom
-   */
-  reprint: (id: string) => api.post(`/sale/${id}/reprint`),
-
-  /**
    * PATCH /sale/:id
    * Roles: ADMIN, COMPANY
    * Body: Mesma estrutura do POST (campos opcionais)
