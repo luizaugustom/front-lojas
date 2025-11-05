@@ -25,6 +25,7 @@ import { useCartStore } from '@/store/cart-store';
 import { InstallmentSaleModal } from './installment-sale-modal';
 import { PrintConfirmationDialog } from './print-confirmation-dialog';
 import { useAuth } from '@/hooks/useAuth';
+import { printContent } from '@/lib/print-service';
 import type { CreateSaleDto, PaymentMethod, PaymentMethodDetail, InstallmentData, Seller } from '@/types';
 
 interface CheckoutDialogProps {
@@ -267,35 +268,71 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     
     setPrinting(true);
     try {
+      let printContentText: string | null = null;
+      let printType: string = 'nfce';
+
       // Primeiro, tentar usar conteúdo em cache se disponível
       if (cachedPrintContent?.content) {
         console.log('[Checkout] Usando conteúdo de impressão em cache');
+        printContentText = cachedPrintContent.content;
+        printType = cachedPrintContent.type || 'nfce';
+      } else {
+        // Se não tem cache, buscar do backend
+        console.log('[Checkout] Buscando conteúdo de impressão do backend');
+        const response = await saleApi.getPrintContent(createdSaleId);
+        const responseData = response.data?.data || response.data;
+        
+        if (responseData?.content) {
+          printContentText = responseData.content;
+          printType = responseData.printType || 'nfce';
+          
+          // Armazenar em cache para futuras reimpressões
+          setCachedPrintContent({
+            content: printContentText,
+            type: printType,
+          });
+        } else {
+          // Fallback: tentar reprint que retorna conteúdo
+          const reprintResponse = await saleApi.reprint(createdSaleId);
+          const reprintData = reprintResponse.data?.data || reprintResponse.data;
+          
+          if (reprintData?.printContent) {
+            printContentText = reprintData.printContent;
+            printType = reprintData.printType || 'nfce';
+            
+            setCachedPrintContent({
+              content: printContentText,
+              type: printType,
+            });
+          }
+        }
+      }
 
-        // Impressão via Electron removida - apenas via API
+      // Se conseguiu obter conteúdo, imprimir localmente
+      if (printContentText) {
+        console.log('[Checkout] Imprimindo localmente...');
+        const printResult = await printContent(printContentText);
+        
+        if (printResult.success) {
+          toast.success('NFC-e enviada para impressão!');
+        } else {
+          toast.warning(`Impressão local falhou: ${printResult.error}. Tentando impressão no servidor...`);
+          
+          // Se falhar localmente, tentar no servidor como fallback
+          try {
+            await saleApi.reprint(createdSaleId);
+            toast.success('NFC-e enviada para impressão no servidor!');
+          } catch (serverError) {
+            console.error('[Checkout] Erro ao imprimir no servidor:', serverError);
+          }
+        }
+      } else {
+        // Se não conseguiu conteúdo, tentar impressão no servidor diretamente
+        console.log('[Checkout] Sem conteúdo local, tentando impressão no servidor...');
         await saleApi.reprint(createdSaleId);
         toast.success('NFC-e enviada para impressão!');
-        handlePrintComplete();
-        return;
       }
 
-      // Se não tem cache, buscar do backend
-      console.log('[Checkout] Buscando conteúdo de impressão do backend');
-      const response = await saleApi.reprint(createdSaleId);
-      const responseData = response.data?.data || response.data;
-      
-      // Verificar se retornou conteúdo de impressão
-      if (responseData?.printContent) {
-        // Armazenar em cache para futuras reimpressões
-        setCachedPrintContent({
-          content: responseData.printContent,
-          type: responseData.printType || 'nfce',
-        });
-
-        // Impressão via Electron removida - apenas via API
-      }
-
-      // Backend já tentou imprimir
-      toast.success('NFC-e enviada para impressão!');
       handlePrintComplete();
     } catch (error: any) {
       console.error('[Checkout] Erro ao imprimir NFC-e:', error);
