@@ -6,11 +6,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/layout/sidebar';
 import { useUIStore } from '@/store/ui-store';
 import { Header } from '@/components/layout/header';
-import { PrinterStatusMonitor } from '@/components/printer/printer-status-monitor';
 import { TrialConversionModal } from '@/components/trial/trial-conversion-modal';
 import { PlanType } from '@/types';
 import { getAuthToken, getUser } from '@/lib/auth';
-import { useAutoRegisterPrinters } from '@/hooks/useAutoRegisterPrinters';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -19,8 +17,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showTrialModal, setShowTrialModal] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   
-  // Registrar impressoras automaticamente no desktop
-  useAutoRegisterPrinters();
 
   // Aguardar inicialização do estado do contexto antes de verificar autenticação
   useEffect(() => {
@@ -95,7 +91,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
       {/* Monitor de Status de Impressoras */}
-      <PrinterStatusMonitor />
       {/* Modal de Conversão do Plano TRIAL */}
       {user?.plan === PlanType.TRIAL_7_DAYS && (
         <TrialConversionModal

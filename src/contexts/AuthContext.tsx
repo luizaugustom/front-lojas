@@ -15,7 +15,7 @@ import { api } from '@/lib/api'; // ← API com todos os métodos incluindo noti
 import { removeAuthToken, setUser as setUserStorage, getUser as getUserStorage, setAuthToken as setAuthTokenStorage, getAuthToken as getAuthTokenStorage } from '@/lib/auth';
 import { checkPrinterStatus } from '@/lib/printer-check';
 import { getComputerId, detectAllDevices } from '@/lib/device-detection';
-import { printerApi, scaleApi } from '@/lib/api-endpoints';
+import { scaleApi } from '@/lib/api-endpoints';
 
 type AuthContextValue = {
   user: User | null;
@@ -126,15 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Detecta todos os dispositivos disponíveis
       const { printers, scales } = await detectAllDevices();
 
-      // Registra impressoras no backend
-      if (printers.length > 0) {
-        try {
-          await printerApi.registerDevices({ computerId, printers });
-          console.log(`[AuthContext] ${printers.length} impressora(s) registrada(s)`);
-        } catch (error) {
-          console.error('[AuthContext] Erro ao registrar impressoras:', error);
-        }
-      }
+      // Configuração de impressoras removida - não registra mais
 
       // Registra balanças no backend
       if (scales.length > 0) {
