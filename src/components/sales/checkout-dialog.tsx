@@ -287,10 +287,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
           printType = responseData.printType || 'nfce';
           
           // Armazenar em cache para futuras reimpressões
-          setCachedPrintContent({
-            content: printContentText,
-            type: printType,
-          });
+          if (printContentText) {
+            setCachedPrintContent({
+              content: printContentText,
+              type: printType,
+            });
+          }
         } else {
           // Fallback: tentar reprint que retorna conteúdo
           const reprintResponse = await saleApi.reprint(createdSaleId);
@@ -300,10 +302,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
             printContentText = reprintData.printContent;
             printType = reprintData.printType || 'nfce';
             
-            setCachedPrintContent({
-              content: printContentText,
-              type: printType,
-            });
+            if (printContentText) {
+              setCachedPrintContent({
+                content: printContentText,
+                type: printType,
+              });
+            }
           }
         }
       }
@@ -316,7 +320,10 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
         if (printResult.success) {
           toast.success('NFC-e enviada para impressão!');
         } else {
-          toast.warning(`Impressão local falhou: ${printResult.error}. Tentando impressão no servidor...`);
+          toast(`Impressão local falhou: ${printResult.error}. Tentando impressão no servidor...`, {
+            icon: '⚠️',
+            duration: 5000,
+          });
           
           // Se falhar localmente, tentar no servidor como fallback
           try {
