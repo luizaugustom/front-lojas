@@ -21,7 +21,7 @@ export function Header() {
   const router = useRouter();
   const { theme, toggleTheme, toggleSidebar } = useUIStore();
   const { logout, user, api } = useAuth();
-  const { barcodeBuffer, scanSuccess, printerStatus, printerName } = useDeviceStore();
+  const { printerStatus, printerName } = useDeviceStore();
   const isDesktop = useIsDesktop();
 
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
@@ -154,20 +154,6 @@ export function Header() {
       <div className="flex items-center gap-1 sm:gap-2">
         {/* Device Status Indicators - Discreet */}
         <div className="hidden sm:flex items-center gap-2">
-          {/* Scanner Status */}
-          <div 
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-all ${
-              scanSuccess 
-                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' 
-                : barcodeBuffer 
-                  ? 'bg-green-500/10 text-green-600 dark:text-green-400' 
-                  : 'bg-gray-500/10 text-gray-600 dark:text-gray-400'
-            }`}
-            title={scanSuccess ? 'Código lido' : barcodeBuffer ? `Lendo: ${barcodeBuffer.length} chars` : 'Scanner aguardando'}
-          >
-            <span className="text-[10px]">📱</span>
-          </div>
-
           {/* Printer Status */}
           <div 
             className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-all ${
