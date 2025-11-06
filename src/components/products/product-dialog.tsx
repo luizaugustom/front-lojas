@@ -40,6 +40,54 @@ import {
   UPLOAD_ERROR_MESSAGES,
 } from '@/lib/constants/upload.constants';
 
+// Função para normalizar URL da foto (extrair apenas o caminho necessário para o backend)
+function normalizePhotoUrl(url: string): string {
+  if (!url) return url;
+  
+  // Se é uma URL do Firebase Storage (gs:// ou https://firebasestorage...)
+  if (url.includes('firebasestorage') || url.includes('firebase')) {
+    try {
+      const urlObj = new URL(url);
+      // Para Firebase Storage, usar o pathname completo ou apenas o nome do arquivo
+      // O backend pode precisar do pathname completo ou apenas da parte após /o/
+      const pathname = urlObj.pathname;
+      // Extrair o path após /o/ se existir (formato Firebase Storage)
+      const firebasePathMatch = pathname.match(/\/o\/(.+?)(\?|$)/);
+      if (firebasePathMatch) {
+        return decodeURIComponent(firebasePathMatch[1]);
+      }
+      // Caso contrário, retornar o pathname sem a barra inicial
+      return pathname.startsWith('/') ? pathname.substring(1) : pathname;
+    } catch {
+      // Se falhar, retornar a URL original
+      return url;
+    }
+  }
+  
+  // Se é uma URL completa HTTP/HTTPS, tentar extrair apenas o caminho
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    try {
+      const urlObj = new URL(url);
+      // Retornar o pathname (caminho sem o domínio)
+      const pathname = urlObj.pathname.startsWith('/') ? urlObj.pathname.substring(1) : urlObj.pathname;
+      return pathname || url; // Se pathname vazio, retornar URL original
+    } catch {
+      // Se não é uma URL válida, retornar como está
+      return url;
+    }
+  }
+  
+  // Se é um caminho relativo, remover barra inicial se existir
+  return url.startsWith('/') ? url.substring(1) : url;
+}
+
+// Função para comparar duas URLs de foto (considerando diferentes formatos)
+function comparePhotoUrls(url1: string, url2: string): boolean {
+  const normalized1 = normalizePhotoUrl(url1);
+  const normalized2 = normalizePhotoUrl(url2);
+  return normalized1 === normalized2 || url1 === url2 || url1.includes(normalized2) || url2.includes(normalized1);
+}
+
 // Função utilitária para garantir conversão correta de dados
 function sanitizeProductData(data: any) {
   const sanitized: any = {
@@ -161,6 +209,10 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         ncm: product.ncm || '',
         cfop: product.cfop || '',
       });
+      // Limpar estado de fotos ao carregar produto
+      setSelectedPhotos([]);
+      setPhotoPreviewUrls([]);
+      setExistingPhotosToDelete([]);
     } else {
       // Ao criar novo produto, manter apenas a categoria, limpar todo o resto
       reset({
@@ -366,15 +418,19 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       description: 'Tem certeza que deseja excluir esta foto? Esta ação não pode ser desfeita.',
       variant: 'destructive',
       onConfirm: () => {
-        setExistingPhotosToDelete(prev => [...prev, photoUrl]);
-        toast.success('Foto marcada para exclusão');
+        // Verificar se já não está na lista (usando comparação normalizada)
+        const alreadyMarked = existingPhotosToDelete.some(url => comparePhotoUrls(url, photoUrl));
+        if (!alreadyMarked) {
+          setExistingPhotosToDelete(prev => [...prev, photoUrl]);
+          toast.success('Foto marcada para exclusão');
+        }
         setConfirmationModal(prev => ({ ...prev, open: false }));
       },
     });
   };
 
   const handleRestoreExistingPhoto = (photoUrl: string) => {
-    setExistingPhotosToDelete(prev => prev.filter(url => url !== photoUrl));
+    setExistingPhotosToDelete(prev => prev.filter(url => !comparePhotoUrls(url, photoUrl)));
     toast.success('Foto restaurada');
   };
 
@@ -465,10 +521,18 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
               formData.append('photos', photo);
             });
             
-            // Adicionar fotos para deletar
+            // Adicionar fotos para deletar (normalizar URLs antes de enviar)
             if (existingPhotosToDelete.length > 0) {
               existingPhotosToDelete.forEach((photoUrl) => {
-                formData.append('photosToDelete', photoUrl);
+                const normalizedUrl = normalizePhotoUrl(photoUrl);
+                // Enviar a URL normalizada, mas se for igual à original ou vazia, enviar a original
+                const urlToSend = normalizedUrl && normalizedUrl !== photoUrl ? normalizedUrl : photoUrl;
+                formData.append('photosToDelete', urlToSend);
+                console.log('[ProductDialog] Foto para deletar:', {
+                  original: photoUrl,
+                  normalized: normalizedUrl,
+                  sending: urlToSend
+                });
               });
             }
             
@@ -476,6 +540,12 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             console.log('[ProductDialog] Fotos para deletar:', existingPhotosToDelete.length);
             
             await productApi.updateWithPhotos(productId, formData);
+            
+            // Limpar estado de fotos após salvar com sucesso
+            setSelectedPhotos([]);
+            setPhotoPreviewUrls([]);
+            setExistingPhotosToDelete([]);
+            
             toast.success('Produto atualizado com sucesso!');
           } else {
             // Usar endpoint padrão quando não há mudanças em fotos
@@ -813,12 +883,12 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             {isPlanAllowedForPhotos() && isEditing && product?.photos && product.photos.length > 0 && (
               <div className="mb-3">
                 <p className="text-sm text-muted-foreground mb-2">
-                  Fotos existentes ({product.photos.length}):
+                  Fotos existentes ({product.photos.length} - {existingPhotosToDelete.length} marcadas para exclusão):
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {product.photos.map((photoUrl, index) => {
                     console.log(`[ProductDialog] Renderizando foto ${index}:`, photoUrl);
-                    const isMarkedForDeletion = existingPhotosToDelete.includes(photoUrl);
+                    const isMarkedForDeletion = existingPhotosToDelete.some(url => comparePhotoUrls(url, photoUrl));
                     
                     const fullImageUrl = getImageUrl(photoUrl);
                     console.log(`[ProductDialog] URL completa da foto ${index}:`, fullImageUrl);
