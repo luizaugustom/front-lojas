@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircle, AlertCircle, CreditCard, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
@@ -17,8 +17,8 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { apiCallWithIdConversion } from '@/lib/apiClient';
 import type { BillToPay } from '@/types';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 interface BillsTableProps {
   bills: BillToPay[];
@@ -32,6 +32,22 @@ export function BillsTable({ bills, isLoading, onRefetch }: BillsTableProps) {
   const [confirmingBillId, setConfirmingBillId] = useState<string | null>(null);
   const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const totalItems = bills.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [totalItems]);
+
+  const paginatedBills = bills.slice((page - 1) * pageSize, page * pageSize);
 
   const handleMarkAsPaid = async (id: string) => {
     setConfirmingBillId(id);
@@ -161,7 +177,7 @@ export function BillsTable({ bills, isLoading, onRefetch }: BillsTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {bills.map((bill) => {
+          {paginatedBills.map((bill) => {
             const isOverdue = !bill.isPaid && new Date(bill.dueDate) < new Date();
             const isDueSoon =
               !bill.isPaid &&
@@ -232,6 +248,13 @@ export function BillsTable({ bills, isLoading, onRefetch }: BillsTableProps) {
           })}
         </TableBody>
       </Table>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          totalItems={totalItems}
+        />
     </Card>
     </>
   );

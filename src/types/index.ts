@@ -1,6 +1,15 @@
 // User Types
 export type UserRole = 'admin' | 'empresa' | 'vendedor';
 
+export type DataPeriodFilter =
+  | 'ALL'
+  | 'THIS_YEAR'
+  | 'LAST_6_MONTHS'
+  | 'LAST_3_MONTHS'
+  | 'LAST_1_MONTH'
+  | 'LAST_15_DAYS'
+  | 'THIS_WEEK';
+
 // Plan Types
 export enum PlanType {
   BASIC = 'BASIC',
@@ -53,6 +62,7 @@ export interface User {
   role: UserRole;
   companyId?: string | null;
   plan?: PlanType; // Plano da empresa (apenas para role 'empresa')
+  dataPeriod?: DataPeriodFilter | null;
   createdAt?: string;
   updatedAt?: string;
 }

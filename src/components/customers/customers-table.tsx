@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Edit, Trash2, Users } from 'lucide-react';
 import {
   Table,
@@ -16,6 +16,7 @@ import { CustomerDeleteModal } from './customer-delete-modal';
 import { formatCPFCNPJ, formatPhone } from '@/lib/utils';
 import type { Customer } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 interface CustomersTableProps {
   customers: Customer[];
@@ -28,6 +29,22 @@ export function CustomersTable({ customers, isLoading, onEdit, onRefetch }: Cust
   const { user } = useAuth();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const totalItems = customers.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [totalItems]);
+
+  const paginatedCustomers = customers.slice((page - 1) * pageSize, page * pageSize);
 
   const handleDeleteClick = (customer: Customer) => {
     setCustomerToDelete(customer);
@@ -82,7 +99,7 @@ export function CustomersTable({ customers, isLoading, onEdit, onRefetch }: Cust
           </TableRow>
         </TableHeader>
         <TableBody>
-          {customers.map((customer) => (
+          {paginatedCustomers.map((customer) => (
             <TableRow key={customer.id} className="border-border hover:bg-muted/50">
               <TableCell className="font-medium text-foreground">{customer.name}</TableCell>
               <TableCell className="text-foreground">{customer.email || '-'}</TableCell>
@@ -115,6 +132,14 @@ export function CustomersTable({ customers, isLoading, onEdit, onRefetch }: Cust
           ))}
         </TableBody>
       </Table>
+
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        pageSize={pageSize}
+        totalItems={totalItems}
+      />
       
       <CustomerDeleteModal
         open={deleteModalOpen}

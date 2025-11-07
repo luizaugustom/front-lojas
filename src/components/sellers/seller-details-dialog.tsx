@@ -24,7 +24,7 @@ import { sellerApi } from '@/lib/api-endpoints';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { SellerCharts } from './seller-charts';
-import type { Seller, SellerStats, Sale } from '@/types';
+import type { Seller, SellerStats, Sale, PaymentMethod, PaymentMethodDetail } from '@/types';
 
 interface SellerDetailsDialogProps {
   isOpen: boolean;
@@ -243,31 +243,50 @@ export function SellerDetailsDialog({ isOpen, onClose, onEdit, seller }: SellerD
               </div>
             ) : recentSales.length > 0 ? (
               <div className="space-y-3">
-                {recentSales.map((sale) => (
+                {recentSales.map((sale) => {
+                  const paymentMethodDetails = Array.isArray(sale.paymentMethodDetails)
+                    ? sale.paymentMethodDetails
+                    : [];
+                  const paymentMethodValues = Array.isArray(sale.paymentMethods) ? sale.paymentMethods : [];
+                  const paymentMethods: (PaymentMethodDetail | PaymentMethod)[] =
+                    paymentMethodDetails.length > 0 ? paymentMethodDetails : paymentMethodValues;
+                  const createdAt = (sale as any).saleDate || sale.createdAt;
+
+                  return (
                   <div key={sale.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
-                      <p className="font-medium">Venda #{sale.saleNumber}</p>
+                      <p className="font-medium">Venda #{sale.saleNumber || sale.id?.slice(0, 8)}</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(sale.createdAt)}
+                        {createdAt ? formatDate(createdAt) : 'Sem data'}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-green-600">
                         {formatCurrency(sale.total)}
                       </p>
-                      <div className="flex gap-1">
-                        {sale.paymentMethods.map((method) => (
-                          <Badge key={method} variant="secondary" className="text-xs">
-                            {method === 'cash' ? 'Dinheiro' :
-                             method === 'credit_card' ? 'Cartão' :
-                             method === 'debit_card' ? 'Débito' :
-                             method === 'pix' ? 'PIX' : 'Parcelado'}
-                          </Badge>
-                        ))}
-                      </div>
+                      {paymentMethods.length > 0 && (
+                        <div className="flex gap-1">
+                          {paymentMethods.map((method, methodIdx) => {
+                            const value = typeof method === 'string' ? method : method?.method;
+                            const label = value === 'cash' ? 'Dinheiro'
+                              : value === 'credit_card' ? 'Cartão'
+                              : value === 'debit_card' ? 'Débito'
+                              : value === 'pix' ? 'PIX'
+                              : value === 'installment' ? 'Parcelado'
+                              : 'Outro';
+
+                            return (
+                              <Badge key={`${value ?? 'unknown'}-${methodIdx}`} variant="secondary" className="text-xs">
+                                {label}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))}
+                );
+                })}
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">

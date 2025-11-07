@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, FileText, Shield, Upload, X, Image, MessageSquare, Store, ExternalLink } from 'lucide-react';
+import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, FileText, Shield, Upload, X, Image, MessageSquare, Store, ExternalLink, Calendar } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +13,20 @@ import { handleApiError } from '@/lib/handleApiError';
 import { companyApi } from '@/lib/api-endpoints';
 import { getImageUrl } from '@/lib/image-utils';
 import { useUIStore } from '@/store/ui-store';
+import type { DataPeriodFilter } from '@/types';
+
+const COMPANY_PERIOD_OPTIONS: Array<{ value: DataPeriodFilter; label: string }> = [
+  { value: 'ALL', label: 'Todos os dados' },
+  { value: 'THIS_YEAR', label: 'Este ano' },
+  { value: 'LAST_6_MONTHS', label: 'Últimos 6 meses' },
+  { value: 'LAST_3_MONTHS', label: 'Últimos 3 meses' },
+  { value: 'LAST_1_MONTH', label: 'Último mês' },
+  { value: 'LAST_15_DAYS', label: 'Últimos 15 dias' },
+  { value: 'THIS_WEEK', label: 'Esta semana' },
+];
 
 export default function SettingsPage() {
-  const { user, api: authApi } = useAuth();
+  const { user, api: authApi, logout } = useAuth();
   const setCompanyColor = useUIStore((s) => s.setCompanyColor);
   
   // Estado do perfil
@@ -67,6 +78,10 @@ export default function SettingsPage() {
   // Cor da marca
   const [brandColor, setBrandColor] = useState<string>('#3B82F6');
   const [savingBrandColor, setSavingBrandColor] = useState(false);
+
+  // Filtro de período padrão
+  const [dataPeriod, setDataPeriod] = useState<DataPeriodFilter>(user?.dataPeriod ?? 'THIS_YEAR');
+  const [savingDataPeriod, setSavingDataPeriod] = useState(false);
 
   // Estado da empresa (incluindo plano)
   const [companyData, setCompanyData] = useState<any>(null);
@@ -124,6 +139,27 @@ export default function SettingsPage() {
       handleApiError(error);
     } finally {
       setSavingBrandColor(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.role === 'empresa') {
+      setDataPeriod((user.dataPeriod as DataPeriodFilter | null) ?? 'THIS_YEAR');
+    }
+  }, [user?.dataPeriod, user?.role]);
+
+  const handleSaveDataPeriod = async () => {
+    if (user?.role !== 'empresa') return;
+
+    try {
+      setSavingDataPeriod(true);
+      await companyApi.updateDataPeriod(dataPeriod);
+      toast.success('Período atualizado! Você será desconectado para aplicar as mudanças.');
+      await logout();
+    } catch (error: any) {
+      handleApiError(error);
+    } finally {
+      setSavingDataPeriod(false);
     }
   };
 
@@ -753,6 +789,7 @@ export default function SettingsPage() {
       {user?.role === 'empresa' && (
         <nav className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b rounded-md">
           <div className="flex flex-wrap gap-2 p-2">
+            <a href="#periodo-dados"><Button variant="outline" size="sm">Período</Button></a>
             <a href="#empresa-logo-cor"><Button variant="outline" size="sm">Empresa</Button></a>
             <a href="#catalogo-titulo"><Button variant="outline" size="sm">Catálogo</Button></a>
             <a href="#notificacoes-fim"><Button variant="outline" size="sm">Notificações</Button></a>
@@ -886,6 +923,52 @@ export default function SettingsPage() {
                   </Button>
                 </>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {user?.role === 'empresa' && (
+          <Card id="periodo-dados">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Período padrão dos dados
+              </CardTitle>
+              <CardDescription>
+                Defina o intervalo padrão utilizado em vendas, orçamentos e fechamento de caixa.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="data-period-select">Período padrão</Label>
+                  <Select
+                    value={dataPeriod}
+                    onValueChange={(value) => setDataPeriod(value as DataPeriodFilter)}
+                  >
+                    <SelectTrigger id="data-period-select" className="w-full sm:w-64">
+                      <SelectValue placeholder="Selecione um período" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMPANY_PERIOD_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={handleSaveDataPeriod}
+                  disabled={savingDataPeriod}
+                  className="w-full sm:w-auto"
+                >
+                  {savingDataPeriod ? 'Salvando...' : 'Salvar período'}
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Após salvar, você será direcionado para o login. Na próxima autenticação os dados serão carregados automaticamente com o período escolhido.
+              </p>
             </CardContent>
           </Card>
         )}

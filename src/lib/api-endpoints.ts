@@ -4,6 +4,7 @@
  */
 
 import { api } from './apiClient';
+import type { DataPeriodFilter } from '@/types';
 
 // ============================================================================
 // AUTH
@@ -182,6 +183,13 @@ export const companyApi = {
   updateMyCompany: (data: any) => api.patch('/company/my-company', data),
 
   /**
+   * PATCH /company/my-company/data-period
+   * Roles: COMPANY - Atualiza o período padrão dos dados
+   */
+  updateDataPeriod: (dataPeriod: DataPeriodFilter) =>
+    api.patch('/company/my-company/data-period', { dataPeriod }),
+
+  /**
    * PATCH /company/:id
    * Roles: ADMIN
    * Body: Mesma estrutura do POST (campos opcionais)
@@ -306,6 +314,13 @@ export const sellerApi = {
    * Body: Mesma estrutura do POST (campos opcionais)
    */
   updateMyProfile: (data: any) => api.patch('/seller/my-profile', data),
+
+  /**
+   * PATCH /seller/my-data-period
+   * Roles: SELLER - Atualiza período padrão dos dados
+   */
+  updateMyDataPeriod: (dataPeriod: DataPeriodFilter) =>
+    api.patch('/seller/my-data-period', { dataPeriod }),
 
   /**
    * PATCH /seller/:id

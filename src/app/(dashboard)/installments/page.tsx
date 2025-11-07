@@ -212,11 +212,11 @@ export default function InstallmentsPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Parcelas</CardTitle>
+              <CardTitle className="text-sm font-medium">Parcelas em Aberto</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalInstallments || 0}</div>
+              <div className="text-2xl font-bold">{stats?.pendingInstallments || 0}</div>
               <p className="text-xs text-muted-foreground">
                 {stats?.paidInstallments || 0} pagas
               </p>

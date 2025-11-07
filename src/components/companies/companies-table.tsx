@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Company } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,9 +18,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Edit, Trash2, Eye, Building2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 interface CompaniesTableProps {
   companies: Company[];
@@ -32,6 +33,22 @@ interface CompaniesTableProps {
 
 export function CompaniesTable({ companies, loading, onEdit, onDelete, onToggleStatus }: CompaniesTableProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const totalItems = companies.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [totalItems]);
+
+  const paginatedCompanies = companies.slice((page - 1) * pageSize, page * pageSize);
 
   if (loading) {
     return (
@@ -75,7 +92,7 @@ export function CompaniesTable({ companies, loading, onEdit, onDelete, onToggleS
           </TableRow>
         </TableHeader>
         <TableBody>
-          {companies.map((company) => (
+          {paginatedCompanies.map((company) => (
             <TableRow key={company.id}>
               <TableCell className="font-medium">
                 <div className="flex items-center gap-3">
@@ -136,6 +153,13 @@ export function CompaniesTable({ companies, loading, onEdit, onDelete, onToggleS
           ))}
         </TableBody>
       </Table>
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        pageSize={pageSize}
+        totalItems={totalItems}
+      />
     </div>
   );
 }

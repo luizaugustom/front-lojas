@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Calendar, Download, Eye, Filter, Printer, TrendingUp } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -20,60 +20,85 @@ import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { SalesTable } from '@/components/sales-history/sales-table';
 import { SaleDetailsDialog } from '@/components/sales-history/sale-details-dialog';
+import type { DataPeriodFilter } from '@/types';
 
-type PeriodFilter = 'today' | 'week' | 'month' | '3months' | '6months' | 'year' | 'all';
-
-interface PeriodOption {
-  value: PeriodFilter;
-  label: string;
-  days?: number;
-}
-
-const periodOptions: PeriodOption[] = [
-  { value: 'today', label: 'Hoje', days: 0 },
-  { value: 'week', label: 'Última Semana', days: 7 },
-  { value: 'month', label: 'Último Mês', days: 30 },
-  { value: '3months', label: 'Últimos 3 Meses', days: 90 },
-  { value: '6months', label: 'Últimos 6 Meses', days: 180 },
-  { value: 'year', label: 'Último Ano', days: 365 },
-  { value: 'all', label: 'Todas', days: undefined },
+const COMPANY_PERIOD_OPTIONS: Array<{ value: DataPeriodFilter; label: string }> = [
+  { value: 'ALL', label: 'Todos os dados' },
+  { value: 'THIS_YEAR', label: 'Este ano' },
+  { value: 'LAST_6_MONTHS', label: 'Últimos 6 meses' },
+  { value: 'LAST_3_MONTHS', label: 'Últimos 3 meses' },
+  { value: 'LAST_1_MONTH', label: 'Último mês' },
+  { value: 'LAST_15_DAYS', label: 'Últimos 15 dias' },
+  { value: 'THIS_WEEK', label: 'Esta semana' },
 ];
+
+const SELLER_PERIOD_OPTIONS: Array<{ value: DataPeriodFilter; label: string }> = [
+  { value: 'LAST_3_MONTHS', label: 'Últimos 3 meses' },
+  { value: 'LAST_1_MONTH', label: 'Último mês' },
+];
+
+function resolveDateRange(period: DataPeriodFilter): { startDate?: string; endDate?: string } {
+  const now = new Date();
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+
+  switch (period) {
+    case 'ALL': {
+      const min = new Date(0);
+      min.setHours(0, 0, 0, 0);
+      return { startDate: min.toISOString(), endDate: end.toISOString() };
+    }
+    case 'THIS_YEAR':
+      start.setMonth(0, 1);
+      return { startDate: start.toISOString(), endDate: end.toISOString() };
+    case 'LAST_6_MONTHS':
+      start.setMonth(start.getMonth() - 6);
+      return { startDate: start.toISOString(), endDate: end.toISOString() };
+    case 'LAST_3_MONTHS':
+      start.setMonth(start.getMonth() - 3);
+      return { startDate: start.toISOString(), endDate: end.toISOString() };
+    case 'LAST_1_MONTH':
+      start.setMonth(start.getMonth() - 1);
+      return { startDate: start.toISOString(), endDate: end.toISOString() };
+    case 'LAST_15_DAYS':
+      start.setDate(start.getDate() - 14);
+      return { startDate: start.toISOString(), endDate: end.toISOString() };
+    case 'THIS_WEEK': {
+      const day = start.getDay();
+      const diff = day === 0 ? 6 : day - 1; // semana inicia segunda
+      start.setDate(start.getDate() - diff);
+      return { startDate: start.toISOString(), endDate: end.toISOString() };
+    }
+    default:
+      return {};
+  }
+}
 
 export default function SalesHistoryPage() {
   const { api, user } = useAuth();
-  const [period, setPeriod] = useState<PeriodFilter>('today');
+  const [period, setPeriod] = useState<DataPeriodFilter>('THIS_YEAR');
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  const availableOptions = useMemo(
+    () => (user?.role === 'vendedor' ? SELLER_PERIOD_OPTIONS : COMPANY_PERIOD_OPTIONS),
+    [user?.role],
+  );
+
+  useEffect(() => {
+    const fallback: DataPeriodFilter = user?.role === 'vendedor' ? 'LAST_1_MONTH' : 'THIS_YEAR';
+    const preferred = (user?.dataPeriod as DataPeriodFilter | null) ?? fallback;
+    const normalized = availableOptions.some((option) => option.value === preferred) ? preferred : fallback;
+    setPeriod(normalized);
+  }, [availableOptions, user?.dataPeriod, user?.role]);
+
   // Calcular datas com base no período selecionado
-  const { startDate, endDate } = useMemo(() => {
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
-    
-    const selectedPeriod = periodOptions.find(p => p.value === period);
-    
-    if (!selectedPeriod || selectedPeriod.days === undefined) {
-      // Todas as vendas
-      return { startDate: undefined, endDate: undefined };
-    }
-
-    const start = new Date();
-    if (selectedPeriod.days === 0) {
-      // Hoje
-      start.setHours(0, 0, 0, 0);
-    } else {
-      // Subtrair dias
-      start.setDate(start.getDate() - selectedPeriod.days);
-      start.setHours(0, 0, 0, 0);
-    }
-
-    return {
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
-    };
-  }, [period]);
+  const { startDate, endDate } = useMemo(() => resolveDateRange(period), [period]);
 
   // Buscar vendas
   const { data: salesData, isLoading, refetch } = useQuery({
@@ -146,7 +171,7 @@ export default function SalesHistoryPage() {
       const summaryData = [
         ['RELATÓRIO DE VENDAS'],
         [''],
-        ['Período:', periodOptions.find(p => p.value === period)?.label || 'Todas'],
+        ['Período:', availableOptions.find(p => p.value === period)?.label || 'Todos os dados'],
         ['Data de Geração:', formatDateTime(new Date().toISOString())],
         startDate ? ['Data Início:', formatDateTime(startDate)] : [],
         endDate ? ['Data Fim:', formatDateTime(endDate)] : [],
@@ -307,14 +332,14 @@ export default function SalesHistoryPage() {
             <span className="text-sm font-medium">Período:</span>
           </div>
           <Select value={period} onValueChange={(value) => {
-            setPeriod(value as PeriodFilter);
+            setPeriod(value as DataPeriodFilter);
             setPage(1);
           }}>
             <SelectTrigger className="w-full sm:w-64">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {periodOptions.map((option) => (
+              {availableOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

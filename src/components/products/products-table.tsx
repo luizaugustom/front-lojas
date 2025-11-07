@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Edit, Trash2, Package, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
@@ -21,6 +21,7 @@ import { formatCurrency, formatDate, generateUUID } from '@/lib/utils';
 import { ensureValidUUID as ensureUUID } from '@/lib/utils-clean';
 import { getImageUrl } from '@/lib/image-utils';
 import { ProductImage } from './product-image';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import type { Product } from '@/types';
 
 interface ProductsTableProps {
@@ -48,6 +49,22 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
     description: '',
     onConfirm: () => {},
   });
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const totalItems = products.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [totalItems]);
+
+  const paginatedProducts = products.slice((page - 1) * pageSize, page * pageSize);
 
   const handleImageClick = (product: Product) => {
     if (product.photos && product.photos.length > 0) {
@@ -143,7 +160,7 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
           </TableRow>
         </TableHeader>
         <TableBody>
-          {products.map((product) => {
+          {paginatedProducts.map((product) => {
             const stockNum = Number(product.stockQuantity ?? 0);
             const minNum = Number(product.minStockQuantity ?? 0);
             const isLowStock = !Number.isNaN(stockNum) && stockNum <= 3;
@@ -212,6 +229,14 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
           })}
         </TableBody>
       </Table>
+
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        pageSize={pageSize}
+        totalItems={totalItems}
+      />
       
       {/* Modal de Confirmação */}
       <ConfirmationModal

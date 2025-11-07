@@ -78,11 +78,28 @@ export function InstallmentSaleModal({
     if (open && isAuthenticated && isInitialLoad) {
       console.log('[DEBUG] Carregamento inicial do modal');
       loadCustomers();
-      // Definir data padrão (próximo mês) - garantir que seja no formato correto
+      // Definir data padrão para um mês após a data atual, preservando o dia corrente quando possível
       const now = new Date();
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+      const initialTarget = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+      const daysInTargetMonth = new Date(initialTarget.getFullYear(), initialTarget.getMonth() + 1, 0).getDate();
+      const targetDay = Math.min(now.getDate(), daysInTargetMonth);
+
+      initialTarget.setDate(targetDay);
+      initialTarget.setHours(0, 0, 0, 0);
+
       // Criar data em UTC para evitar problemas de timezone
-      const utcDate = new Date(Date.UTC(nextMonth.getFullYear(), nextMonth.getMonth(), nextMonth.getDate(), 0, 0, 0, 0));
+      const utcDate = new Date(
+        Date.UTC(
+          initialTarget.getFullYear(),
+          initialTarget.getMonth(),
+          initialTarget.getDate(),
+          0,
+          0,
+          0,
+          0,
+        ),
+      );
+
       setFirstDueDate(utcDate);
     }
   }, [open, isAuthenticated, isInitialLoad]);

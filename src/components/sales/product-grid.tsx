@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { ImageViewer } from '@/components/ui/image-viewer';
 import { formatCurrency } from '@/lib/utils';
 import { getImageUrl } from '@/lib/image-utils';
 import type { Product } from '@/types';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 interface ProductGridProps {
   products: Product[];
@@ -18,6 +19,22 @@ interface ProductGridProps {
 
 export function ProductGrid({ products, isLoading, onAddToCart }: ProductGridProps) {
   const [selectedImage, setSelectedImage] = useState<{ images: string[], index: number } | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const totalItems = products.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [totalItems]);
+
+  const paginatedProducts = products.slice((page - 1) * pageSize, page * pageSize);
 
   const handleImageClick = (product: Product) => {
     if (product.photos && product.photos.length > 0) {
@@ -60,7 +77,7 @@ export function ProductGrid({ products, isLoading, onAddToCart }: ProductGridPro
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-        {products.map((product) => (
+        {paginatedProducts.map((product) => (
           <Card key={product.id} className="flex flex-col p-1.5">
             <CardHeader className="pb-0.5">
               <div className="flex items-start gap-1.5">
@@ -97,6 +114,14 @@ export function ProductGrid({ products, isLoading, onAddToCart }: ProductGridPro
           </Card>
         ))}
       </div>
+
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        pageSize={pageSize}
+        totalItems={totalItems}
+      />
 
       {selectedImage && (
         <ImageViewer

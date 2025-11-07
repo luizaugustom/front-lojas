@@ -64,6 +64,18 @@ const toNumber = (value: any): number => {
   return Number(value) || 0;
 };
 
+const formatInputValue = (value: number) => {
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isFinite(rounded) ? String(rounded) : '';
+};
+
+const normalizeDecimalInput = (value: string) => value.replace(/,/g, '.');
+
+const isValidDecimalInput = (value: string) => {
+  if (!value) return true;
+  return /^\d*(?:[.,]\d*)?$/.test(value);
+};
+
 export function CustomerDebtPaymentDialog({
   open,
   onClose,
@@ -76,7 +88,15 @@ export function CustomerDebtPaymentDialog({
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [notes, setNotes] = useState<string>('');
   const [selection, setSelection] = useState<
-    Record<string, { selected: boolean; amount: number; remaining: number }>
+    Record<
+      string,
+      {
+        selected: boolean;
+        amount: number;
+        remaining: number;
+        inputValue: string;
+      }
+    >
   >({});
 
   const {
@@ -105,7 +125,10 @@ export function CustomerDebtPaymentDialog({
   useEffect(() => {
     if (!data || !data.installments) return;
 
-    const initialSelection: Record<string, { selected: boolean; amount: number; remaining: number }> = {};
+    const initialSelection: Record<
+      string,
+      { selected: boolean; amount: number; remaining: number; inputValue: string }
+    > = {};
     data.installments.forEach((inst) => {
       const remaining = toNumber(inst.remainingAmount);
       if (remaining <= 0) {
@@ -115,6 +138,7 @@ export function CustomerDebtPaymentDialog({
         selected: true,
         amount: Math.round(remaining * 100) / 100,
         remaining,
+        inputValue: formatInputValue(remaining),
       };
     });
     setSelection(initialSelection);
@@ -157,18 +181,43 @@ export function CustomerDebtPaymentDialog({
     });
   };
 
-  const updateAmount = (installmentId: string, value: number) => {
+  const updateAmount = (installmentId: string, rawValue: string) => {
     setSelection((prev) => {
       const current = prev[installmentId];
       if (!current) return prev;
 
-      const clampedValue = Math.max(0, Math.min(current.remaining, value));
+      if (!isValidDecimalInput(rawValue)) {
+        return prev;
+      }
+
+      const normalized = normalizeDecimalInput(rawValue);
+
+      if (normalized === '') {
+        return {
+          ...prev,
+          [installmentId]: {
+            ...current,
+            amount: 0,
+            inputValue: '',
+          },
+        };
+      }
+
+      const numericValue = Number(normalized);
+
+      if (Number.isNaN(numericValue)) {
+        return prev;
+      }
+
+      const clampedValue = Math.max(0, Math.min(current.remaining, numericValue));
+      const formatted = formatInputValue(clampedValue);
 
       return {
         ...prev,
         [installmentId]: {
           ...current,
           amount: Math.round(clampedValue * 100) / 100,
+          inputValue: rawValue === normalized ? formatted : formatted,
         },
       };
     });
@@ -182,6 +231,7 @@ export function CustomerDebtPaymentDialog({
           ...value,
           selected: true,
           amount: Math.round(value.remaining * 100) / 100,
+          inputValue: formatInputValue(value.remaining),
         };
       });
       return updates;
@@ -196,6 +246,7 @@ export function CustomerDebtPaymentDialog({
           ...value,
           selected: false,
           amount: 0,
+          inputValue: '',
         };
       });
       return updates;
@@ -323,6 +374,7 @@ export function CustomerDebtPaymentDialog({
                   {installments.map((inst) => {
                     const remaining = selection[inst.id]?.remaining ?? toNumber(inst.remainingAmount);
                     const isSelected = selection[inst.id]?.selected ?? false;
+                    const inputValue = selection[inst.id]?.inputValue ?? '';
                     const amount = selection[inst.id]?.amount ?? 0;
 
                     if (remaining <= 0) {
@@ -359,9 +411,40 @@ export function CustomerDebtPaymentDialog({
                             type="number"
                             min={0}
                             step="0.01"
-                            value={amount}
-                            onChange={(event) => updateAmount(inst.id, Number(event.target.value))}
+                            value={inputValue}
+                            onChange={(event) => updateAmount(inst.id, event.target.value)}
                             disabled={!isSelected}
+                            inputMode="decimal"
+                            className="appearance-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            onFocus={(event) => {
+                              if (event.target.value === '0') {
+                                updateAmount(inst.id, '');
+                              }
+                            }}
+                            onBlur={(event) => {
+                              const current = selection[inst.id];
+                              if (!current) return;
+                              if (event.target.value === '') {
+                                return;
+                              }
+
+                              const normalized = normalizeDecimalInput(event.target.value);
+                              const numericValue = Number(normalized);
+
+                              if (Number.isNaN(numericValue)) {
+                                updateAmount(inst.id, formatInputValue(current.amount));
+                                return;
+                              }
+
+                              const clampedValue = Math.max(
+                                0,
+                                Math.min(current.remaining, Math.round(numericValue * 100) / 100),
+                              );
+                              const formatted = formatInputValue(clampedValue);
+                              if (formatted !== event.target.value) {
+                                updateAmount(inst.id, formatted);
+                              }
+                            }}
                           />
                         </TableCell>
                       </TableRow>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { ImageViewer } from '@/components/ui/image-viewer';
 import { formatCurrency } from '@/lib/utils';
 import { getImageUrl } from '@/lib/image-utils';
 import type { Product } from '@/types';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 interface ProductListProps {
   products: Product[];
@@ -18,6 +19,22 @@ interface ProductListProps {
 
 export function ProductList({ products, isLoading, onAddToCart }: ProductListProps) {
   const [selectedImage, setSelectedImage] = useState<{ images: string[], index: number } | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const totalItems = products.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [totalItems]);
+
+  const paginatedProducts = products.slice((page - 1) * pageSize, page * pageSize);
 
   const handleImageClick = (product: Product) => {
     if (product.photos && product.photos.length > 0) {
@@ -64,7 +81,7 @@ export function ProductList({ products, isLoading, onAddToCart }: ProductListPro
     return (
       <>
         <div className="space-y-1">
-          {products.map((product) => (
+          {paginatedProducts.map((product) => (
             <Card key={product.id} className="p-1">
               <CardContent className="flex items-center gap-3 py-2">
                 <ProductImage 
@@ -81,10 +98,10 @@ export function ProductList({ products, isLoading, onAddToCart }: ProductListPro
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">Estoque: {product.stockQuantity}</p>
                 </div>
-                       <div className="flex-shrink-0">
+                <div className="flex-shrink-0">
                   <Button
                     variant="ghost"
-                           className="h-7 w-7 p-0"
+                    className="h-7 w-7 p-0"
                     onClick={() => onAddToCart(product, 1)}
                     disabled={product.stockQuantity <= 0}
                     aria-label={`Adicionar ${product.name}`}
@@ -97,6 +114,14 @@ export function ProductList({ products, isLoading, onAddToCart }: ProductListPro
             </Card>
           ))}
         </div>
+
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          totalItems={totalItems}
+        />
 
         {selectedImage && (
           <ImageViewer

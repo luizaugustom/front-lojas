@@ -30,12 +30,21 @@ import { handleApiError } from '@/lib/handleApiError';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { updateSellerProfileSchema } from '@/lib/validations';
 import { SellerCharts } from '@/components/sellers/seller-charts';
-import type { Seller, SellerStats, Sale, UpdateSellerProfileDto } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { sellerApi } from '@/lib/api-endpoints';
+import type { Seller, SellerStats, Sale, UpdateSellerProfileDto, DataPeriodFilter } from '@/types';
+
+const SELLER_PERIOD_OPTIONS: Array<{ value: DataPeriodFilter; label: string }> = [
+  { value: 'LAST_3_MONTHS', label: 'Últimos 3 meses' },
+  { value: 'LAST_1_MONTH', label: 'Último mês' },
+];
 
 export default function SellerProfilePage() {
-  const { api, user } = useAuth();
+  const { api, user, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [dataPeriod, setDataPeriod] = useState<DataPeriodFilter>(user?.dataPeriod ?? 'LAST_1_MONTH');
+  const [savingDataPeriod, setSavingDataPeriod] = useState(false);
 
   const {
     register,
@@ -54,6 +63,12 @@ export default function SellerProfilePage() {
       phone: '',
     },
   });
+
+  useEffect(() => {
+    if (user?.role === 'vendedor') {
+      setDataPeriod((user.dataPeriod as DataPeriodFilter | null) ?? 'LAST_1_MONTH');
+    }
+  }, [user?.dataPeriod, user?.role]);
 
   // Buscar perfil do vendedor
   const { data: profileData, isLoading: isLoadingProfile, refetch: refetchProfile } = useQuery({
@@ -151,6 +166,19 @@ export default function SellerProfilePage() {
     refetchSales();
   };
 
+  const handleSaveDataPeriod = async () => {
+    try {
+      setSavingDataPeriod(true);
+      await sellerApi.updateMyDataPeriod(dataPeriod);
+      toast.success('Período atualizado! Você será desconectado para aplicar as alterações.');
+      await logout();
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setSavingDataPeriod(false);
+    }
+  };
+
   // Função para aplicar máscara de CPF
   const formatCPF = (value: string) => {
     const numbers = value.replace(/\D/g, '');
@@ -212,6 +240,50 @@ export default function SellerProfilePage() {
           )}
         </div>
       </div>
+
+      <Card className="p-6">
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Período padrão dos meus dados
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Escolha o intervalo padrão usado para histórico de vendas e fechamento de caixa.
+            </p>
+          </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="w-full sm:max-w-xs">
+              <Label htmlFor="seller-data-period">Período padrão</Label>
+              <Select
+                value={dataPeriod}
+                onValueChange={(value) => setDataPeriod(value as DataPeriodFilter)}
+              >
+                <SelectTrigger id="seller-data-period">
+                  <SelectValue placeholder="Selecione um período" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SELLER_PERIOD_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              onClick={handleSaveDataPeriod}
+              disabled={savingDataPeriod}
+              className="w-full sm:w-auto"
+            >
+              {savingDataPeriod ? 'Salvando...' : 'Salvar período'}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Após salvar, você será redirecionado para o login. Ao entrar novamente, seus dados serão exibidos conforme o período escolhido.
+          </p>
+        </div>
+      </Card>
 
       {/* Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

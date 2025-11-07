@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Edit, Trash2, Users, Eye, DollarSign } from 'lucide-react';
 import {
   Table,
@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { DeleteSellerModal } from './delete-seller-modal';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import type { Seller } from '@/types';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 interface SellersTableProps {
   sellers: Seller[];
@@ -27,6 +28,22 @@ interface SellersTableProps {
 export function SellersTable({ sellers, isLoading, onEdit, onView, onRefetch }: SellersTableProps) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [sellerToDelete, setSellerToDelete] = useState<Seller | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const totalItems = sellers.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [totalItems]);
+
+  const paginatedSellers = sellers.slice((page - 1) * pageSize, page * pageSize);
 
   const handleDeleteClick = (seller: Seller) => {
     setSellerToDelete(seller);
@@ -78,7 +95,7 @@ export function SellersTable({ sellers, isLoading, onEdit, onView, onRefetch }: 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sellers.map((seller) => (
+            {paginatedSellers.map((seller) => (
               <TableRow key={seller.id} className="border-border hover:bg-muted/50">
                 <TableCell className="font-medium text-foreground">{seller.name}</TableCell>
                 <TableCell className="text-foreground">{seller.login}</TableCell>
@@ -163,6 +180,13 @@ export function SellersTable({ sellers, isLoading, onEdit, onView, onRefetch }: 
             ))}
           </TableBody>
         </Table>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          totalItems={totalItems}
+        />
       </div>
 
       {/* Modal de Exclusão */}

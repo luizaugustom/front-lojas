@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDateTime, downloadFile } from '@/lib/utils';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 interface FiscalDoc {
   id: string;
@@ -85,6 +86,8 @@ export default function InvoicesPage() {
   // Informações de pagamento
   const [paymentMethod, setPaymentMethod] = useState('01'); // 01=Dinheiro
   const [additionalInfo, setAdditionalInfo] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
   // Estados para o diálogo de busca de produtos
   const [productSearchOpen, setProductSearchOpen] = useState(false);
@@ -125,6 +128,20 @@ export default function InvoicesPage() {
   const documents: FiscalDoc[] = Array.isArray(raw)
     ? raw
     : raw?.data || raw?.documents || raw?.items || [];
+
+  const totalDocuments = documents.length;
+  const totalPages = Math.max(1, Math.ceil(totalDocuments / pageSize));
+  const paginatedDocuments = documents.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, totalDocuments]);
 
   const addItem = () => {
     setItems([...items, {
@@ -406,7 +423,7 @@ export default function InvoicesPage() {
                 </td>
               </tr>
             ) : (
-              documents.map((doc) => (
+              paginatedDocuments.map((doc) => (
                 <tr key={doc.id} className="border-t">
                   <td className="px-4 py-2 text-foreground">{doc.documentType}</td>
                   <td className="px-4 py-2 font-mono text-xs text-foreground">{doc.accessKey || '-'}</td>
@@ -454,6 +471,13 @@ export default function InvoicesPage() {
             )}
           </tbody>
         </table>
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          totalItems={totalDocuments}
+        />
       </div>
 
       {/* Diálogo para emissão */}
