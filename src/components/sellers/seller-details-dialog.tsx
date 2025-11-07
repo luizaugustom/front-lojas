@@ -64,7 +64,15 @@ export function SellerDetailsDialog({ isOpen, onClose, onEdit, seller }: SellerD
     setIsLoadingSales(true);
     try {
       const salesData = await sellerApi.sales(seller.id, { page: 1, limit: 5 });
-      setRecentSales(salesData.data || salesData);
+      const rawSales = salesData.data;
+      const normalizedSales = Array.isArray(rawSales)
+        ? rawSales
+        : Array.isArray(rawSales?.sales)
+        ? rawSales.sales
+        : Array.isArray(rawSales?.data)
+        ? rawSales.data
+        : [];
+      setRecentSales(normalizedSales);
     } catch (error) {
       console.error('Erro ao carregar vendas:', error);
     } finally {
@@ -81,7 +89,6 @@ export function SellerDetailsDialog({ isOpen, onClose, onEdit, seller }: SellerD
   const handleEdit = () => {
     if (seller) {
       onEdit(seller);
-      handleClose();
     }
   };
 

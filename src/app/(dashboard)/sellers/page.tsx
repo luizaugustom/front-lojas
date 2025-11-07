@@ -67,6 +67,7 @@ export default function SellersPage() {
   const handleEdit = (seller: Seller) => {
     setSelectedSeller(seller);
     setDialogOpen(true);
+    setDetailsOpen(false);
   };
 
   const handleView = (seller: Seller) => {
@@ -87,7 +88,11 @@ export default function SellersPage() {
 
   const handleCloseDetails = () => {
     setDetailsOpen(false);
-    setSelectedSeller(null);
+
+    // Se não estivermos abrindo o modal de edição, podemos limpar o vendedor selecionado
+    if (!dialogOpen) {
+      setSelectedSeller(null);
+    }
   };
 
   return (

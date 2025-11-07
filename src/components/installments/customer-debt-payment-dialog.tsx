@@ -258,7 +258,14 @@ export function CustomerDebtPaymentDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Gerenciar Dívidas</DialogTitle>

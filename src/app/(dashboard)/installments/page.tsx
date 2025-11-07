@@ -158,13 +158,6 @@ export default function InstallmentsPage() {
           onPaid={handleCustomerDebtPaid}
         />
 
-        <CustomerDebtPaymentDialog
-          open={customerDebtDialogOpen}
-          onClose={handleCustomerDebtDialogClose}
-          customer={selectedCustomerDebt?.customer}
-          onPaid={handleCustomerDebtPaid}
-        />
-
         <PaymentDialog
           open={paymentDialogOpen}
           onClose={handlePaymentClose}
@@ -289,6 +282,13 @@ export default function InstallmentsPage() {
             />
           </TabsContent>
         </Tabs>
+
+        <CustomerDebtPaymentDialog
+          open={customerDebtDialogOpen}
+          onClose={handleCustomerDebtDialogClose}
+          customer={selectedCustomerDebt?.customer}
+          onPaid={handleCustomerDebtPaid}
+        />
 
         <PaymentDialog
           open={paymentDialogOpen}
