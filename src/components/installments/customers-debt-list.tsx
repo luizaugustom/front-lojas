@@ -15,11 +15,16 @@ import { Input } from '@/components/ui/input';
 import { DollarSign, Search, X, User } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect } from 'react';
+import { formatCurrency } from '@/lib/utils';
 
 interface CustomersDebtListProps {
   installments: any[];
   isLoading: boolean;
-  onPaymentClick: (customerId: string) => void;
+  onPaymentClick: (data: {
+    customer: any;
+    installmentCount: number;
+    totalRemaining: number;
+  }) => void;
 }
 
 export function CustomersDebtList({
@@ -47,10 +52,21 @@ export function CustomersDebtList({
     const unpaidInstallments = installments.filter((inst: any) => !inst.isPaid);
 
     // Agrupar por cliente
+    const toNumber = (value: any): number => {
+      if (value === null || value === undefined) return 0;
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') return Number(value);
+      if (typeof value === 'object' && typeof value.toNumber === 'function') {
+        return value.toNumber();
+      }
+      return Number(value) || 0;
+    };
+
     const customerMap = new Map<string, {
       customer: any;
       installmentCount: number;
       firstUnpaidInstallment: any;
+      totalRemaining: number;
     }>();
 
     unpaidInstallments.forEach((installment: any) => {
@@ -58,6 +74,8 @@ export function CustomersDebtList({
       if (!customerId) return;
 
       const customer = installment.customer;
+      const remainingAmount = installment.remainingAmount ?? installment.amount ?? 0;
+      const normalizedRemaining = toNumber(remainingAmount);
       const existing = customerMap.get(customerId);
 
       if (!existing) {
@@ -65,6 +83,7 @@ export function CustomersDebtList({
           customer,
           installmentCount: 1,
           firstUnpaidInstallment: installment,
+          totalRemaining: normalizedRemaining,
         });
       } else {
         existing.installmentCount += 1;
@@ -74,6 +93,8 @@ export function CustomersDebtList({
         if (currentDueDate < existingDueDate) {
           existing.firstUnpaidInstallment = installment;
         }
+        existing.totalRemaining =
+          Math.round((existing.totalRemaining + normalizedRemaining) * 100) / 100;
       }
     });
 
@@ -191,6 +212,7 @@ export function CustomersDebtList({
           <TableRow>
             <TableHead>Cliente</TableHead>
             <TableHead>Parcelas Pendentes</TableHead>
+            <TableHead>Total em Dívida</TableHead>
             <TableHead>Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -211,12 +233,23 @@ export function CustomersDebtList({
                 <span className="font-medium">{item.installmentCount}</span>
               </TableCell>
               <TableCell>
+                <span className="font-medium text-primary">
+                  {formatCurrency(item.totalRemaining)}
+                </span>
+              </TableCell>
+              <TableCell>
                 <Button
                   size="sm"
-                  onClick={() => onPaymentClick(item.firstUnpaidInstallment.id)}
+                  onClick={() =>
+                    onPaymentClick({
+                      customer: item.customer,
+                      installmentCount: item.installmentCount,
+                      totalRemaining: item.totalRemaining,
+                    })
+                  }
                 >
                   <DollarSign className="mr-1 h-4 w-4" />
-                  Realizar Pagamento
+                  Gerenciar Dívidas
                 </Button>
               </TableCell>
             </TableRow>

@@ -66,6 +66,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const total = getTotal();
   const isCompany = user?.role === 'empresa';
 
+  const roundToCents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+  const formatAmountInput = (value: number) => {
+    const rounded = roundToCents(Number.isFinite(value) ? value : 0);
+    return rounded > 0 ? rounded.toFixed(2).replace('.', ',') : '';
+  };
+
 
   // Carregar vendedores quando o modal abrir e o usuário for empresa
   useEffect(() => {
@@ -161,9 +167,10 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     // Prefill with remaining amount to avoid zero-value payments
     const remaining = getRemainingAmount();
     const defaultAmount = remaining > 0 ? remaining : 0;
+    const roundedDefault = roundToCents(defaultAmount);
     const newIndex = paymentDetails.length;
-    setPaymentDetails([...paymentDetails, { method: 'cash', amount: defaultAmount }]);
-    setPaymentInputValues({ ...paymentInputValues, [newIndex]: defaultAmount > 0 ? defaultAmount.toString().replace('.', ',') : '' });
+    setPaymentDetails([...paymentDetails, { method: 'cash', amount: roundedDefault }]);
+    setPaymentInputValues({ ...paymentInputValues, [newIndex]: formatAmountInput(roundedDefault) });
   };
 
   const removePaymentMethod = (index: number) => {
@@ -185,22 +192,28 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
 
   const updatePaymentMethod = (index: number, field: keyof PaymentMethodDetail, value: PaymentMethod | number) => {
     const updated = [...paymentDetails];
-    updated[index] = { ...updated[index], [field]: value };
+    if (field === 'amount') {
+      const numericValue = typeof value === 'number' ? value : Number(value);
+      const rounded = roundToCents(Number.isFinite(numericValue) ? numericValue : 0);
+      updated[index] = { ...updated[index], amount: rounded };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
     setPaymentDetails(updated);
   };
 
   const getTotalPaid = () => {
-    return paymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
+    return roundToCents(paymentDetails.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
   };
 
   const getRemainingAmount = () => {
-    return total - getTotalPaid();
+    return roundToCents(total - getTotalPaid());
   };
 
   const getCashChange = () => {
     const cashPayment = paymentDetails.find(p => p.method === 'cash');
     if (!cashPayment) return 0;
-    return Math.max(0, cashPayment.amount - total);
+    return roundToCents(Math.max(0, cashPayment.amount - total));
   };
 
   const getPaymentSummary = () => {
@@ -226,9 +239,10 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     // Adicionar método de pagamento a prazo automaticamente
     // Usar apenas o valor restante (sobra) em vez do total
     const remainingAmount = getRemainingAmount();
+    const installmentAmount = remainingAmount > 0 ? remainingAmount : 0;
     const installmentPayment: PaymentMethodDetail = {
       method: 'installment',
-      amount: remainingAmount > 0 ? remainingAmount : 0,
+      amount: roundToCents(installmentAmount),
     };
     
     // Se já existe um método de pagamento a prazo, substituir
@@ -239,14 +253,14 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       setPaymentDetails(updated);
       setPaymentInputValues({ 
         ...paymentInputValues, 
-        [existingInstallmentIndex]: remainingAmount > 0 ? remainingAmount.toString().replace('.', ',') : '' 
+        [existingInstallmentIndex]: formatAmountInput(installmentAmount) 
       });
     } else {
       const newIndex = paymentDetails.length;
       setPaymentDetails([...paymentDetails, installmentPayment]);
       setPaymentInputValues({ 
         ...paymentInputValues, 
-        [newIndex]: remainingAmount > 0 ? remainingAmount.toString().replace('.', ',') : '' 
+        [newIndex]: formatAmountInput(installmentAmount) 
       });
     }
     
@@ -682,10 +696,11 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                       if (value === 'installment') {
                         // Atualizar o valor para o restante antes de abrir o modal
                         const remainingAmount = getRemainingAmount();
-                        updatePaymentMethod(index, 'amount', remainingAmount > 0 ? remainingAmount : 0);
+                        const updatedAmount = remainingAmount > 0 ? remainingAmount : 0;
+                        updatePaymentMethod(index, 'amount', updatedAmount);
                         setPaymentInputValues({ 
                           ...paymentInputValues, 
-                          [index]: remainingAmount > 0 ? remainingAmount.toString().replace('.', ',') : '' 
+                          [index]: formatAmountInput(updatedAmount) 
                         });
                         setShowInstallmentModal(true);
                       } else {
@@ -700,7 +715,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                           // Se o valor está zerado, preencher com o valor restante
                           const remainingAmount = getRemainingAmount();
                           newAmount = remainingAmount > 0 ? remainingAmount : 0;
-                          newInputValue = newAmount > 0 ? newAmount.toString().replace('.', ',') : '';
+                          newInputValue = formatAmountInput(newAmount);
                           
                           if (newAmount > 0) {
                             updatePaymentMethod(index, 'amount', newAmount);
@@ -710,7 +725,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                             return;
                           }
                         } else {
-                          newInputValue = currentAmount > 0 ? currentAmount.toString().replace('.', ',') : '';
+                          newInputValue = formatAmountInput(currentAmount);
                         }
                         
                         setPaymentInputValues({ 
@@ -737,7 +752,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                   <Input
                     type="text"
                     placeholder="0,00"
-                    value={paymentInputValues[index] !== undefined ? paymentInputValues[index] : (payment.amount > 0 ? payment.amount.toString().replace('.', ',') : '')}
+                    value={paymentInputValues[index] !== undefined ? paymentInputValues[index] : (payment.amount > 0 ? formatAmountInput(payment.amount) : '')}
                     onChange={(e) => {
                       const inputValue = e.target.value;
                       // Permitir vírgulas e pontos como separador decimal
@@ -761,7 +776,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                       // Ao perder o foco, garantir que o valor esteja formatado corretamente
                       const currentValue = paymentInputValues[index] || '';
                       const numericValue = currentValue === '' || currentValue === ',' ? 0 : parseFloat(currentValue.replace(',', '.')) || 0;
-                      setPaymentInputValues({ ...paymentInputValues, [index]: numericValue > 0 ? numericValue.toString().replace('.', ',') : '' });
+                      setPaymentInputValues({ ...paymentInputValues, [index]: formatAmountInput(numericValue) });
                       updatePaymentMethod(index, 'amount', numericValue);
                     }}
                     disabled={loading}
