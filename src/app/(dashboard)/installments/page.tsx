@@ -217,9 +217,6 @@ export default function InstallmentsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.pendingInstallments || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats?.paidInstallments || 0} pagas
-              </p>
             </CardContent>
           </Card>
         </div>
@@ -227,18 +224,10 @@ export default function InstallmentsPage() {
         {/* Tabs com Tabelas */}
         <Tabs defaultValue="all" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="all">
-              Todas ({allInstallments?.length || 0})
-            </TabsTrigger>
-            <TabsTrigger value="pending">
-              Pendentes ({pendingInstallments?.length || 0})
-            </TabsTrigger>
-            <TabsTrigger value="overdue">
-              Vencidas ({overdueInstallments?.length || 0})
-            </TabsTrigger>
-            <TabsTrigger value="paid">
-              Pagas ({paidInstallments?.length || 0})
-            </TabsTrigger>
+            <TabsTrigger value="all">Todas</TabsTrigger>
+            <TabsTrigger value="pending">Pendentes</TabsTrigger>
+            <TabsTrigger value="overdue">Vencidas</TabsTrigger>
+            <TabsTrigger value="paid">Pagas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-4">

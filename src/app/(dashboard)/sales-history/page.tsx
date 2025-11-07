@@ -132,7 +132,7 @@ export default function SalesHistoryPage() {
 
   const stats = {
     totalSales: statsData?.totalSales || 0,
-    totalRevenue: statsData?.totalRevenue || 0,
+    totalRevenue: statsData?.totalRevenue ?? statsData?.totalValue ?? 0,
     averageTicket: statsData?.averageTicket || 0,
   };
 
@@ -164,6 +164,15 @@ export default function SalesHistoryPage() {
       const response = await api.get('/sale', { params });
       const allSales = response.data.sales || response.data.data || [];
 
+      const computedTotalRevenue = allSales.reduce(
+        (sum: number, sale: any) => sum + Number(sale.total || 0),
+        0,
+      );
+      const totalSalesCount = stats.totalSales || allSales.length;
+      const totalRevenueForPeriod = stats.totalRevenue || computedTotalRevenue;
+      const averageTicketForPeriod =
+        stats.averageTicket || (totalSalesCount > 0 ? totalRevenueForPeriod / totalSalesCount : 0);
+
       // Criar workbook
       const workbook = XLSX.utils.book_new();
 
@@ -177,9 +186,9 @@ export default function SalesHistoryPage() {
         endDate ? ['Data Fim:', formatDateTime(endDate)] : [],
         [''],
         ['ESTATÍSTICAS'],
-        ['Total de Vendas:', stats.totalSales],
-        ['Receita Total:', formatCurrency(stats.totalRevenue)],
-        ['Ticket Médio:', formatCurrency(stats.averageTicket)],
+        ['Total de Vendas:', totalSalesCount],
+        ['Receita Total:', formatCurrency(totalRevenueForPeriod)],
+        ['Ticket Médio:', formatCurrency(averageTicketForPeriod)],
       ].filter(row => row.length > 0);
 
       const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);

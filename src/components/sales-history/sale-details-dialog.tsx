@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Printer, Download } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { handleApiError } from '@/lib/handleApiError';
+import { printContent } from '@/lib/print-service';
 
 interface SaleDetailsDialogProps {
   open: boolean;
@@ -41,6 +42,7 @@ const getPaymentMethodColor = (method: string) => {
 
 export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogProps) {
   const { api } = useAuth();
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const { data: sale, isLoading } = useQuery({
     queryKey: ['sale', saleId],
@@ -52,22 +54,62 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
   });
 
   const handleReprint = async () => {
+    if (isPrinting) return;
+
+    setIsPrinting(true);
+
     try {
-      await api.post(`/sale/${saleId}/reprint`);
-      toast.success('Cupom reenviado para impressão!');
-    } catch (error: any) {
-      // Extrai mensagem de erro detalhada do backend
+      let content: string | null = null;
+
+      try {
+        const response = await api.get(`/sale/${saleId}/print-content`);
+        const data = response.data?.data || response.data;
+        content = data?.content || null;
+
+        if (content && data?.printType) {
+          console.log(`[SaleDetailsDialog] Conteúdo de impressão obtido (${data.printType})`);
+        }
+      } catch (error) {
+        console.warn('[SaleDetailsDialog] Falha ao obter conteúdo de impressão direto, tentando reprint.', error);
+      }
+
+      if (!content) {
+        const reprintResponse = await api.post(`/sale/${saleId}/reprint`);
+        const reprintData = reprintResponse.data?.data || reprintResponse.data;
+        content = reprintData?.printContent || null;
+
+        if (!content) {
+          toast.success('Cupom reenviado para impressão!');
+          return;
+        }
+      }
+
+      const result = await printContent(content);
+
+      if (result.success) {
+        toast.success('Cupom enviado para impressão!');
+      } else {
+        toast(`Impressão local falhou: ${result.error || 'Erro desconhecido'}. Tentando impressão no servidor...`, {
+          icon: '⚠️',
+          duration: 5000,
+        });
+
+        await api.post(`/sale/${saleId}/reprint`);
+        toast.success('Cupom reenviado para impressão no servidor!');
+      }
+    } catch (error) {
       let errorMessage = 'Erro ao reimprimir cupom';
       if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
-      } else if (error?.message) {
+      } else if (error instanceof Error && error.message) {
         errorMessage = error.message;
       }
-      
-      // Exibe mensagem de erro detalhada
+
       toast.error(errorMessage, {
-        duration: 6000, // Mostra por mais tempo para o usuário ler
+        duration: 6000,
       });
+    } finally {
+      setIsPrinting(false);
     }
   };
 
@@ -75,12 +117,7 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>Detalhes da Venda</DialogTitle>
-            <Button size="icon" variant="ghost" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <DialogTitle>Detalhes da Venda</DialogTitle>
         </DialogHeader>
 
         {isLoading ? (
@@ -185,9 +222,9 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
 
             {/* Ações */}
             <div className="flex gap-2">
-              <Button onClick={handleReprint} className="flex-1">
+              <Button onClick={handleReprint} className="flex-1" disabled={isPrinting}>
                 <Printer className="mr-2 h-4 w-4" />
-                Reimprimir Cupom
+                {isPrinting ? 'Reimprimindo...' : 'Reimprimir Cupom'}
               </Button>
             </div>
           </div>
