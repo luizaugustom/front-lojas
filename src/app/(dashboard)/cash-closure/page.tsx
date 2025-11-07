@@ -99,6 +99,7 @@ interface CashClosureReportData {
   };
   paymentSummary: PaymentSummaryEntry[];
   sellers: SellerReport[];
+  includeSaleDetails?: boolean;
 }
 
 interface CashClosureSummary {
