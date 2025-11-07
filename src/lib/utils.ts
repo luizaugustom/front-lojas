@@ -86,11 +86,16 @@ export function calculateMultiplePaymentChange(
   paymentDetails: Array<{ method: string; amount: number }>,
   total: number
 ): { cashChange: number; totalPaid: number; remaining: number } {
-  const totalPaid = paymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
-  const cashPayment = paymentDetails.find(p => p.method === 'cash');
-  const cashAmount = cashPayment ? Number(cashPayment.amount) : 0;
-  const cashChange = Math.max(0, cashAmount - total);
-  const remaining = total - totalPaid;
+  const roundToCents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+  const totalPaid = roundToCents(
+    paymentDetails.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
+  );
+
+  const cashPayment = paymentDetails.find((p) => p.method === 'cash');
+  const cashAmount = Number(cashPayment?.amount ?? 0);
+  const cashChange = roundToCents(Math.max(0, cashAmount - total));
+  const remaining = roundToCents(total - totalPaid);
   
   return {
     cashChange,
