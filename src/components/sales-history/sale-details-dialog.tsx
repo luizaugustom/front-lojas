@@ -1,5 +1,6 @@
 'use client';
 
+import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Printer } from 'lucide-react';
@@ -97,9 +98,9 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
         await api.post(`/sale/${saleId}/reprint`);
         toast.success('Cupom reenviado para impressão no servidor!');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       let errorMessage = 'Erro ao reimprimir cupom';
-      if (error?.response?.data?.message) {
+      if (isAxiosError(error) && error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error instanceof Error && error.message) {
         errorMessage = error.message;
