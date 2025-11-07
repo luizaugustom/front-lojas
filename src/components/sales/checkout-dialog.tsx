@@ -190,16 +190,24 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     setPaymentInputValues(reindexed);
   };
 
-  const updatePaymentMethod = (index: number, field: keyof PaymentMethodDetail, value: PaymentMethod | number) => {
-    const updated = [...paymentDetails];
-    if (field === 'amount') {
-      const numericValue = typeof value === 'number' ? value : Number(value);
-      const rounded = roundToCents(Number.isFinite(numericValue) ? numericValue : 0);
-      updated[index] = { ...updated[index], amount: rounded };
-    } else {
-      updated[index] = { ...updated[index], [field]: value };
-    }
-    setPaymentDetails(updated);
+  const updatePaymentMethod = <K extends keyof PaymentMethodDetail>(
+    index: number,
+    field: K,
+    value: PaymentMethodDetail[K],
+  ) => {
+    setPaymentDetails((prev) => {
+      const updated = [...prev];
+
+      if (field === 'amount') {
+        const numericValue = typeof value === 'number' ? value : Number(value);
+        const rounded = roundToCents(Number.isFinite(numericValue) ? numericValue : 0);
+        updated[index] = { ...updated[index], amount: rounded };
+      } else {
+        updated[index] = { ...updated[index], [field]: value };
+      }
+
+      return updated;
+    });
   };
 
   const getTotalPaid = () => {
