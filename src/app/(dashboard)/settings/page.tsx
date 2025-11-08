@@ -791,6 +791,7 @@ export default function SettingsPage() {
           <div className="flex flex-wrap gap-2 p-2">
             <a href="#periodo-dados"><Button variant="outline" size="sm">Período</Button></a>
             <a href="#empresa-logo-cor"><Button variant="outline" size="sm">Empresa</Button></a>
+            <a href="#dados-fiscais"><Button variant="outline" size="sm">Dados Fiscais</Button></a>
             <a href="#catalogo-titulo"><Button variant="outline" size="sm">Catálogo</Button></a>
             <a href="#notificacoes-fim"><Button variant="outline" size="sm">Notificações</Button></a>
             
@@ -1126,7 +1127,7 @@ export default function SettingsPage() {
 
         {/* Configurações Fiscais - Apenas para Empresas */}
         {user?.role === 'empresa' && (
-          <Card id="catalogo">
+          <Card id="dados-fiscais" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />

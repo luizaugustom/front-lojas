@@ -273,6 +273,7 @@ export interface GenerateReportDto {
   startDate?: string;
   endDate?: string;
   sellerId?: string;
+  includeDocuments?: boolean;
 }
 
 export interface ReportHistory {

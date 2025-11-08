@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileText, RefreshCw, Search, Download, Upload, PlusCircle, Trash2 } from 'lucide-react';
+import { FileText, RefreshCw, Search, Download, Upload, PlusCircle, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -11,25 +11,27 @@ import { Input, InputWithIcon } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrency, formatDateTime, downloadFile } from '@/lib/utils';
-import { fiscalApi, uploadApi } from '@/lib/api-endpoints';
+import { uploadApi } from '@/lib/api-endpoints';
 
 interface InboundDoc {
   id: string;
   supplierName?: string;
-  accessKey?: string;
+  accessKey?: string | null;
   status?: string;
   total?: number;
+  totalValue?: number | string | null;
   documentType?: string; // NFE_INBOUND, ENTRADA, etc. depende da API
   createdAt?: string;
+  pdfUrl?: string | null;
+  xmlContent?: string | null;
 }
 
 export default function InboundInvoicesPage() {
   const { api, user } = useAuth();
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
-  const [inputMode, setInputMode] = useState<'file' | 'manual'>('manual');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null); // XML ou PDF
   const [uploading, setUploading] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<InboundDoc | null>(null);
   
   // Estado para exclusão
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -122,26 +124,57 @@ export default function InboundInvoicesPage() {
                   <td className="px-4 py-2 text-foreground">{doc.supplierName || '-'}</td>
                   <td className="px-4 py-2 font-mono text-xs text-foreground">{doc.accessKey || '-'}</td>
                   <td className="px-4 py-2 text-foreground">{doc.status || '-'}</td>
-                  <td className="px-4 py-2 text-right text-foreground">{doc.total != null ? formatCurrency(doc.total) : '-'}</td>
+                  <td className="px-4 py-2 text-right text-foreground">
+                    {doc.total != null
+                      ? formatCurrency(doc.total)
+                      : doc.totalValue != null
+                      ? formatCurrency(Number(doc.totalValue))
+                      : '-'}
+                  </td>
                   <td className="px-4 py-2 text-foreground">{doc.createdAt ? formatDateTime(doc.createdAt) : '-'}</td>
                   <td className="px-4 py-2 text-right">
                     <div className="flex justify-end gap-2">
                       <Button
                         size="sm"
                         variant="outline"
+                        disabled={!doc.xmlContent && !doc.pdfUrl}
                         onClick={async () => {
+                          const hasXml = Boolean(doc.xmlContent);
+                          const hasPdf = Boolean(doc.pdfUrl);
+                          const format = hasXml ? 'xml' : hasPdf ? 'pdf' : 'xml';
                           try {
-                            const response = await api.get(`/fiscal/${doc.id}/download`, { params: { format: 'xml' }, responseType: 'blob' });
+                            const response = await api.get(`/fiscal/${doc.id}/download`, { params: { format }, responseType: 'blob' });
                             const blob = response.data as Blob;
-                            downloadFile(blob, `nfe-entrada-${doc.id}.xml`);
+                            downloadFile(blob, `nfe-entrada-${doc.id}.${format}`);
                           } catch (e) {
                             console.error(e);
-                            alert('Não foi possível baixar o XML');
+                            alert(`Não foi possível baixar o arquivo ${format.toUpperCase()}`);
                           }
                         }}
                       >
-                        <Download className="mr-2 h-4 w-4" /> XML
+                        <Download className="mr-2 h-4 w-4" /> {doc.xmlContent ? 'XML' : doc.pdfUrl ? 'PDF' : 'Download'}
                       </Button>
+                      {user?.role === 'empresa' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingDoc(doc);
+                            setAccessKey(doc.accessKey || '');
+                            setSupplierName(doc.supplierName || '');
+                            const total = doc.total ?? (doc.totalValue != null ? Number(doc.totalValue) : null);
+                            setTotalValue(
+                              total != null
+                                ? total.toFixed(2).replace('.', ',')
+                                : ''
+                            );
+                            setManualAttachment(null);
+                            setAddOpen(true);
+                          }}
+                        >
+                          <Pencil className="mr-2 h-4 w-4" /> Editar
+                        </Button>
+                      )}
                       {user?.role === 'empresa' && (
                         <Button
                           size="sm"
@@ -247,135 +280,78 @@ export default function InboundInvoicesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialogo para adicionar nota de entrada via XML ou manual */}
+      {/* Dialogo para adicionar/editar nota de entrada */}
       <Dialog open={addOpen} onOpenChange={(open) => {
         setAddOpen(open);
         if (!open) {
           // Limpar campos ao fechar
-          setInputMode('manual');
-          setSelectedFile(null);
           setAccessKey('');
           setSupplierName('');
           setTotalValue('');
           setManualAttachment(null);
+          setEditingDoc(null);
         }
       }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Adicionar Nota de Entrada</DialogTitle>
+            <DialogTitle>{editingDoc ? 'Editar Nota de Entrada' : 'Adicionar Nota de Entrada'}</DialogTitle>
             <DialogDescription>
-              {inputMode === 'manual' 
-                ? 'Preencha as informações da nota fiscal de entrada manualmente e, se quiser, anexe o PDF/XML.'
-                : 'Envie um arquivo XML ou PDF da nota de entrada. XML será processado; PDF será armazenado como anexo.'}
+              {editingDoc
+                ? 'Atualize as informações da nota fiscal de entrada.'
+                : 'Preencha as informações da nota fiscal de entrada manualmente e, se quiser, anexe o PDF ou XML.'}
             </DialogDescription>
           </DialogHeader>
-          
-          {/* Seleção do modo de entrada */}
-          <div className="flex gap-2 mb-4">
-            <Button
-              type="button"
-              variant={inputMode === 'manual' ? 'default' : 'outline'}
-              onClick={() => setInputMode('manual')}
-              className="flex-1"
-            >
-              Entrada Manual
-            </Button>
-            <Button
-              type="button"
-              variant={inputMode === 'file' ? 'default' : 'outline'}
-              onClick={() => setInputMode('file')}
-              className="flex-1"
-            >
-              Upload XML/PDF
-            </Button>
-          </div>
 
           <div className="space-y-3">
-            {inputMode === 'manual' ? (
-              <>
-                <div className="space-y-1">
-                  <Label htmlFor="accessKey">Chave de Acesso *</Label>
-                  <Input
-                    id="accessKey"
-                    placeholder="44 dígitos da chave de acesso"
-                    maxLength={44}
-                    value={accessKey}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      setAccessKey(value);
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {accessKey.length}/44 dígitos
-                  </p>
-                </div>
+            <div className="space-y-1">
+              <Label htmlFor="accessKey">Chave de Acesso (opcional)</Label>
+              <Input
+                id="accessKey"
+                placeholder="44 dígitos da chave de acesso"
+                maxLength={44}
+                value={accessKey}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  setAccessKey(value);
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                {accessKey.length}/44 dígitos
+              </p>
+            </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor="supplierName">Fornecedor *</Label>
-                  <Input
-                    id="supplierName"
-                    placeholder="Nome do fornecedor"
-                    value={supplierName}
-                    onChange={(e) => setSupplierName(e.target.value)}
-                    maxLength={255}
-                  />
-                </div>
+            <div className="space-y-1">
+              <Label htmlFor="supplierName">Fornecedor *</Label>
+              <Input
+                id="supplierName"
+                placeholder="Nome do fornecedor"
+                value={supplierName}
+                onChange={(e) => setSupplierName(e.target.value)}
+                maxLength={255}
+              />
+            </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor="totalValue">Valor Total *</Label>
-                  <Input
-                    id="totalValue"
-                    placeholder="0,00"
-                    value={totalValue}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^\d,]/g, '');
-                      setTotalValue(value);
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Use vírgula para separar os centavos (ex: 1500,50)
-                  </p>
-                </div>
+            <div className="space-y-1">
+              <Label htmlFor="totalValue">Valor Total *</Label>
+              <Input
+                id="totalValue"
+                placeholder="0,00"
+                value={totalValue}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^\d,]/g, '');
+                  setTotalValue(value);
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Use vírgula para separar os centavos (ex: 1500,50)
+              </p>
+            </div>
 
-                {/* Anexo opcional no modo manual */}
-                <div className="space-y-1">
-                  <Label htmlFor="manualAttachment">Anexo (opcional) - PDF ou XML</Label>
-                  <Input
-                    id="manualAttachment"
-                    type="file"
-                    accept=".pdf,application/pdf,.xml,application/xml,text/xml"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null;
-                      if (file) {
-                        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-                        const isXml = ['application/xml', 'text/xml'].includes(file.type) || file.name.toLowerCase().endsWith('.xml');
-                        if (!isPdf && !isXml) {
-                          toast.error('Selecione um arquivo PDF ou XML');
-                          e.currentTarget.value = '';
-                          setManualAttachment(null);
-                          return;
-                        }
-                        const maxSize = 10 * 1024 * 1024; // 10MB
-                        if (file.size > maxSize) {
-                          toast.error('Arquivo muito grande. Tamanho máximo: 10MB');
-                          e.currentTarget.value = '';
-                          setManualAttachment(null);
-                          return;
-                        }
-                      }
-                      setManualAttachment(file);
-                    }}
-                  />
-                  {manualAttachment && (
-                    <p className="text-xs text-muted-foreground">Anexo: {manualAttachment.name}</p>
-                  )}
-                </div>
-              </>
-            ) : (
+            {!editingDoc && (
               <div className="space-y-1">
-                <Label htmlFor="inboundFile">Arquivo XML ou PDF</Label>
+                <Label htmlFor="manualAttachment">Anexo (opcional) - PDF ou XML</Label>
                 <Input
-                  id="inboundFile"
+                  id="manualAttachment"
                   type="file"
                   accept=".pdf,application/pdf,.xml,application/xml,text/xml"
                   onChange={(e) => {
@@ -386,22 +362,22 @@ export default function InboundInvoicesPage() {
                       if (!isPdf && !isXml) {
                         toast.error('Selecione um arquivo PDF ou XML');
                         e.currentTarget.value = '';
-                        setSelectedFile(null);
+                        setManualAttachment(null);
                         return;
                       }
                       const maxSize = 10 * 1024 * 1024; // 10MB
                       if (file.size > maxSize) {
                         toast.error('Arquivo muito grande. Tamanho máximo: 10MB');
                         e.currentTarget.value = '';
-                        setSelectedFile(null);
+                        setManualAttachment(null);
                         return;
                       }
                     }
-                    setSelectedFile(file || null);
+                    setManualAttachment(file);
                   }}
                 />
-                {selectedFile && (
-                  <p className="text-xs text-muted-foreground">Selecionado: {selectedFile.name}</p>
+                {manualAttachment && (
+                  <p className="text-xs text-muted-foreground">Anexo: {manualAttachment.name}</p>
                 )}
               </div>
             )}
@@ -410,31 +386,39 @@ export default function InboundInvoicesPage() {
             <Button variant="outline" onClick={() => setAddOpen(false)} disabled={uploading}>Cancelar</Button>
             <Button
               onClick={async () => {
-                if (inputMode === 'manual') {
-                  // Validar campos manuais
-                  if (!accessKey || accessKey.length !== 44) {
-                    toast.error('Chave de acesso deve ter 44 dígitos');
-                    return;
-                  }
-                  if (!supplierName.trim()) {
-                    toast.error('Nome do fornecedor é obrigatório');
-                    return;
-                  }
-                  if (!totalValue.trim()) {
-                    toast.error('Valor total é obrigatório');
-                    return;
-                  }
+                if (accessKey && accessKey.length !== 44) {
+                  toast.error('Chave de acesso deve ter 44 dígitos');
+                  return;
+                }
+                if (!supplierName.trim()) {
+                  toast.error('Nome do fornecedor é obrigatório');
+                  return;
+                }
+                if (!totalValue.trim()) {
+                  toast.error('Valor total é obrigatório');
+                  return;
+                }
+                
+                try {
+                  setUploading(true);
                   
-                  try {
-                    setUploading(true);
-                    
-                    // Converter valor de string para número
-                    const totalValueNumber = parseFloat(totalValue.replace(',', '.'));
-                    if (isNaN(totalValueNumber) || totalValueNumber < 0) {
-                      toast.error('Valor total inválido');
-                      return;
-                    }
-                    // Se houver anexo no manual, subir primeiro e enviar URL junto
+                  // Converter valor de string para número
+                  const totalValueNumber = parseFloat(totalValue.replace(',', '.'));
+                  if (isNaN(totalValueNumber) || totalValueNumber < 0) {
+                    toast.error('Valor total inválido');
+                    return;
+                  }
+                  const payload: Record<string, any> = {
+                    supplierName,
+                    totalValue: totalValueNumber,
+                  };
+                  if (accessKey) {
+                    payload.accessKey = accessKey;
+                  } else if (editingDoc) {
+                    payload.accessKey = null;
+                  }
+                  if (!editingDoc) {
+                    // Se houver anexo, subir primeiro e enviar URL junto
                     let attachmentUrl: string | undefined = undefined;
                     if (manualAttachment) {
                       try {
@@ -444,68 +428,37 @@ export default function InboundInvoicesPage() {
                         console.warn('Falha no upload do anexo. Continuando sem anexo.', e);
                       }
                     }
-                    await api.post('/fiscal/inbound-invoice', {
-                      accessKey,
-                      supplierName,
-                      totalValue: totalValueNumber,
-                      attachmentUrl,
-                    });
-                    
-                    toast.success('Nota fiscal de entrada registrada com sucesso');
-                    setAddOpen(false);
-                    setAccessKey('');
-                    setSupplierName('');
-                    setTotalValue('');
-                    setManualAttachment(null);
-                    refetch();
-                  } catch (error: any) {
-                    console.error(error);
-                    const errorMessage = error.response?.data?.message || error.message || 'Falha ao registrar nota fiscal';
-                    toast.error(errorMessage);
-                  } finally {
-                    setUploading(false);
-                  }
-                } else {
-                  // Modo arquivo (XML ou PDF)
-                  if (!selectedFile) {
-                    toast.error('Selecione um arquivo XML ou PDF');
-                    return;
-                  }
-                  const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
-                  const isXml = ['application/xml', 'text/xml'].includes(selectedFile.type) || selectedFile.name.toLowerCase().endsWith('.xml');
-                  try {
-                    setUploading(true);
-                    if (isXml) {
-                      await fiscalApi.uploadXml(selectedFile, 'inbound');
-                      toast.success('XML de nota fiscal de entrada enviado e processado com sucesso');
-                    } else if (isPdf) {
-                      const uploaded = await uploadApi.single(selectedFile);
-                      const url = uploaded.data?.url;
-                      if (url) {
-                        toast.success('PDF enviado e armazenado como anexo');
-                      } else {
-                        toast.success('PDF enviado');
-                      }
+                    if (attachmentUrl) {
+                      payload.pdfUrl = attachmentUrl;
                     }
-                    setAddOpen(false);
-                    setSelectedFile(null);
-                    // Atualiza lista apenas se for XML (cria registro). PDF pode não criar registro.
-                    if (isXml) refetch();
-                  } catch (error: any) {
-                    console.error(error);
-                    const errorMessage = error.message || 'Falha ao enviar arquivo';
-                    toast.error(errorMessage);
-                  } finally {
-                    setUploading(false);
                   }
+                  if (editingDoc) {
+                    await api.patch(`/fiscal/inbound-invoice/${editingDoc.id}`, payload);
+                  } else {
+                    await api.post('/fiscal/inbound-invoice', payload);
+                  }
+                  
+                  toast.success(editingDoc ? 'Nota fiscal de entrada atualizada com sucesso' : 'Nota fiscal de entrada registrada com sucesso');
+                  setAddOpen(false);
+                  setAccessKey('');
+                  setSupplierName('');
+                  setTotalValue('');
+                  setManualAttachment(null);
+                  setEditingDoc(null);
+                  refetch();
+                } catch (error: any) {
+                  console.error(error);
+                  const errorMessage = error.response?.data?.message || error.message || (editingDoc ? 'Falha ao atualizar nota fiscal' : 'Falha ao registrar nota fiscal');
+                  toast.error(errorMessage);
+                } finally {
+                  setUploading(false);
                 }
               }}
               disabled={
-                uploading || (
-                  inputMode === 'manual'
-                    ? !accessKey || !supplierName || !totalValue
-                    : !selectedFile
-                )
+                uploading ||
+                !supplierName.trim() ||
+                !totalValue.trim() ||
+                (accessKey.length > 0 && accessKey.length !== 44)
               }
             >
               {uploading ? (
@@ -514,7 +467,13 @@ export default function InboundInvoicesPage() {
                 </>
               ) : (
                 <>
-                  <PlusCircle className="mr-2 h-4 w-4" /> {inputMode === 'manual' ? 'Adicionar' : 'Enviar Arquivo'}
+                  {editingDoc ? (
+                    <>Salvar Alterações</>
+                  ) : (
+                    <>
+                      <PlusCircle className="mr-2 h-4 w-4" /> Adicionar
+                    </>
+                  )}
                 </>
               )}
             </Button>

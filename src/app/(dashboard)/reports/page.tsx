@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -65,18 +66,21 @@ export default function ReportsPage() {
     defaultValues: {
       reportType: 'complete',
       format: 'excel',
+      includeDocuments: false,
     },
   });
 
   const onSubmit = async (data: GenerateReportDto) => {
     setLoading(true);
     try {
+      const includeDocuments = data.includeDocuments === true;
       // Preparar dados convertendo datas vazias para undefined
       const payload = {
         ...data,
         startDate: data.startDate || undefined,
         endDate: data.endDate || undefined,
         sellerId: data.sellerId === 'all' ? undefined : data.sellerId || undefined,
+        includeDocuments,
       };
 
       // Fazer requisição com responseType blob
@@ -85,34 +89,34 @@ export default function ReportsPage() {
       });
 
       // Criar blob a partir da resposta
-      let blob: Blob;
-      if (response.data instanceof Blob) {
-        blob = response.data;
-      } else {
-        // Se não for blob, converter
-        blob = new Blob([response.data], {
-          type: response.headers['content-type'] || 'application/octet-stream',
-        });
-      }
+      const blob =
+        response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data], {
+              type: response.headers['content-type'] || 'application/octet-stream',
+            });
 
-      // Determinar extensão e nome do arquivo
-      const extension = getFileExtension(data.format);
+      const extractFilename = (contentDisposition?: string): string | null => {
+        if (!contentDisposition) return null;
+        const encodedMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+        if (encodedMatch?.[1]) {
+          try {
+            return decodeURIComponent(encodedMatch[1]);
+          } catch {
+            return encodedMatch[1];
+          }
+        }
+        const regularMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+        return regularMatch?.[1]?.trim() ?? null;
+      };
+
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const filename = `relatorio-${data.reportType}-${timestamp}.${extension}`;
+      const fallbackExtension = includeDocuments ? 'zip' : getFileExtension(data.format);
+      const fallbackFilename = `relatorio-${data.reportType}-${timestamp}.${fallbackExtension}`;
+      const contentDisposition = response.headers['content-disposition'] as string | undefined;
+      const filename = extractFilename(contentDisposition) || fallbackFilename;
 
-      // Fazer download
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      
-      // Limpar
-      setTimeout(() => {
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }, 100);
+      downloadFile(blob, filename);
 
       // Adicionar ao histórico
       const newHistoryItem: ReportHistory = {
@@ -123,7 +127,7 @@ export default function ReportsPage() {
         size: blob.size,
         filename,
       };
-      setHistory([newHistoryItem, ...history]);
+      setHistory((prev) => [newHistoryItem, ...prev]);
 
       toast.success('Relatório gerado e baixado com sucesso!');
     } catch (error: any) {
@@ -292,6 +296,32 @@ export default function ReportsPage() {
                   Deixe vazio para incluir todos os vendedores
                 </p>
               </div>
+
+              <Controller
+                name="includeDocuments"
+                control={control}
+                render={({ field }) => (
+                  <div className="flex items-center justify-between rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30 p-3">
+                    <div className="space-y-1 pr-4">
+                      <Label
+                        htmlFor="include-documents"
+                        className="text-sm font-medium leading-none"
+                      >
+                        Incluir arquivos das notas fiscais
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Gera um arquivo ZIP com o relatório e pastas contendo os XMLs das NF-e, NFC-e e notas de entrada.
+                      </p>
+                    </div>
+                    <Switch
+                      id="include-documents"
+                      checked={!!field.value}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                      disabled={loading}
+                    />
+                  </div>
+                )}
+              />
 
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? (

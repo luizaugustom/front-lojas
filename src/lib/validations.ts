@@ -280,6 +280,7 @@ export const reportSchema = z
     startDate: optionalString(),
     endDate: optionalString(),
     sellerId: optionalString(),
+    includeDocuments: z.boolean().optional(),
   })
   .refine(
     (data) => {
