@@ -48,7 +48,12 @@ export default function CatalogPageClient() {
     const fetchCatalogData = async () => {
       try {
         setLoading(true);
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        const baseUrl =
+          process.env.NEXT_PUBLIC_PUBLIC_API_URL ||
+          process.env.NEXT_PUBLIC_API_BASE_URL ||
+          process.env.NEXT_PUBLIC_API_URL ||
+          'https://montshop-api-qi3v4.ondigitalocean.app';
+
         console.log('🔍 Buscando catálogo na URL:', `${baseUrl}/public/catalog/${url}/products`);
         
         const response = await fetch(`${baseUrl}/public/catalog/${url}/products`, {
@@ -67,8 +72,16 @@ export default function CatalogPageClient() {
           // Verificar se é erro de plano
           try {
             const errorData = JSON.parse(errorText);
-            if (errorData.message && errorData.message.includes('plano PRO')) {
-              throw new Error('O catálogo público está disponível apenas para empresas com plano PRO');
+            if (errorData.message) {
+              if (errorData.message.includes('plano PRO')) {
+                throw new Error('O catálogo público está disponível apenas para empresas com plano PRO');
+              }
+
+              if (errorData.message.includes('não encontrada') || errorData.message.includes('não está habilitada')) {
+                throw new Error(errorData.message);
+              }
+
+              throw new Error(errorData.message);
             }
           } catch (e) {
             // Se não conseguir parsear, usar mensagem padrão
