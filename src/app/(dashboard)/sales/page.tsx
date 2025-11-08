@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Barcode, FileText } from 'lucide-react';
+import { Search, Barcode, FileText, ShoppingCart } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -29,6 +29,7 @@ export default function SalesPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [budgetOpen, setBudgetOpen] = useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const { addItem, items } = useCartStore();
   const [lastScanned, setLastScanned] = useState(0);
   
@@ -254,11 +255,13 @@ export default function SalesPage() {
 
   const handleCheckout = () => {
     if (items.length === 0) return;
+    setMobileCartOpen(false);
     setCheckoutOpen(true);
   };
 
   const handleBudget = () => {
     if (items.length === 0) return;
+    setMobileCartOpen(false);
     setBudgetOpen(true);
   };
 
@@ -286,7 +289,7 @@ export default function SalesPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-4 relative">
+    <div className="relative flex flex-col md:flex-row h-full md:h-[calc(100vh-8rem)] gap-4">
       {/* Products Section */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="mb-4">
@@ -331,8 +334,39 @@ export default function SalesPage() {
       </div>
 
       {/* Cart Section */}
-      <div className="w-96 flex flex-col">
+      <div className="hidden md:flex w-96 flex-col">
         <Cart onCheckout={handleCheckout} onBudget={handleBudget} />
+      </div>
+
+      {/* Floating Cart Button - Mobile */}
+      <div className="pointer-events-none md:hidden fixed bottom-6 right-4 left-4 z-40 flex justify-end">
+        <div className="pointer-events-auto relative">
+          {!mobileCartOpen && (
+            <div className="absolute -top-10 right-1/2 translate-x-1/2 rounded-full bg-slate-900/90 px-3 py-1 text-xs font-medium text-white shadow-lg shadow-purple-500/30">
+              Carrinho ({items.length})
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setMobileCartOpen(true)}
+            aria-label="Abrir carrinho"
+            aria-expanded={mobileCartOpen}
+            className="group flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-5 py-3 text-white shadow-lg shadow-purple-500/40 transition-all hover:shadow-purple-500/60 focus:outline-none focus:ring-4 focus:ring-purple-400/40"
+          >
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/15 shadow-inner shadow-purple-400/40">
+              <ShoppingCart className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+              {items.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white text-xs font-semibold text-purple-600 shadow-md">
+                  {items.length}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-sm font-semibold">Ver carrinho</span>
+              <span className="text-[11px] uppercase tracking-wide text-white/70">toque para abrir</span>
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Dialogs */}
@@ -352,6 +386,28 @@ export default function SalesPage() {
         onClose={() => setBudgetOpen(false)}
         onSuccess={handleBudgetSuccess}
       />
+
+      {/* Mobile Cart Dialog */}
+      <Dialog open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
+        <DialogContent className="md:hidden top-auto bottom-6 left-1/2 translate-y-0 translate-x-[-50%] w-[min(100vw-2rem,420px)] max-h-[85vh] border-0 bg-transparent p-0 shadow-none">
+          <div className="relative overflow-hidden rounded-3xl border border-purple-500/20 bg-background/95 shadow-[0_25px_60px_rgba(124,58,237,0.45)] backdrop-blur-xl">
+            <div className="flex items-center gap-3 border-b border-white/5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-4 py-3 text-white">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 shadow-lg shadow-purple-500/40">
+                <ShoppingCart className="h-5 w-5" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold">Seu carrinho</span>
+                <span className="text-xs text-white/80">
+                  {items.length} {items.length === 1 ? 'produto' : 'produtos'}
+                </span>
+              </div>
+            </div>
+            <div className="max-h-[65vh] overflow-hidden px-3 pb-3 pt-2">
+              <Cart onCheckout={handleCheckout} onBudget={handleBudget} />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog para abertura de caixa (aparece se não houver caixa atual) */}
       <Dialog open={openingDialogOpen} onOpenChange={setOpeningDialogOpen}>
