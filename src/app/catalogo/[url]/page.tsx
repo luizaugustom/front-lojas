@@ -1,8 +1,6 @@
 import CatalogPageClient from './CatalogPageClient';
 
-export async function generateStaticParams() {
-  return [];
-}
+export const dynamic = 'force-dynamic';
 
 export default function CatalogPage() {
   return <CatalogPageClient />;

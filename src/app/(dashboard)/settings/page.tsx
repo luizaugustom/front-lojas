@@ -25,6 +25,17 @@ const COMPANY_PERIOD_OPTIONS: Array<{ value: DataPeriodFilter; label: string }> 
   { value: 'THIS_WEEK', label: 'Esta semana' },
 ];
 
+const PUBLIC_SITE_URL = (process.env.NEXT_PUBLIC_PUBLIC_SITE_URL || 'https://montshop.vercel.app').replace(/\/+$/, '');
+
+const withPublicSiteUrl = (path?: string | null) => {
+  if (!path) {
+    return null;
+  }
+
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${PUBLIC_SITE_URL}${normalizedPath}`;
+};
+
 export default function SettingsPage() {
   const { user, api: authApi, logout } = useAuth();
   const setCompanyColor = useUIStore((s) => s.setCompanyColor);
@@ -100,6 +111,8 @@ export default function SettingsPage() {
     url: '',
     enabled: false,
   });
+  const catalogPublicUrl = withPublicSiteUrl(catalogPageConfig?.pageUrl);
+  const catalogPreviewUrl = catalogPageForm.url ? withPublicSiteUrl(`/catalogo/${catalogPageForm.url}`) : null;
 
   // Estado das configurações do admin (Focus NFe global)
   const [adminFocusConfig, setAdminFocusConfig] = useState<any>(null);
@@ -1677,10 +1690,15 @@ export default function SettingsPage() {
                         <p className="font-medium">
                           {catalogPageForm.enabled ? 'Página Ativa' : 'Página Desativada'}
                         </p>
-                        {catalogPageForm.enabled && catalogPageForm.url && (
-                          <p className="text-sm text-muted-foreground">
-                            /catalogo/{catalogPageForm.url}
-                          </p>
+                        {catalogPageForm.enabled && catalogPreviewUrl && (
+                          <a
+                            href={catalogPreviewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline break-all"
+                          >
+                            {catalogPreviewUrl}
+                          </a>
                         )}
                       </div>
                     </div>
@@ -1700,23 +1718,26 @@ export default function SettingsPage() {
                         disabled={updatingCatalogPage}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Exemplo: se você digitar "masolucoes", sua página será acessível em /catalogo/masolucoes
+                        Exemplo: se você digitar "masolucoes", sua página será acessível em {`${PUBLIC_SITE_URL}/catalogo/masolucoes`}
                       </p>
                     </div>
 
-                    {catalogPageConfig?.pageUrl && (
+                    {catalogPublicUrl && (
                       <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
                         <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">
                           ✅ Sua página está disponível
                         </p>
                         <a
-                          href={catalogPageConfig.pageUrl}
+                          href={catalogPublicUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-green-700 dark:text-green-300 hover:underline"
+                          className="flex items-start gap-2 text-green-700 dark:text-green-300 hover:underline"
                         >
                           <ExternalLink className="h-4 w-4" />
-                          Abrir página pública
+                          <span className="flex flex-col">
+                            <span className="font-medium">Abrir página pública</span>
+                            <span className="text-xs break-all">{catalogPublicUrl}</span>
+                          </span>
                         </a>
                       </div>
                     )}
