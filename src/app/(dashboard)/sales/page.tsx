@@ -487,8 +487,10 @@ export default function SalesPage() {
                 </span>
               </div>
             </div>
-            <div className="max-h-[65vh] overflow-hidden px-3 pb-3 pt-2">
-              <Cart onCheckout={handleCheckout} onBudget={handleBudget} />
+            <div className="px-3 pb-4 pt-3">
+              <div className="max-h-[70vh] overflow-y-auto pr-1">
+                <Cart onCheckout={handleCheckout} onBudget={handleBudget} />
+              </div>
             </div>
           </div>
         </DialogContent>
