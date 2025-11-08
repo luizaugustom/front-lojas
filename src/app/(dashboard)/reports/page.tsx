@@ -7,7 +7,6 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { Download, FileText, Calendar, Package, ShoppingCart, FileBarChart, Users, DollarSign, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Switch } from '@/components/ui/switch';
@@ -42,9 +41,6 @@ export default function ReportsPage() {
   const { api, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<ReportHistory[]>([]);
-  const [selectedType, setSelectedType] = useState<string>('complete');
-  const [selectedFormat, setSelectedFormat] = useState<string>('excel');
-  const [selectedSeller, setSelectedSeller] = useState<string>('all');
 
   // Carregar vendedores para o filtro
   const { data: sellersData } = useQuery({
@@ -56,19 +52,22 @@ export default function ReportsPage() {
   const sellers: Seller[] = sellersData || [];
 
   const {
-    register,
     handleSubmit,
     formState: { errors },
     setValue,
     control,
+    watch,
   } = useForm<GenerateReportDto>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
       reportType: 'complete',
       format: 'excel',
       includeDocuments: false,
+      sellerId: 'all',
     },
   });
+
+  const reportTypeValue = watch('reportType', 'complete') || 'complete';
 
   const onSubmit = async (data: GenerateReportDto) => {
     setLoading(true);
@@ -150,6 +149,21 @@ export default function ReportsPage() {
     }
   };
 
+  if (!user) {
+    return null;
+  }
+
+  if (user.role !== 'empresa') {
+    return (
+      <Card className="p-6 text-center">
+        <CardTitle className="text-xl font-semibold text-destructive">Acesso não permitido</CardTitle>
+        <CardDescription className="mt-2">
+          Apenas contas do tipo <strong>empresa</strong> podem gerar relatórios contábeis.
+        </CardDescription>
+      </Card>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2 w-full h-fit -mb-2 sm:-mb-4 lg:-mb-6">
       <div>
@@ -175,28 +189,31 @@ export default function ReportsPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
               <div className="space-y-2">
                 <Label>Tipo de Relatório</Label>
-                <Select
-                  value={selectedType}
-                  onValueChange={(value) => {
-                    setSelectedType(value);
-                    setValue('reportType', value as any);
-                  }}
-                  disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo de relatório" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {reportTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        <div className="flex items-center gap-2">
-                          <type.icon className="h-4 w-4" />
-                          {type.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="reportType"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value ?? 'complete'}
+                      onValueChange={(value) => field.onChange(value)}
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo de relatório" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {reportTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            <div className="flex items-center gap-2">
+                              <type.icon className="h-4 w-4" />
+                              {type.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {errors.reportType && (
                   <p className="text-sm text-destructive">{errors.reportType.message}</p>
                 )}
@@ -204,25 +221,28 @@ export default function ReportsPage() {
 
               <div className="space-y-2">
                 <Label>Formato</Label>
-                <Select
-                  value={selectedFormat}
-                  onValueChange={(value) => {
-                    setSelectedFormat(value);
-                    setValue('format', value as any);
-                  }}
-                  disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o formato" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formats.map((format) => (
-                      <SelectItem key={format.value} value={format.value}>
-                        {format.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="format"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value ?? 'excel'}
+                      onValueChange={(value) => field.onChange(value)}
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o formato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {formats.map((format) => (
+                          <SelectItem key={format.value} value={format.value}>
+                            {format.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {errors.format && (
                   <p className="text-sm text-destructive">{errors.format.message}</p>
                 )}
@@ -272,26 +292,29 @@ export default function ReportsPage() {
                   <Users className="h-4 w-4" />
                   Filtrar por Vendedor (Opcional)
                 </Label>
-                <Select
-                  value={selectedSeller}
-                  onValueChange={(value) => {
-                    setSelectedSeller(value);
-                    setValue('sellerId', value || undefined);
-                  }}
-                  disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os vendedores" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os vendedores</SelectItem>
-                    {sellers.map((seller) => (
-                      <SelectItem key={seller.id} value={seller.id}>
-                        {seller.name} {seller.commissionRate && seller.commissionRate > 0 ? `(${seller.commissionRate}%)` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="sellerId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value ?? 'all'}
+                      onValueChange={(value) => field.onChange(value)}
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todos os vendedores" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os vendedores</SelectItem>
+                        {sellers.map((seller) => (
+                          <SelectItem key={seller.id} value={seller.id}>
+                            {seller.name} {seller.commissionRate && seller.commissionRate > 0 ? `(${seller.commissionRate}%)` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 <p className="text-xs text-muted-foreground">
                   Deixe vazio para incluir todos os vendedores
                 </p>
@@ -386,15 +409,16 @@ export default function ReportsPage() {
       {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1.5 w-full">
         {reportTypes.map((type) => (
-          <Card key={type.value} className={`cursor-pointer transition-all hover:shadow-md ${selectedType === type.value ? 'ring-2 ring-primary' : ''}`}
+          <Card
+            key={type.value}
+            className={`cursor-pointer transition-all hover:shadow-md ${reportTypeValue === type.value ? 'ring-2 ring-primary' : ''}`}
             onClick={() => {
-              setSelectedType(type.value);
-              setValue('reportType', type.value as any);
+              setValue('reportType', type.value as any, { shouldValidate: true, shouldDirty: true });
             }}
           >
             <CardContent className="py-2 px-3">
               <div className="flex justify-center mb-0.5">
-                <div className={`rounded-full p-1.5 ${selectedType === type.value ? 'bg-primary text-primary-foreground' : 'bg-primary/10'}`}>
+                <div className={`rounded-full p-1.5 ${reportTypeValue === type.value ? 'bg-primary text-primary-foreground' : 'bg-primary/10'}`}>
                   <type.icon className="h-4 w-4" />
                 </div>
               </div>
@@ -411,7 +435,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Informações sobre o Relatório Completo */}
-      {selectedType === 'complete' && (
+      {reportTypeValue === 'complete' && (
         <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
           <CardContent className="py-2 px-3">
             <div className="flex items-start gap-2">

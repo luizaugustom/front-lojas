@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileText, RefreshCw, Search, Download, Upload, PlusCircle, Trash2, Pencil } from 'lucide-react';
+import { FileText, RefreshCw, Search, Download, Upload, PlusCircle, Trash2, Pencil, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -11,19 +11,31 @@ import { Input, InputWithIcon } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrency, formatDateTime, downloadFile } from '@/lib/utils';
-import { uploadApi } from '@/lib/api-endpoints';
+import { fiscalApi, uploadApi } from '@/lib/api-endpoints';
 
 interface InboundDoc {
   id: string;
   supplierName?: string;
   accessKey?: string | null;
   status?: string;
-  total?: number;
-  totalValue?: number | string | null;
-  documentType?: string; // NFE_INBOUND, ENTRADA, etc. depende da API
+  totalValue?: number | null;
+  documentNumber?: string | null;
+  documentType?: string | null;
+  emissionDate?: string | null;
   createdAt?: string;
   pdfUrl?: string | null;
-  xmlContent?: string | null;
+  hasXml?: boolean;
+}
+
+interface DownloadFormatOption {
+  format: string;
+  available: boolean;
+  filename?: string;
+  downloadUrl?: string;
+  mimetype?: string;
+  size?: number;
+  isExternal?: boolean;
+  isGenerated?: boolean;
 }
 
 export default function InboundInvoicesPage() {
@@ -32,6 +44,7 @@ export default function InboundInvoicesPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editingDoc, setEditingDoc] = useState<InboundDoc | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   
   // Estado para exclusão
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -59,9 +72,118 @@ export default function InboundInvoicesPage() {
   const docs: InboundDoc[] = useMemo(() => {
     const raw: any = data;
     const list: any[] = Array.isArray(raw) ? raw : raw?.data || raw?.documents || raw?.items || [];
-    // A API já filtra por documentType='inbound', então retornamos diretamente
-    return list;
+
+    return list.map((item) => ({
+      id: item.id,
+      supplierName: item.supplierName ?? item.company?.name ?? undefined,
+      accessKey: item.accessKey ?? null,
+      status: item.status ?? undefined,
+      totalValue:
+        item.totalValue != null
+          ? Number(item.totalValue)
+          : item.total != null
+          ? Number(item.total)
+          : null,
+      documentNumber: item.documentNumber ?? null,
+      documentType: item.documentType ?? null,
+      emissionDate: item.emissionDate ?? null,
+      createdAt: item.createdAt ?? undefined,
+      pdfUrl: item.pdfUrl ?? null,
+      hasXml: Boolean(item.xmlContent),
+    }));
   }, [data]);
+
+  const getPreferredDownloadOption = (formats: DownloadFormatOption[]) => {
+    if (!Array.isArray(formats)) return null;
+    const normalized = formats.filter((option) => option.available);
+    const preferredOrder = ['xml', 'pdf'];
+    for (const format of preferredOrder) {
+      const option = normalized.find((item) => item.format?.toLowerCase() === format);
+      if (option) {
+        return option;
+      }
+    }
+    return normalized[0] ?? null;
+  };
+
+  const extractFilenameFromHeader = (header?: string | null): string | null => {
+    if (!header) return null;
+    const encodedMatch = header.match(/filename\*=UTF-8''([^;]+)/i);
+    if (encodedMatch?.[1]) {
+      try {
+        return decodeURIComponent(encodedMatch[1]);
+      } catch {
+        return encodedMatch[1];
+      }
+    }
+    const match = header.match(/filename="?([^"]+)"?/i);
+    return match?.[1]?.trim() ?? null;
+  };
+
+  const handleDownload = async (doc: InboundDoc) => {
+    setDownloadingId(doc.id);
+    try {
+      const { data: info } = await fiscalApi.downloadInfo(doc.id);
+      const option = getPreferredDownloadOption(info?.availableFormats ?? []);
+
+      if (!option) {
+        toast.error('Nenhum arquivo disponível para download desta nota.');
+        return;
+      }
+
+      if (option.isExternal && option.downloadUrl) {
+        const absoluteUrl = option.downloadUrl.startsWith('http')
+          ? option.downloadUrl
+          : `${api.defaults.baseURL ?? ''}${option.downloadUrl.startsWith('/') ? '' : '/'}${option.downloadUrl}`;
+
+        if (typeof window !== 'undefined') {
+          window.open(absoluteUrl, '_blank', 'noopener,noreferrer');
+          toast.success('Arquivo aberto em nova janela.');
+          return;
+        }
+      }
+
+      const format =
+        option.format?.toLowerCase() === 'xml' ? 'xml' : option.format?.toLowerCase() === 'pdf' ? 'pdf' : null;
+
+      if (!format) {
+        toast.error('Formato de arquivo não suportado para download.');
+        return;
+      }
+
+      const response = await fiscalApi.download(doc.id, format);
+
+      const filenameFromHeader = extractFilenameFromHeader(
+        response.headers?.['content-disposition'] as string | undefined,
+      );
+
+      const filename =
+        filenameFromHeader ||
+        option.filename ||
+        `nota-entrada-${doc.documentNumber || doc.id}.${format}`;
+
+      const contentType =
+        (response.headers?.['content-type'] as string | undefined) ||
+        option.mimetype ||
+        (format === 'xml' ? 'application/xml' : 'application/pdf');
+
+      const blob =
+        response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data], { type: contentType });
+
+      downloadFile(blob, filename);
+      toast.success('Download iniciado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao baixar nota de entrada:', error);
+      handleApiError(error, {
+        endpoint: `/fiscal/${doc.id}/download`,
+        method: 'GET',
+      });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -125,34 +247,35 @@ export default function InboundInvoicesPage() {
                   <td className="px-4 py-2 font-mono text-xs text-foreground">{doc.accessKey || '-'}</td>
                   <td className="px-4 py-2 text-foreground">{doc.status || '-'}</td>
                   <td className="px-4 py-2 text-right text-foreground">
-                    {doc.total != null
-                      ? formatCurrency(doc.total)
-                      : doc.totalValue != null
-                      ? formatCurrency(Number(doc.totalValue))
+                    {doc.totalValue != null
+                      ? formatCurrency(doc.totalValue)
                       : '-'}
                   </td>
-                  <td className="px-4 py-2 text-foreground">{doc.createdAt ? formatDateTime(doc.createdAt) : '-'}</td>
+                  <td className="px-4 py-2 text-foreground">
+                    {doc.emissionDate
+                      ? formatDateTime(doc.emissionDate)
+                      : doc.createdAt
+                        ? formatDateTime(doc.createdAt)
+                        : '-'}
+                  </td>
                   <td className="px-4 py-2 text-right">
                     <div className="flex justify-end gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={!doc.xmlContent && !doc.pdfUrl}
-                        onClick={async () => {
-                          const hasXml = Boolean(doc.xmlContent);
-                          const hasPdf = Boolean(doc.pdfUrl);
-                          const format = hasXml ? 'xml' : hasPdf ? 'pdf' : 'xml';
-                          try {
-                            const response = await api.get(`/fiscal/${doc.id}/download`, { params: { format }, responseType: 'blob' });
-                            const blob = response.data as Blob;
-                            downloadFile(blob, `nfe-entrada-${doc.id}.${format}`);
-                          } catch (e) {
-                            console.error(e);
-                            alert(`Não foi possível baixar o arquivo ${format.toUpperCase()}`);
-                          }
-                        }}
+                        onClick={() => handleDownload(doc)}
+                        disabled={downloadingId === doc.id}
                       >
-                        <Download className="mr-2 h-4 w-4" /> {doc.xmlContent ? 'XML' : doc.pdfUrl ? 'PDF' : 'Download'}
+                        {downloadingId === doc.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Baixando...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="mr-2 h-4 w-4" /> Download
+                          </>
+                        )}
                       </Button>
                       {user?.role === 'empresa' && (
                         <Button
@@ -162,7 +285,7 @@ export default function InboundInvoicesPage() {
                             setEditingDoc(doc);
                             setAccessKey(doc.accessKey || '');
                             setSupplierName(doc.supplierName || '');
-                            const total = doc.total ?? (doc.totalValue != null ? Number(doc.totalValue) : null);
+                            const total = doc.totalValue ?? null;
                             setTotalValue(
                               total != null
                                 ? total.toFixed(2).replace('.', ',')
@@ -226,7 +349,7 @@ export default function InboundInvoicesPage() {
               <div className="text-sm">
                 <span className="font-medium text-foreground">Valor:</span>
                 <span className="ml-2 text-muted-foreground">
-                  {deletingDoc.total != null ? formatCurrency(deletingDoc.total) : '-'}
+                  {deletingDoc.totalValue != null ? formatCurrency(deletingDoc.totalValue) : '-'}
                 </span>
               </div>
             </div>

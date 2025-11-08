@@ -618,6 +618,12 @@ export const fiscalApi = {
   get: (id: string) => api.get(`/fiscal/${id}`),
 
   /**
+   * GET /fiscal/:id/download-info
+   * Roles: ADMIN, COMPANY - Metadados de formatos disponíveis
+   */
+  downloadInfo: (id: string) => api.get(`/fiscal/${id}/download-info`),
+
+  /**
    * GET /fiscal/:id/download?format=xml|pdf
    * Roles: ADMIN, COMPANY - Baixa documento
    */
