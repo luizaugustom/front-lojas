@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from './button';
 import { OptimizedImage } from './optimized-image';
 import { Dialog, DialogContent } from './dialog';
@@ -66,17 +66,6 @@ export function ImageViewer({ open, onClose, images, initialIndex = 0, alt = 'Im
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] w-[95vw] h-[95vh] p-0 bg-black/95 border-none overflow-hidden" style={{ maxWidth: '95vw', maxHeight: '95vh', padding: 0 }}>
         <div className="relative w-full h-full flex items-center justify-center" style={{ minHeight: '80vh' }}>
-          {/* Botão fechar */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 right-4 z-50 text-white hover:bg-white/20"
-            onClick={onClose}
-            aria-label="Fechar"
-          >
-            <X className="h-6 w-6" />
-          </Button>
-
           {/* Botão anterior */}
           {images.length > 1 && (
             <Button

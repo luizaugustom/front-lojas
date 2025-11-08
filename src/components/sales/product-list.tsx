@@ -58,8 +58,8 @@ export function ProductList({ products, isLoading, onAddToCart }: ProductListPro
                 <div className="h-4 w-40 rounded bg-muted animate-pulse" />
                 <div className="mt-0.5 h-3 w-24 rounded bg-muted animate-pulse" />
               </div>
-              <div className="w-7">
-                <div className="h-7 w-full rounded bg-muted animate-pulse" />
+              <div className="w-9">
+                <div className="h-9 w-full rounded bg-muted animate-pulse" />
               </div>
             </CardContent>
           </Card>
@@ -101,13 +101,13 @@ export function ProductList({ products, isLoading, onAddToCart }: ProductListPro
                 <div className="flex-shrink-0">
                   <Button
                     variant="ghost"
-                    className="h-7 w-7 p-0"
+                    className="h-9 w-9 p-0"
                     onClick={() => onAddToCart(product, 1)}
                     disabled={product.stockQuantity <= 0}
                     aria-label={`Adicionar ${product.name}`}
                     title={`Adicionar ${product.name}`}
                   >
-                    <Plus className="h-4 w-4 text-primary" />
+                    <Plus className="h-5 w-5 text-primary" />
                   </Button>
                 </div>
               </CardContent>

@@ -30,6 +30,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency } from '@/lib/utils-clean';
 import { useAuth } from '@/hooks/useAuth';
+import { printContent } from '@/lib/print-service';
 
 interface Budget {
   id: string;
@@ -73,6 +74,7 @@ export default function BudgetsPage() {
   const [newStatus, setNewStatus] = useState<string>('');
   const [statusNotes, setStatusNotes] = useState<string>('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [printingBudgetId, setPrintingBudgetId] = useState<string | null>(null);
   
   const isCompany = user?.role === 'empresa';
 
@@ -97,12 +99,56 @@ export default function BudgetsPage() {
     return matchesSearch;
   }) || [];
 
-  const handlePrint = async (id: string) => {
+  const handlePrint = async (budget: Budget) => {
+    if (!budget) return;
+    if (printingBudgetId) {
+      if (printingBudgetId === budget.id) {
+        return;
+      }
+    }
+    // Evita múltiplas impressões simultâneas do mesmo orçamento
+    setPrintingBudgetId(budget.id);
+
     try {
-      await api.post(`/budget/${id}/print`);
-      toast.success('Orçamento enviado para impressão!');
+      let content: string | null = null;
+
+      try {
+        const response = await api.get(`/budget/${budget.id}/print-content`);
+        const data = response.data?.data || response.data;
+        content = data?.content || data?.printContent || null;
+      } catch (error) {
+        console.warn(`[Budgets] Falha ao obter conteúdo de impressão do orçamento ${budget.id}`, error);
+      }
+
+      if (content) {
+        const result = await printContent(content);
+
+        if (result.success) {
+          toast.success('Orçamento enviado para impressão!');
+          return;
+        }
+
+        toast(`Impressão local falhou: ${result.error || 'Erro desconhecido'}. Tentando impressão no servidor...`, {
+          icon: '⚠️',
+          duration: 5000,
+        });
+      }
+
+      const serverResponse = await api.post(`/budget/${budget.id}/print`);
+      const serverData = serverResponse.data?.data || serverResponse.data;
+      const success = serverData?.success ?? true;
+      const message = serverData?.message || 'Orçamento enviado para impressão!';
+
+      if (success) {
+        toast.success(message);
+      } else {
+        const errorMessage = serverData?.error || message || 'Não foi possível imprimir o orçamento.';
+        toast.error(errorMessage);
+      }
     } catch (error) {
       handleApiError(error);
+    } finally {
+      setPrintingBudgetId(null);
     }
   };
 
@@ -312,7 +358,8 @@ export default function BudgetsPage() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            onClick={() => handlePrint(budget.id)}
+                            onClick={() => handlePrint(budget)}
+                            disabled={printingBudgetId === budget.id}
                           >
                             <Printer className="h-4 w-4" />
                           </Button>
@@ -430,7 +477,11 @@ export default function BudgetsPage() {
             </Button>
             {selectedBudget && (
               <>
-                <Button variant="secondary" onClick={() => handlePrint(selectedBudget.id)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => handlePrint(selectedBudget)}
+                  disabled={printingBudgetId === selectedBudget.id}
+                >
                   <Printer className="mr-2 h-4 w-4" />
                   Imprimir
                 </Button>

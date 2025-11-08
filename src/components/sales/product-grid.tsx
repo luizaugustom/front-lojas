@@ -102,13 +102,13 @@ export function ProductGrid({ products, isLoading, onAddToCart }: ProductGridPro
             <CardFooter className="pt-0">
               <Button
                 variant="ghost"
-                className="h-7 w-7 p-0"
+                className="h-9 w-9 p-0"
                 onClick={() => onAddToCart(product, 1)}
                 disabled={product.stockQuantity <= 0}
                 aria-label={`Adicionar ${product.name}`}
                 title={`Adicionar ${product.name}`}
               >
-                <Plus className="h-4 w-4 text-primary" />
+                <Plus className="h-5 w-5 text-primary" />
               </Button>
             </CardFooter>
           </Card>
