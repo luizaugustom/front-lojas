@@ -525,11 +525,15 @@ export function ProcessExchangeDialog({
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">Qtd. devolver</Label>
+                          {/** Mantém o campo vazio quando o valor é zero para facilitar a digitação */}
                           <Input
                             type="number"
                             min={0}
                             max={maxAvailable}
-                            value={selectedQuantity}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            value={selectedQuantity === 0 ? '' : selectedQuantity}
                             onChange={(event) =>
                               handleChangeReturnedQuantity(
                                 item.id,
@@ -760,7 +764,10 @@ export function ProcessExchangeDialog({
                             type="number"
                             min={0}
                             step="0.01"
-                            value={entry.amount}
+                            inputMode="decimal"
+                            pattern="[0-9]*[.,]?[0-9]*"
+                            className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            value={entry.amount === 0 ? '' : entry.amount}
                             onChange={(event) =>
                               handleUpdatePayment(
                                 'payment',
@@ -859,7 +866,10 @@ export function ProcessExchangeDialog({
                             type="number"
                             min={0}
                             step="0.01"
-                            value={entry.amount}
+                            inputMode="decimal"
+                            pattern="[0-9]*[.,]?[0-9]*"
+                            className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            value={entry.amount === 0 ? '' : entry.amount}
                             onChange={(event) =>
                               handleUpdatePayment(
                                 'refund',
