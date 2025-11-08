@@ -132,9 +132,10 @@ export default function InboundInvoicesPage() {
       }
 
       if (option.isExternal && option.downloadUrl) {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
         const absoluteUrl = option.downloadUrl.startsWith('http')
           ? option.downloadUrl
-          : `${api.defaults.baseURL ?? ''}${option.downloadUrl.startsWith('/') ? '' : '/'}${option.downloadUrl}`;
+          : `${apiBaseUrl}${option.downloadUrl.startsWith('/') ? '' : '/'}${option.downloadUrl}`;
 
         if (typeof window !== 'undefined') {
           window.open(absoluteUrl, '_blank', 'noopener,noreferrer');
