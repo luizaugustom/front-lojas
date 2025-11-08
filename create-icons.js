@@ -19,6 +19,9 @@ function createSimpleIcon(size, filename) {
 }
 
 // Função para criar ícone do logo
+const ICON_SCALE = 0.75;
+const TRANSPARENT_BG = { r: 255, g: 255, b: 255, alpha: 0 };
+
 async function createIconFromLogo(size, filename) {
   try {
     const logoPath = path.join(__dirname, 'public', 'logo.png');
@@ -32,11 +35,23 @@ async function createIconFromLogo(size, filename) {
     }
 
     // Carregar e redimensionar o logo usando Sharp
-    await sharp(logoPath)
-      .resize(size, size, {
+    const resizedLogo = await sharp(logoPath)
+      .resize(Math.round(size * ICON_SCALE), Math.round(size * ICON_SCALE), {
         fit: 'contain',
-        background: { r: 255, g: 255, b: 255, alpha: 0 } // Fundo transparente
+        background: TRANSPARENT_BG
       })
+      .png()
+      .toBuffer();
+
+    await sharp({
+      create: {
+        width: size,
+        height: size,
+        channels: 4,
+        background: TRANSPARENT_BG
+      }
+    })
+      .composite([{ input: resizedLogo, gravity: 'center' }])
       .png()
       .toFile(outputPath);
     

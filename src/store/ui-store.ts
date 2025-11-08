@@ -1,6 +1,26 @@
 import { create } from 'zustand';
 import { applyCompanyColor } from '@/lib/colorUtils';
 
+const DEFAULT_THEME_COLOR = '#3B82F6';
+const HEX_COLOR_REGEX = /^#(?:[0-9A-Fa-f]{3}){1,2}$/;
+
+function normalizeHexColor(color: string | null): string {
+  if (!color) {
+    return DEFAULT_THEME_COLOR;
+  }
+
+  const trimmed = color.trim();
+  if (!HEX_COLOR_REGEX.test(trimmed)) {
+    return DEFAULT_THEME_COLOR;
+  }
+
+  if (trimmed.length === 4) {
+    return `#${trimmed[1]}${trimmed[1]}${trimmed[2]}${trimmed[2]}${trimmed[3]}${trimmed[3]}`.toUpperCase();
+  }
+
+  return trimmed.toUpperCase();
+}
+
 interface UIState {
   sidebarOpen: boolean;
   sidebarCollapsed: boolean;
@@ -70,6 +90,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     if (typeof window !== 'undefined') {
       const { companyColor } = get();
       const primaryColor = applyCompanyColor(companyColor);
+      const themeColor = normalizeHexColor(companyColor);
       
       // Atualiza a variável CSS --primary
       document.documentElement.style.setProperty('--primary', primaryColor);
@@ -90,6 +111,19 @@ export const useUIStore = create<UIState>((set, get) => ({
         // Cor padrão para hover (azul mais escuro)
         document.documentElement.style.setProperty('--scrollbar-color-hover', '221.2 83.2% 45%');
       }
+
+      const ensureMetaTag = (name: string) => {
+        let metaTag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+        if (!metaTag) {
+          metaTag = document.createElement('meta');
+          metaTag.setAttribute('name', name);
+          document.head.appendChild(metaTag);
+        }
+        return metaTag;
+      };
+
+      ensureMetaTag('theme-color').setAttribute('content', themeColor);
+      ensureMetaTag('msapplication-TileColor').setAttribute('content', themeColor);
     }
   },
 }));

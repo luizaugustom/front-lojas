@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: 'MontShop',
   description: 'Sistema de gerenciamento de lojas completo',
   manifest: '/manifest.json',
+  themeColor: '#3B82F6',
   icons: {
     icon: [
       { url: '/logo.png', type: 'image/png' },

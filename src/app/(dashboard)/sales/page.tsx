@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Barcode, FileText, ShoppingCart } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -22,6 +22,41 @@ import { handleNumberInputChange, isValidId } from '@/lib/utils-clean';
 import { useDeviceStore } from '@/store/device-store';
 import type { Product } from '@/types';
 import { parseScaleBarcode } from '@/lib/scale-barcode';
+import { useUIStore } from '@/store/ui-store';
+
+const isValidHex = (hex: string | null | undefined) => {
+  if (!hex) return false;
+  return /^#?[0-9A-Fa-f]{6}$/.test(hex);
+};
+
+const normalizeHex = (hex: string | null | undefined, fallback = '#6366F1') => {
+  if (!isValidHex(hex)) return fallback;
+  return hex!.startsWith('#') ? hex! : `#${hex}`;
+};
+
+const adjustHexBrightness = (hex: string, amount: number) => {
+  const normalized = normalizeHex(hex);
+  const cleanHex = normalized.replace('#', '');
+
+  const clamp = (value: number) => Math.max(0, Math.min(255, value));
+  const channels = [
+    clamp(parseInt(cleanHex.substring(0, 2), 16) + amount),
+    clamp(parseInt(cleanHex.substring(2, 4), 16) + amount),
+    clamp(parseInt(cleanHex.substring(4, 6), 16) + amount),
+  ];
+
+  const toHex = (value: number) => value.toString(16).padStart(2, '0');
+  return `#${channels.map(toHex).join('')}`;
+};
+
+const hexToRgba = (hex: string, alpha: number) => {
+  const normalized = normalizeHex(hex);
+  const cleanHex = normalized.replace('#', '');
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 export default function SalesPage() {
   const { api, user } = useAuth();
@@ -32,6 +67,17 @@ export default function SalesPage() {
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const { addItem, items } = useCartStore();
   const [lastScanned, setLastScanned] = useState(0);
+  const companyColor = useUIStore((state) => state.companyColor);
+  const brandColor = useMemo(() => normalizeHex(companyColor), [companyColor]);
+  const gradientStart = useMemo(() => brandColor, [brandColor]);
+  const gradientEnd = useMemo(() => adjustHexBrightness(brandColor, 40), [brandColor]);
+  const buttonShadow = useMemo(() => hexToRgba(brandColor, 0.45), [brandColor]);
+  const buttonOutline = useMemo(() => hexToRgba(brandColor, 0.2), [brandColor]);
+  const badgeTextColor = useMemo(() => adjustHexBrightness(brandColor, -30), [brandColor]);
+  const badgeShadow = useMemo(() => hexToRgba(brandColor, 0.35), [brandColor]);
+  const headerBorder = useMemo(() => hexToRgba(brandColor, 0.2), [brandColor]);
+  const headerShadow = useMemo(() => hexToRgba(brandColor, 0.45), [brandColor]);
+  const headerIconBg = useMemo(() => hexToRgba(brandColor, 0.25), [brandColor]);
   
   // Device status from store
   const { 
@@ -342,7 +388,13 @@ export default function SalesPage() {
       <div className="pointer-events-none md:hidden fixed bottom-6 right-4 left-4 z-40 flex justify-end">
         <div className="pointer-events-auto relative">
           {!mobileCartOpen && (
-            <div className="absolute -top-10 right-1/2 translate-x-1/2 rounded-full bg-slate-900/90 px-3 py-1 text-xs font-medium text-white shadow-lg shadow-purple-500/30">
+            <div
+              className="absolute -top-10 right-1/2 translate-x-1/2 rounded-full px-3 py-1 text-xs font-medium text-white"
+              style={{
+                background: `linear-gradient(135deg, ${gradientStart}, ${gradientEnd})`,
+                boxShadow: `0 12px 25px ${buttonShadow}`,
+              }}
+            >
               Carrinho ({items.length})
             </div>
           )}
@@ -351,12 +403,28 @@ export default function SalesPage() {
             onClick={() => setMobileCartOpen(true)}
             aria-label="Abrir carrinho"
             aria-expanded={mobileCartOpen}
-            className="group flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-5 py-3 text-white shadow-lg shadow-purple-500/40 transition-all hover:shadow-purple-500/60 focus:outline-none focus:ring-4 focus:ring-purple-400/40"
+            className="group flex items-center gap-2 rounded-full px-5 py-3 text-white transition-all focus:outline-none"
+            style={{
+              background: `linear-gradient(135deg, ${gradientStart}, ${gradientEnd})`,
+              boxShadow: `0 18px 38px ${buttonShadow}, 0 0 0 4px ${buttonOutline}`,
+            }}
           >
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/15 shadow-inner shadow-purple-400/40">
+            <div
+              className="relative flex h-10 w-10 items-center justify-center rounded-full shadow-inner transition-all duration-300 group-hover:scale-105"
+              style={{
+                backgroundColor: hexToRgba('#ffffff', 0.18),
+                boxShadow: `inset 0 4px 8px ${hexToRgba('#000000', 0.08)}`,
+              }}
+            >
               <ShoppingCart className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
               {items.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white text-xs font-semibold text-purple-600 shadow-md">
+                <span
+                  className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white text-xs font-semibold"
+                  style={{
+                    color: badgeTextColor,
+                    boxShadow: `0 4px 10px ${badgeShadow}`,
+                  }}
+                >
                   {items.length}
                 </span>
               )}
@@ -390,9 +458,26 @@ export default function SalesPage() {
       {/* Mobile Cart Dialog */}
       <Dialog open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
         <DialogContent className="md:hidden top-auto bottom-6 left-1/2 translate-y-0 translate-x-[-50%] w-[min(100vw-2rem,420px)] max-h-[85vh] border-0 bg-transparent p-0 shadow-none">
-          <div className="relative overflow-hidden rounded-3xl border border-purple-500/20 bg-background/95 shadow-[0_25px_60px_rgba(124,58,237,0.45)] backdrop-blur-xl">
-            <div className="flex items-center gap-3 border-b border-white/5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-4 py-3 text-white">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 shadow-lg shadow-purple-500/40">
+          <div
+            className="relative overflow-hidden rounded-3xl border bg-background/95 backdrop-blur-xl"
+            style={{
+              borderColor: headerBorder,
+              boxShadow: `0 25px 60px ${headerShadow}`,
+            }}
+          >
+            <div
+              className="flex items-center gap-3 border-b border-white/5 px-4 py-3 text-white"
+              style={{
+                background: `linear-gradient(135deg, ${gradientStart}, ${gradientEnd})`,
+              }}
+            >
+              <div
+                className="flex h-11 w-11 items-center justify-center rounded-full shadow-lg"
+                style={{
+                  backgroundColor: headerIconBg,
+                  boxShadow: `0 10px 25px ${headerShadow}`,
+                }}
+              >
                 <ShoppingCart className="h-5 w-5" />
               </div>
               <div className="flex flex-col">

@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Printer, Repeat, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -128,6 +128,9 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Detalhes da Venda</DialogTitle>
+          <DialogDescription className="sr-only">
+            Informações completas da venda selecionada
+          </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
