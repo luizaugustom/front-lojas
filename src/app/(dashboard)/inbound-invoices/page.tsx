@@ -11,6 +11,7 @@ import { Input, InputWithIcon } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrency, formatDateTime, downloadFile } from '@/lib/utils';
+import { handleApiError } from '@/lib/handleApiError';
 import { fiscalApi, uploadApi } from '@/lib/api-endpoints';
 
 interface InboundDoc {
