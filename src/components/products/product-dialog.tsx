@@ -525,13 +525,19 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             if (existingPhotosToDelete.length > 0) {
               existingPhotosToDelete.forEach((photoUrl) => {
                 const normalizedUrl = normalizePhotoUrl(photoUrl);
-                // Enviar a URL normalizada, mas se for igual à original ou vazia, enviar a original
-                const urlToSend = normalizedUrl && normalizedUrl !== photoUrl ? normalizedUrl : photoUrl;
-                formData.append('photosToDelete', urlToSend);
+                
+                // Garantir que o backend receba a URL exata armazenada (necessária para Firebase)
+                formData.append('photosToDelete', photoUrl);
+
+                // Para compatibilidade com caminhos relativos (uploads antigos), enviar também a versão normalizada
+                if (normalizedUrl && normalizedUrl !== photoUrl) {
+                  formData.append('photosToDelete', normalizedUrl);
+                }
+
                 console.log('[ProductDialog] Foto para deletar:', {
                   original: photoUrl,
                   normalized: normalizedUrl,
-                  sending: urlToSend
+                  sending: [photoUrl, normalizedUrl].filter(Boolean),
                 });
               });
             }
