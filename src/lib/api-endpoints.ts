@@ -388,7 +388,15 @@ export const saleApi = {
   /**
    * POST /sale/exchange
    * Roles: COMPANY - Processar troca
-   * Body: { originalSaleId, newItems: [{ productId, quantity, unitPrice, totalPrice }], reason }
+   * Body: {
+   *   originalSaleId,
+   *   reason,
+   *   returnedItems: [{ saleItemId, productId, quantity }],
+   *   newItems?: [{ productId, quantity, unitPrice? }],
+   *   payments?: [{ method, amount, additionalInfo? }],
+   *   refunds?: [{ method, amount, additionalInfo? }],
+   *   issueStoreCredit?: boolean
+   * }
    */
   exchange: (data: any) => api.post('/sale/exchange', data),
 
@@ -782,10 +790,11 @@ export const uploadApi = {
    * multipart/form-data (file) - retorna URL
    * Body: Arquivo + subfolder (opcional)
    */
-  single: (file: File) => {
+  single: (file: File, subfolder?: string) => {
     const formData = new FormData();
     formData.append('file', file);
     return api.post('/upload/single', formData, {
+      params: subfolder ? { subfolder } : undefined,
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
@@ -796,10 +805,11 @@ export const uploadApi = {
    * multipart/form-data (files[])
    * Body: Múltiplos arquivos + subfolder (opcional)
    */
-  multiple: (files: File[]) => {
+  multiple: (files: File[], subfolder?: string) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
     return api.post('/upload/multiple', formData, {
+      params: subfolder ? { subfolder } : undefined,
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },

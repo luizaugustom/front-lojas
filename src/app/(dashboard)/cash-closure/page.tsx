@@ -166,6 +166,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   debit_card: 'Cartão de Débito',
   pix: 'PIX',
   installment: 'Parcelado',
+  store_credit: 'Crédito em Loja',
 };
 
 const getPaymentMethodLabel = (method: string) => PAYMENT_METHOD_LABELS[method] ?? method;
@@ -933,7 +934,8 @@ export default function CashClosurePage() {
                             {method === 'debit_card' && '💳 Débito'}
                             {method === 'pix' && '📱 PIX'}
                             {method === 'installment' && '📅 Parcelado'}
-                            {!['cash', 'credit_card', 'debit_card', 'pix', 'installment'].includes(method) && method}
+                            {method === 'store_credit' && '🏬 Crédito em Loja'}
+                            {!['cash', 'credit_card', 'debit_card', 'pix', 'installment', 'store_credit'].includes(method) && method}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Total recebido

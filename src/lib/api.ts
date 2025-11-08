@@ -1,9 +1,36 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { toast } from 'react-hot-toast';
-import type { UserRole } from '@/types';
+import type { Exchange, PaymentMethod, UserRole } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const USE_MOCK = false; // Sempre usar backend real
+
+export interface ProcessExchangePayload {
+  originalSaleId: string;
+  reason: string;
+  note?: string;
+  returnedItems: Array<{
+    saleItemId: string;
+    productId: string;
+    quantity: number;
+  }>;
+  newItems?: Array<{
+    productId: string;
+    quantity: number;
+    unitPrice?: number;
+  }>;
+  payments?: Array<{
+    method: PaymentMethod;
+    amount: number;
+    additionalInfo?: string;
+  }>;
+  refunds?: Array<{
+    method: PaymentMethod;
+    amount: number;
+    additionalInfo?: string;
+  }>;
+  issueStoreCredit?: boolean;
+}
 
 class ApiClient {
   private client: AxiosInstance;
@@ -244,9 +271,18 @@ class ApiClient {
    * POST /sale/exchange
    * Processar troca de produto
    * Permissão: COMPANY
-   * Body: { originalSaleId, newItems: [{ productId, quantity, unitPrice, totalPrice }], reason }
+   * Body: {
+   *   originalSaleId,
+   *   reason,
+   *   note?,
+   *   returnedItems: [{ saleItemId, productId, quantity }],
+   *   newItems?: [{ productId, quantity, unitPrice? }],
+   *   payments?: [{ method, amount, additionalInfo? }],
+   *   refunds?: [{ method, amount, additionalInfo? }],
+   *   issueStoreCredit?: boolean
+   * }
    */
-  async exchangeSale(data: any) {
+  async exchangeSale(data: ProcessExchangePayload): Promise<Exchange> {
     const response = await this.client.post('/sale/exchange', data);
     return response.data;
   }

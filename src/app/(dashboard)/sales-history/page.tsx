@@ -148,6 +148,7 @@ export default function SalesHistoryPage() {
       debit_card: 'Cartão de Débito',
       pix: 'PIX',
       installment: 'Parcelado',
+      store_credit: 'Crédito em Loja',
     };
     return labels[method] || method;
   };

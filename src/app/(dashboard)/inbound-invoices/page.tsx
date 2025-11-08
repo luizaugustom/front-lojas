@@ -33,6 +33,7 @@ interface DownloadFormatOption {
   available: boolean;
   filename?: string;
   downloadUrl?: string;
+  externalUrl?: string;
   mimetype?: string;
   size?: number;
   isExternal?: boolean;
@@ -83,8 +84,8 @@ export default function InboundInvoicesPage() {
         item.totalValue != null
           ? Number(item.totalValue)
           : item.total != null
-          ? Number(item.total)
-          : null,
+            ? Number(item.total)
+            : null,
       documentNumber: item.documentNumber ?? null,
       documentType: item.documentType ?? null,
       emissionDate: item.emissionDate ?? null,
@@ -97,11 +98,11 @@ export default function InboundInvoicesPage() {
   const getPreferredDownloadOption = (formats: DownloadFormatOption[]) => {
     if (!Array.isArray(formats)) return null;
     const normalized = formats.filter((option) => option.available);
-    const preferredOrder = ['xml', 'pdf'];
-    for (const format of preferredOrder) {
-      const option = normalized.find((item) => item.format?.toLowerCase() === format);
-      if (option) {
-        return option;
+    const preferredOrder = ['pdf', 'xml'];
+    for (const desired of preferredOrder) {
+      const match = normalized.find((item) => item.format?.toLowerCase() === desired);
+      if (match) {
+        return match;
       }
     }
     return normalized[0] ?? null;
@@ -117,7 +118,7 @@ export default function InboundInvoicesPage() {
         return encodedMatch[1];
       }
     }
-    const match = header.match(/filename="?([^"]+)"?/i);
+    const match = header.match(/filename="?([^";]+)"?/i);
     return match?.[1]?.trim() ?? null;
   };
 
@@ -132,21 +133,19 @@ export default function InboundInvoicesPage() {
         return;
       }
 
-      if (option.isExternal && option.downloadUrl) {
-        const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-        const absoluteUrl = option.downloadUrl.startsWith('http')
-          ? option.downloadUrl
-          : `${apiBaseUrl}${option.downloadUrl.startsWith('/') ? '' : '/'}${option.downloadUrl}`;
-
+      if (option.isExternal && option.externalUrl) {
         if (typeof window !== 'undefined') {
-          window.open(absoluteUrl, '_blank', 'noopener,noreferrer');
+          window.open(option.externalUrl, '_blank', 'noopener,noreferrer');
           toast.success('Arquivo aberto em nova janela.');
           return;
         }
       }
 
-      const format =
-        option.format?.toLowerCase() === 'xml' ? 'xml' : option.format?.toLowerCase() === 'pdf' ? 'pdf' : null;
+      const format = option.format?.toLowerCase() === 'pdf'
+        ? 'pdf'
+        : option.format?.toLowerCase() === 'xml'
+          ? 'xml'
+          : null;
 
       if (!format) {
         toast.error('Formato de arquivo não suportado para download.');
@@ -249,9 +248,7 @@ export default function InboundInvoicesPage() {
                   <td className="px-4 py-2 font-mono text-xs text-foreground">{doc.accessKey || '-'}</td>
                   <td className="px-4 py-2 text-foreground">{doc.status || '-'}</td>
                   <td className="px-4 py-2 text-right text-foreground">
-                    {doc.totalValue != null
-                      ? formatCurrency(doc.totalValue)
-                      : '-'}
+                    {doc.totalValue != null ? formatCurrency(doc.totalValue) : '-'}
                   </td>
                   <td className="px-4 py-2 text-foreground">
                     {doc.emissionDate
@@ -472,40 +469,43 @@ export default function InboundInvoicesPage() {
               </p>
             </div>
 
-            {!editingDoc && (
-              <div className="space-y-1">
-                <Label htmlFor="manualAttachment">Anexo (opcional) - PDF ou XML</Label>
-                <Input
-                  id="manualAttachment"
-                  type="file"
-                  accept=".pdf,application/pdf,.xml,application/xml,text/xml"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    if (file) {
-                      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-                      const isXml = ['application/xml', 'text/xml'].includes(file.type) || file.name.toLowerCase().endsWith('.xml');
-                      if (!isPdf && !isXml) {
-                        toast.error('Selecione um arquivo PDF ou XML');
-                        e.currentTarget.value = '';
-                        setManualAttachment(null);
-                        return;
-                      }
-                      const maxSize = 10 * 1024 * 1024; // 10MB
-                      if (file.size > maxSize) {
-                        toast.error('Arquivo muito grande. Tamanho máximo: 10MB');
-                        e.currentTarget.value = '';
-                        setManualAttachment(null);
-                        return;
-                      }
+            <div className="space-y-1">
+              <Label htmlFor="manualAttachment">Anexo (opcional) - PDF ou XML</Label>
+              <Input
+                id="manualAttachment"
+                type="file"
+                accept=".pdf,application/pdf,.xml,application/xml,text/xml"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (file) {
+                    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                    const isXml = ['application/xml', 'text/xml'].includes(file.type) || file.name.toLowerCase().endsWith('.xml');
+                    if (!isPdf && !isXml) {
+                      toast.error('Selecione um arquivo PDF ou XML');
+                      e.currentTarget.value = '';
+                      setManualAttachment(null);
+                      return;
                     }
-                    setManualAttachment(file);
-                  }}
-                />
-                {manualAttachment && (
-                  <p className="text-xs text-muted-foreground">Anexo: {manualAttachment.name}</p>
-                )}
-              </div>
-            )}
+                    const maxSize = 10 * 1024 * 1024; // 10MB
+                    if (file.size > maxSize) {
+                      toast.error('Arquivo muito grande. Tamanho máximo: 10MB');
+                      e.currentTarget.value = '';
+                      setManualAttachment(null);
+                      return;
+                    }
+                  }
+                  setManualAttachment(file);
+                }}
+              />
+              {manualAttachment && (
+                <p className="text-xs text-muted-foreground">Arquivo selecionado: {manualAttachment.name}</p>
+              )}
+              {editingDoc?.pdfUrl && !manualAttachment && (
+                <p className="text-xs text-muted-foreground">
+                  Arquivo atual disponível no anexo.
+                </p>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)} disabled={uploading}>Cancelar</Button>
@@ -542,21 +542,22 @@ export default function InboundInvoicesPage() {
                   } else if (editingDoc) {
                     payload.accessKey = null;
                   }
-                  if (!editingDoc) {
-                    // Se houver anexo, subir primeiro e enviar URL junto
-                    let attachmentUrl: string | undefined = undefined;
-                    if (manualAttachment) {
-                      try {
-                        const uploaded = await uploadApi.single(manualAttachment);
-                        attachmentUrl = uploaded.data?.url;
-                      } catch (e) {
-                        console.warn('Falha no upload do anexo. Continuando sem anexo.', e);
-                      }
-                    }
-                    if (attachmentUrl) {
-                      payload.pdfUrl = attachmentUrl;
+                  let attachmentUrl: string | undefined;
+                  if (manualAttachment) {
+                    try {
+                      const uploaded = await uploadApi.single(manualAttachment, 'inbound-invoices');
+                      attachmentUrl = uploaded.data?.fileUrl || uploaded.data?.url;
+                    } catch (e) {
+                      console.warn('Falha no upload do anexo. Continuando sem anexo.', e);
                     }
                   }
+
+                  if (attachmentUrl) {
+                    payload.pdfUrl = attachmentUrl;
+                  } else if (editingDoc?.pdfUrl) {
+                    payload.pdfUrl = editingDoc.pdfUrl;
+                  }
+
                   if (editingDoc) {
                     await api.patch(`/fiscal/inbound-invoice/${editingDoc.id}`, payload);
                   } else {

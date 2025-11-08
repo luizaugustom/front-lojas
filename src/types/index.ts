@@ -125,7 +125,7 @@ export interface Product {
 }
 
 // Sale Types
-export type PaymentMethod = 'cash' | 'credit_card' | 'debit_card' | 'pix' | 'installment';
+export type PaymentMethod = 'cash' | 'credit_card' | 'debit_card' | 'pix' | 'installment' | 'store_credit';
 
 export interface PaymentMethodDetail {
   method: PaymentMethod;
@@ -159,6 +159,93 @@ export interface Sale {
   cashClosureId?: string;
   createdAt: string;
   updatedAt: string;
+  exchanges?: Exchange[];
+}
+
+export type ExchangePaymentType = 'PAYMENT' | 'REFUND';
+export type ExchangeStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
+
+export interface ExchangePayment {
+  id: string;
+  method: PaymentMethod;
+  amount: number;
+  additionalInfo?: string;
+  createdAt: string;
+  type?: ExchangePaymentType;
+}
+
+export interface ExchangeFiscalDocument {
+  id: string;
+  documentType: string;
+  origin?: string;
+  documentNumber?: string | null;
+  accessKey?: string | null;
+  status?: string;
+  totalValue?: number;
+  pdfUrl?: string | null;
+  qrCodeUrl?: string | null;
+  createdAt: string;
+  metadata?: Record<string, any>;
+}
+
+export interface ExchangeDeliveredItem {
+  id: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  product?: {
+    id: string;
+    name: string;
+    barcode?: string | null;
+  } | null;
+}
+
+export interface ExchangeReturnedItem {
+  id: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  saleItemId?: string | null;
+  product?: {
+    id: string;
+    name: string;
+    barcode?: string | null;
+  } | null;
+  saleItem?: {
+    id: string;
+    quantity: number;
+    unitPrice: number;
+    product?: {
+      id: string;
+      name: string;
+      barcode?: string | null;
+    } | null;
+  } | null;
+}
+
+export interface Exchange {
+  id: string;
+  reason: string;
+  note?: string | null;
+  exchangeDate: string;
+  returnedTotal: number;
+  deliveredTotal: number;
+  difference: number;
+  storeCreditAmount: number;
+  status: ExchangeStatus;
+  processedBy?: {
+    id: string;
+    name: string;
+  } | null;
+  returnedItems: ExchangeReturnedItem[];
+  deliveredItems: ExchangeDeliveredItem[];
+  payments: ExchangePayment[];
+  refunds: ExchangePayment[];
+  createdAt: string;
+  fiscalDocuments?: ExchangeFiscalDocument[];
+  returnFiscalDocument?: ExchangeFiscalDocument | null;
+  deliveryFiscalDocument?: ExchangeFiscalDocument | null;
+  fiscalWarnings?: string[];
 }
 
 // Seller Types

@@ -268,12 +268,20 @@ export function SellerDetailsDialog({ isOpen, onClose, onEdit, seller }: SellerD
                         <div className="flex gap-1">
                           {paymentMethods.map((method, methodIdx) => {
                             const value = typeof method === 'string' ? method : method?.method;
-                            const label = value === 'cash' ? 'Dinheiro'
-                              : value === 'credit_card' ? 'Cartão'
-                              : value === 'debit_card' ? 'Débito'
-                              : value === 'pix' ? 'PIX'
-                              : value === 'installment' ? 'Parcelado'
-                              : 'Outro';
+                            const label =
+                              value === 'cash'
+                                ? 'Dinheiro'
+                                : value === 'credit_card'
+                                ? 'Cartão'
+                                : value === 'debit_card'
+                                ? 'Débito'
+                                : value === 'pix'
+                                ? 'PIX'
+                                : value === 'store_credit'
+                                ? 'Crédito em Loja'
+                                : value === 'installment'
+                                ? 'Parcelado'
+                                : 'Outro';
 
                             return (
                               <Badge key={`${value ?? 'unknown'}-${methodIdx}`} variant="secondary" className="text-xs">

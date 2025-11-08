@@ -531,10 +531,17 @@ export default function SellerProfilePage() {
                   <div className="flex gap-1">
                     {sale.paymentMethods.map((method) => (
                       <Badge key={method} variant="secondary" className="text-xs">
-                        {method === 'cash' ? 'Dinheiro' :
-                         method === 'credit_card' ? 'Cartão' :
-                         method === 'debit_card' ? 'Débito' :
-                         method === 'pix' ? 'PIX' : 'Parcelado'}
+                        {method === 'cash'
+                          ? 'Dinheiro'
+                          : method === 'credit_card'
+                          ? 'Cartão'
+                          : method === 'debit_card'
+                          ? 'Débito'
+                          : method === 'pix'
+                          ? 'PIX'
+                          : method === 'store_credit'
+                          ? 'Crédito em Loja'
+                          : 'Parcelado'}
                       </Badge>
                     ))}
                   </div>
