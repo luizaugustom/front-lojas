@@ -53,49 +53,68 @@ export function TrialConversionModal({ open, onOpenChange, plan }: TrialConversi
 
   const plans = [
     {
-      name: 'Básico',
+      name: 'Basic',
       type: PlanType.BASIC,
       price: 'R$ 49,90',
       period: '/mês',
+      description: 'Perfeito para pequenos negócios começando',
       features: [
-        'Até 250 produtos',
+        'PDV completo com busca rápida',
+        'Controle de estoque básico',
+        'Até 250 produtos cadastrados',
         '1 vendedor',
-        '5 contas a pagar',
-        'Gestão de vendas',
-        'Relatórios básicos',
+        'Até 5 contas a pagar',
+        'Cadastro de clientes ilimitado',
+        'Relatórios de vendas',
+        'Backup automático diário',
+        'Suporte via WhatsApp',
       ],
-      popular: false,
+      highlight: false,
+      cta: 'Começar Grátis',
     },
     {
       name: 'Plus',
       type: PlanType.PLUS,
-      price: 'R$ 99,90',
+      price: 'R$ 139,90',
       period: '/mês',
+      description: 'Para lojas em crescimento',
       features: [
-        'Até 800 produtos',
+        'Tudo do plano Basic',
+        'Até 800 produtos cadastrados',
         '2 vendedores',
-        '15 contas a pagar',
-        'Tudo do Básico',
-        'Suporte prioritário',
-        'Recursos avançados',
+        'Até 15 contas a pagar',
+        '💬 Mensagens automáticas WhatsApp para cobrança de vendas a prazo',
+        'Parcelamento de vendas',
+        'Sistema de comissões',
+        'Relatórios avançados',
+        'Web, Desktop e Mobile (Android e iOS)',
+        'Suporte prioritário via WhatsApp',
       ],
-      popular: true,
+      highlight: true,
+      cta: 'Começar Grátis',
     },
     {
       name: 'Pro',
       type: PlanType.PRO,
-      price: 'R$ 199,90',
+      price: 'R$ 289,90',
       period: '/mês',
+      description: 'Para empresas que querem máximo potencial',
       features: [
+        'Tudo do plano Plus',
         'Produtos ilimitados',
         'Vendedores ilimitados',
-        'Contas ilimitadas',
-        'Tudo do Plus',
-        'API exclusiva',
-        'Suporte 24/7',
-        'Recursos premium',
+        'Contas a pagar ilimitadas',
+        '🌐 Catálogo digital público personalizado na web',
+        'Link único para seus clientes navegarem',
+        'Busca e filtros avançados de produtos',
+        'Botão WhatsApp integrado no catálogo',
+        '📸 Upload de fotos dos produtos',
+        '💬 Mensagens automáticas de cobrança de vendas a prazo',
+        'Relatórios executivos',
+        'Suporte VIP 24/7 via WhatsApp',
       ],
-      popular: false,
+      highlight: false,
+      cta: 'Começar Grátis',
     },
   ];
 
@@ -131,12 +150,12 @@ export function TrialConversionModal({ open, onOpenChange, plan }: TrialConversi
               <Card
                 key={planOption.type}
                 className={`relative ${
-                  planOption.popular
+                  planOption.highlight
                     ? 'border-primary border-2 shadow-lg scale-105'
                     : 'border'
                 }`}
               >
-                {planOption.popular && (
+                {planOption.highlight && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                     <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
                       <Star className="h-3 w-3" />
@@ -150,7 +169,7 @@ export function TrialConversionModal({ open, onOpenChange, plan }: TrialConversi
                     <span className="text-3xl font-bold">{planOption.price}</span>
                     <span className="text-muted-foreground">{planOption.period}</span>
                   </div>
-                  <CardDescription>Ideal para empresas em crescimento</CardDescription>
+                  <CardDescription>{planOption.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
@@ -163,12 +182,12 @@ export function TrialConversionModal({ open, onOpenChange, plan }: TrialConversi
                   </ul>
                   <Button
                     className="w-full mt-6"
-                    variant={planOption.popular ? 'default' : 'outline'}
+                    variant={planOption.highlight ? 'default' : 'outline'}
                     onClick={() => {
                       handleSubscribe(planOption.name);
                     }}
                   >
-                    {planOption.popular ? 'Assinar Agora' : 'Escolher Plano'}
+                    {planOption.cta}
                   </Button>
                 </CardContent>
               </Card>
