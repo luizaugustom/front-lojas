@@ -1,23 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
-import { toast } from 'react-hot-toast';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  CreditCard, 
-  Save, 
+import toast from 'react-hot-toast';
+import {
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  CreditCard,
   RefreshCw,
   TrendingUp,
   DollarSign,
   ShoppingCart,
-  BarChart3,
-  Edit3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,35 +22,56 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
-import { handleApiError } from '@/lib/handleApiError';
 import { formatDate, formatCurrency } from '@/lib/utils';
-import { updateSellerProfileSchema } from '@/lib/validations';
 import { SellerCharts } from '@/components/sellers/seller-charts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { sellerApi } from '@/lib/api-endpoints';
 import type { Seller, SellerStats, Sale, UpdateSellerProfileDto, DataPeriodFilter } from '@/types';
 
 const SELLER_PERIOD_OPTIONS: Array<{ value: DataPeriodFilter; label: string }> = [
-  { value: 'LAST_3_MONTHS', label: 'Últimos 3 meses' },
   { value: 'LAST_1_MONTH', label: 'Último mês' },
+  { value: 'LAST_3_MONTHS', label: 'Últimos 3 meses' },
 ];
 
+const DEFAULT_SELLER_PERIOD: DataPeriodFilter = 'LAST_1_MONTH';
+const ALLOWED_SELLER_PERIODS = SELLER_PERIOD_OPTIONS.map((option) => option.value);
+
+function resolveSellerPeriod(period?: DataPeriodFilter | null): DataPeriodFilter {
+  return period && ALLOWED_SELLER_PERIODS.includes(period) ? period : DEFAULT_SELLER_PERIOD;
+}
+
+function getPeriodRange(period: DataPeriodFilter) {
+  const now = new Date();
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
+  const start = new Date(now);
+  if (period === 'LAST_3_MONTHS') {
+    start.setMonth(start.getMonth() - 3);
+  } else {
+    start.setMonth(start.getMonth() - 1);
+  }
+  start.setHours(0, 0, 0, 0);
+
+  return {
+    startDate: start.toISOString(),
+    endDate: end.toISOString(),
+  };
+}
+
 export default function SellerProfilePage() {
-  const { api, user, logout } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [dataPeriod, setDataPeriod] = useState<DataPeriodFilter>(user?.dataPeriod ?? 'LAST_1_MONTH');
-  const [savingDataPeriod, setSavingDataPeriod] = useState(false);
+  const { user, updateUser } = useAuth();
+  const [dataPeriod, setDataPeriod] = useState<DataPeriodFilter>(() =>
+    resolveSellerPeriod((user?.dataPeriod as DataPeriodFilter | null) ?? null),
+  );
+  const [isUpdatingDataPeriod, setIsUpdatingDataPeriod] = useState(false);
 
   const {
     register,
-    handleSubmit,
     formState: { errors },
     reset,
-    watch,
     control,
   } = useForm<UpdateSellerProfileDto>({
-    resolver: zodResolver(updateSellerProfileSchema),
     defaultValues: {
       name: '',
       cpf: '',
@@ -65,51 +82,56 @@ export default function SellerProfilePage() {
   });
 
   useEffect(() => {
-    if (user?.role === 'vendedor') {
-      setDataPeriod((user.dataPeriod as DataPeriodFilter | null) ?? 'LAST_1_MONTH');
-    }
-  }, [user?.dataPeriod, user?.role]);
+    setDataPeriod(
+      resolveSellerPeriod((user?.dataPeriod as DataPeriodFilter | null) ?? null),
+    );
+  }, [user?.dataPeriod]);
+
+  const { startDate, endDate } = useMemo(() => getPeriodRange(dataPeriod), [dataPeriod]);
 
   // Buscar perfil do vendedor
   const { data: profileData, isLoading: isLoadingProfile, refetch: refetchProfile } = useQuery({
     queryKey: ['seller-profile'],
     queryFn: async () => {
       try {
-        const response = await api.getMyProfile();
+        const response = await sellerApi.myProfile.get();
         return response.data || response;
       } catch (error) {
         console.error('Erro ao carregar perfil:', error);
         throw error;
       }
     },
+    enabled: user?.role === 'vendedor',
   });
 
   // Buscar estatísticas do vendedor
   const { data: statsData, isLoading: isLoadingStats, refetch: refetchStats } = useQuery({
-    queryKey: ['seller-stats'],
+    queryKey: ['seller-stats', startDate, endDate],
     queryFn: async () => {
       try {
-        const response = await api.getMyStats();
+        const response = await sellerApi.myStats({ startDate, endDate });
         return response.data || response;
       } catch (error) {
         console.error('Erro ao carregar estatísticas:', error);
         throw error;
       }
     },
+    enabled: user?.role === 'vendedor',
   });
 
   // Buscar vendas recentes
   const { data: salesData, isLoading: isLoadingSales, refetch: refetchSales } = useQuery({
-    queryKey: ['seller-sales'],
+    queryKey: ['seller-sales', startDate, endDate],
     queryFn: async () => {
       try {
-        const response = await api.getMySales({ page: 1, limit: 10 });
+        const response = await sellerApi.mySales({ page: 1, limit: 10, startDate, endDate });
         return response.data || response;
       } catch (error) {
         console.error('Erro ao carregar vendas:', error);
         throw error;
       }
     },
+    enabled: user?.role === 'vendedor',
   });
 
   const profile: Seller = profileData;
@@ -118,37 +140,6 @@ export default function SellerProfilePage() {
 
   // Preencher formulário quando os dados carregarem
   useEffect(() => {
-    if (profile && !isEditing) {
-      reset({
-        name: profile.name,
-        cpf: profile.cpf || '',
-        birthDate: profile.birthDate || '',
-        email: profile.email || '',
-        phone: profile.phone || '',
-      });
-    }
-  }, [profile, reset, isEditing]);
-
-  const onSubmit = async (data: UpdateSellerProfileDto) => {
-    setIsLoading(true);
-    try {
-      await api.updateMyProfile(data);
-      toast.success('Perfil atualizado com sucesso!');
-      setIsEditing(false);
-      refetchProfile();
-    } catch (error) {
-      handleApiError(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
     if (profile) {
       reset({
         name: profile.name,
@@ -158,7 +149,7 @@ export default function SellerProfilePage() {
         phone: profile.phone || '',
       });
     }
-  };
+  }, [profile, reset]);
 
   const handleRefresh = () => {
     refetchProfile();
@@ -166,34 +157,38 @@ export default function SellerProfilePage() {
     refetchSales();
   };
 
-  const handleSaveDataPeriod = async () => {
+  const handleDataPeriodChange = async (value: string) => {
+    const nextPeriod = resolveSellerPeriod(value as DataPeriodFilter);
+    if (nextPeriod === dataPeriod) {
+      return;
+    }
+
+    const previousPeriod = dataPeriod;
+    setDataPeriod(nextPeriod);
+    setIsUpdatingDataPeriod(true);
+
     try {
-      setSavingDataPeriod(true);
-      await sellerApi.updateMyDataPeriod(dataPeriod);
-      toast.success('Período atualizado! Você será desconectado para aplicar as alterações.');
-      await logout();
+      await sellerApi.updateMyDataPeriod(nextPeriod);
+      updateUser({ dataPeriod: nextPeriod });
+      toast.success('Período atualizado com sucesso!');
     } catch (error) {
-      handleApiError(error);
+      console.error('Erro ao atualizar período do vendedor:', error);
+      toast.error('Não foi possível atualizar o período. Tente novamente.');
+      setDataPeriod(previousPeriod);
     } finally {
-      setSavingDataPeriod(false);
+      setIsUpdatingDataPeriod(false);
     }
   };
 
-  // Função para aplicar máscara de CPF
-  const formatCPF = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-  };
-
-  // Função para aplicar máscara de telefone
-  const formatPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 10) {
-      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-    } else {
-      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-    }
-  };
+  if (user?.role !== 'vendedor') {
+    return (
+      <div className="text-center py-8">
+        <User className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-300 mb-2">Acesso negado</h2>
+        <p className="text-muted-foreground">Esta página é exclusiva para vendedores.</p>
+      </div>
+    );
+  }
 
   if (isLoadingProfile) {
     return (
@@ -218,13 +213,28 @@ export default function SellerProfilePage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Meu Perfil</h1>
-          <p className="text-muted-foreground">Gerencie suas informações pessoais</p>
+          <p className="text-muted-foreground">Visualize suas informações pessoais</p>
         </div>
         <div className="flex items-center gap-2">
+          <Select
+            value={dataPeriod}
+            onValueChange={handleDataPeriodChange}
+            disabled={isUpdatingDataPeriod}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              {SELLER_PERIOD_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             variant="outline"
             onClick={handleRefresh}
@@ -232,58 +242,8 @@ export default function SellerProfilePage() {
           >
             <RefreshCw className={`h-4 w-4 ${(isLoadingProfile || isLoadingStats || isLoadingSales) ? 'animate-spin' : ''}`} />
           </Button>
-          {!isEditing && (
-            <Button onClick={handleEdit}>
-              <Edit3 className="h-4 w-4 mr-2" />
-              Editar Perfil
-            </Button>
-          )}
         </div>
       </div>
-
-      <Card className="p-6">
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              Período padrão dos meus dados
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Escolha o intervalo padrão usado para histórico de vendas e fechamento de caixa.
-            </p>
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="w-full sm:max-w-xs">
-              <Label htmlFor="seller-data-period">Período padrão</Label>
-              <Select
-                value={dataPeriod}
-                onValueChange={(value) => setDataPeriod(value as DataPeriodFilter)}
-              >
-                <SelectTrigger id="seller-data-period">
-                  <SelectValue placeholder="Selecione um período" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SELLER_PERIOD_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              onClick={handleSaveDataPeriod}
-              disabled={savingDataPeriod}
-              className="w-full sm:w-auto"
-            >
-              {savingDataPeriod ? 'Salvando...' : 'Salvar período'}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Após salvar, você será redirecionado para o login. Ao entrar novamente, seus dados serão exibidos conforme o período escolhido.
-          </p>
-        </div>
-      </Card>
 
       {/* Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -337,7 +297,7 @@ export default function SellerProfilePage() {
           Informações Pessoais
         </h3>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Login (não editável) */}
             <div>
@@ -364,7 +324,7 @@ export default function SellerProfilePage() {
                 id="name"
                 placeholder="João Silva"
                 {...register('name')}
-                disabled={!isEditing}
+                disabled
                 className={errors.name ? 'border-red-500' : ''}
               />
               {errors.name && (
@@ -382,14 +342,7 @@ export default function SellerProfilePage() {
                 id="cpf"
                 placeholder="000.000.000-00"
                 {...register('cpf')}
-                disabled={!isEditing}
-                onChange={(e) => {
-                  if (isEditing) {
-                    const formatted = formatCPF(e.target.value);
-                    e.target.value = formatted;
-                    register('cpf').onChange(e);
-                  }
-                }}
+                disabled
                 className={errors.cpf ? 'border-red-500' : ''}
               />
               {errors.cpf && (
@@ -411,7 +364,7 @@ export default function SellerProfilePage() {
                     date={field.value ? new Date(field.value) : undefined}
                     onSelect={(date) => field.onChange(date?.toISOString().split('T')[0] || '')}
                     placeholder="Selecione sua data de nascimento"
-                    disabled={!isEditing}
+                    disabled
                   />
                 )}
               />
@@ -431,7 +384,7 @@ export default function SellerProfilePage() {
                 type="email"
                 placeholder="joao@example.com"
                 {...register('email')}
-                disabled={!isEditing}
+                disabled
                 className={errors.email ? 'border-red-500' : ''}
               />
               {errors.email && (
@@ -449,14 +402,7 @@ export default function SellerProfilePage() {
                 id="phone"
                 placeholder="(11) 99999-9999"
                 {...register('phone')}
-                disabled={!isEditing}
-                onChange={(e) => {
-                  if (isEditing) {
-                    const formatted = formatPhone(e.target.value);
-                    e.target.value = formatted;
-                    register('phone').onChange(e);
-                  }
-                }}
+                disabled
                 className={errors.phone ? 'border-red-500' : ''}
               />
               {errors.phone && (
@@ -464,37 +410,6 @@ export default function SellerProfilePage() {
               )}
             </div>
           </div>
-
-          {/* Actions */}
-          {isEditing && (
-            <div className="flex items-center justify-end gap-3 pt-6 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCancel}
-                disabled={isLoading}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Salvando...
-                  </div>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Salvar Alterações
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
         </form>
       </Card>
 
@@ -516,35 +431,49 @@ export default function SellerProfilePage() {
           </div>
         ) : recentSales.length > 0 ? (
           <div className="space-y-3">
-            {recentSales.map((sale) => (
+            {recentSales.map((sale: any) => (
               <div key={sale.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                 <div>
-                  <p className="font-medium">Venda #{sale.saleNumber}</p>
+                  <p className="font-medium">Venda #{sale.saleNumber || sale.id?.substring(0, 8)}</p>
                   <p className="text-sm text-muted-foreground">
-                    {formatDate(sale.createdAt)}
+                    {formatDate(sale.createdAt || sale.saleDate)}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="font-semibold text-green-600">
                     {formatCurrency(sale.total)}
                   </p>
-                  <div className="flex gap-1">
-                    {sale.paymentMethods.map((method) => (
-                      <Badge key={method} variant="secondary" className="text-xs">
-                        {method === 'cash'
-                          ? 'Dinheiro'
-                          : method === 'credit_card'
-                          ? 'Cartão'
-                          : method === 'debit_card'
-                          ? 'Débito'
-                          : method === 'pix'
-                          ? 'PIX'
-                          : method === 'store_credit'
-                          ? 'Crédito em Loja'
-                          : 'Parcelado'}
-                      </Badge>
-                    ))}
-                  </div>
+                  {sale.paymentMethods && (
+                    <div className="flex gap-1">
+                      {(Array.isArray(sale.paymentMethods) ? sale.paymentMethods : []).map((method: any, idx: number) => (
+                        <Badge key={idx} variant="secondary" className="text-xs">
+                          {typeof method === 'string'
+                            ? method === 'cash'
+                              ? 'Dinheiro'
+                              : method === 'credit_card'
+                              ? 'Cartão'
+                              : method === 'debit_card'
+                              ? 'Débito'
+                              : method === 'pix'
+                              ? 'PIX'
+                              : method === 'store_credit'
+                              ? 'Crédito em Loja'
+                              : 'Parcelado'
+                            : method.method === 'cash'
+                            ? 'Dinheiro'
+                            : method.method === 'credit_card'
+                            ? 'Cartão'
+                            : method.method === 'debit_card'
+                            ? 'Débito'
+                            : method.method === 'pix'
+                            ? 'PIX'
+                            : method.method === 'store_credit'
+                            ? 'Crédito em Loja'
+                            : 'Parcelado'}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

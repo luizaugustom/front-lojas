@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Package } from 'lucide-react';
+import { Box, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getImageUrl } from '@/lib/image-utils';
 
@@ -70,7 +70,7 @@ export function OptimizedImage({
         )}
         style={width && height ? { width, height } : undefined}
       >
-        <Package className="text-muted-foreground h-1/2 w-1/2" />
+        <Box className="text-muted-foreground h-1/2 w-1/2" />
       </div>
     );
   }
@@ -80,7 +80,7 @@ export function OptimizedImage({
       {/* Placeholder enquanto carrega */}
       {imageState === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted animate-pulse">
-          <Package className="text-muted-foreground h-1/2 w-1/2 animate-pulse" />
+          <Box className="text-muted-foreground h-1/2 w-1/2 animate-pulse" />
         </div>
       )}
 

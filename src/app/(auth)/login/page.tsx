@@ -39,7 +39,7 @@ export default function LoginPage() {
   useEffect(() => {
     // Se já estiver autenticado, redireciona pela role
     if (isAuthenticated && user) {
-      router.replace(user.role === 'vendedor' ? '/sales' : '/dashboard');
+      router.replace(user.role === 'vendedor' ? '/seller/profile' : '/dashboard');
     }
   }, [isAuthenticated, user, router]);
 
@@ -83,7 +83,7 @@ export default function LoginPage() {
         }
       }
       // Usar replace para evitar problemas de navegação e garantir que o estado foi atualizado
-      const redirectPath = logged.role === 'vendedor' ? '/sales' : '/dashboard';
+      const redirectPath = logged.role === 'vendedor' ? '/seller/profile' : '/dashboard';
       // Pequeno delay para garantir que o estado foi propagado
       await new Promise(resolve => setTimeout(resolve, 50));
       router.replace(redirectPath);

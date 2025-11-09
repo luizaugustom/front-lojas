@@ -272,20 +272,24 @@ export const sellerApi = {
    * GET /seller/my-profile
    * Roles: SELLER - Perfil do vendedor logado
    */
-  myProfile: () => api.get('/seller/my-profile'),
+  myProfile: {
+    get: () => api.get('/seller/my-profile'),
+    update: (data: any) => api.patch('/seller/my-profile', data),
+  },
 
   /**
    * GET /seller/my-stats
    * Roles: SELLER
    */
-  myStats: () => api.get('/seller/my-stats'),
+  myStats: (params?: { startDate?: string; endDate?: string }) =>
+    api.get('/seller/my-stats', { params }),
 
   /**
    * GET /seller/my-sales
    * Roles: SELLER
    * Query: page, limit
    */
-  mySales: (params?: { page?: number; limit?: number }) =>
+  mySales: (params?: { page?: number; limit?: number; startDate?: string; endDate?: string }) =>
     api.get('/seller/my-sales', { params }),
 
   /**
@@ -307,13 +311,6 @@ export const sellerApi = {
    */
   sales: (id: string, params?: { page?: number; limit?: number }) =>
     api.get(`/seller/${id}/sales`, { params }),
-
-  /**
-   * PATCH /seller/my-profile
-   * Roles: SELLER
-   * Body: Mesma estrutura do POST (campos opcionais)
-   */
-  updateMyProfile: (data: any) => api.patch('/seller/my-profile', data),
 
   /**
    * PATCH /seller/my-data-period

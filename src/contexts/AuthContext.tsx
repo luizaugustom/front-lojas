@@ -24,6 +24,7 @@ type AuthContextValue = {
   logout: () => Promise<void>;
   getAccessToken: () => string | null;
   api: typeof api;
+  updateUser: (partial: Partial<User>) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -201,9 +202,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const getAccessToken = useCallback(() => getMemToken(), []);
 
+  const updateUser = useCallback((partial: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const next = { ...prev, ...partial };
+      setUserStorage(next);
+      return next;
+    });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isAuthenticated, login, logout, getAccessToken, api }),
-    [user, isAuthenticated, login, logout, getAccessToken]
+    () => ({ user, isAuthenticated, login, logout, getAccessToken, api, updateUser }),
+    [user, isAuthenticated, login, logout, getAccessToken, updateUser]
   );
 
   return (
