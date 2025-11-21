@@ -48,15 +48,19 @@ export default function CatalogPageClient() {
     const fetchCatalogData = async () => {
       try {
         setLoading(true);
-        const baseUrl =
+        let baseUrl =
           process.env.NEXT_PUBLIC_PUBLIC_API_URL ||
           process.env.NEXT_PUBLIC_API_BASE_URL ||
           process.env.NEXT_PUBLIC_API_URL ||
           'https://montshop-api-qi3v4.ondigitalocean.app';
 
-        console.log('🔍 Buscando catálogo na URL:', `${baseUrl}/public/catalog/${url}/products`);
+        // Remover barra final se existir para evitar barras duplicadas
+        baseUrl = baseUrl.replace(/\/+$/, '');
         
-        const response = await fetch(`${baseUrl}/public/catalog/${url}/products`, {
+        const catalogUrl = `${baseUrl}/public/catalog/${url}/products`;
+        console.log('🔍 Buscando catálogo na URL:', catalogUrl);
+        
+        const response = await fetch(catalogUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
