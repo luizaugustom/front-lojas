@@ -112,7 +112,7 @@ export default function SettingsPage() {
     enabled: false,
   });
   const catalogPublicUrl = withPublicSiteUrl(catalogPageConfig?.pageUrl);
-  const catalogPreviewUrl = catalogPageForm.url ? withPublicSiteUrl(`/catalogo/${catalogPageForm.url}`) : null;
+  const catalogPreviewUrl = catalogPageForm.url ? withPublicSiteUrl(`/catalog/${catalogPageForm.url}`) : null;
 
   // Estado das configurações do admin (Focus NFe global)
   const [adminFocusConfig, setAdminFocusConfig] = useState<any>(null);
@@ -729,8 +729,12 @@ export default function SettingsPage() {
       }
 
       const updates: any = {};
-      if (catalogPageForm.url) updates.catalogPageUrl = catalogPageForm.url;
-      if (catalogPageForm.enabled !== catalogPageConfig?.catalogPageEnabled) {
+      // Sempre enviar URL se estiver preenchida (mesmo que não tenha mudado)
+      if (catalogPageForm.url) {
+        updates.catalogPageUrl = catalogPageForm.url;
+      }
+      // Sempre enviar enabled se estiver sendo alterado ou se for a primeira vez
+      if (catalogPageForm.enabled !== catalogPageConfig?.catalogPageEnabled || catalogPageConfig === null) {
         updates.catalogPageEnabled = catalogPageForm.enabled;
       }
 
@@ -1718,7 +1722,7 @@ export default function SettingsPage() {
                         disabled={updatingCatalogPage}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Exemplo: se você digitar "masolucoes", sua página será acessível em {`${PUBLIC_SITE_URL}/catalogo/masolucoes`}
+                        Exemplo: se você digitar "masolucoes", sua página será acessível em {`${PUBLIC_SITE_URL}/catalog/masolucoes`}
                       </p>
                     </div>
 
