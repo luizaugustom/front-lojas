@@ -442,8 +442,9 @@ export default function SettingsPage() {
       return;
     }
 
-    if (!fiscalConfig?.hasCertificatePassword && !fiscalForm.certificatePassword) {
-      toast.error('Configure a senha do certificado antes de fazer upload');
+    // A senha DEVE estar salva no banco antes do upload
+    if (!fiscalConfig?.hasCertificatePassword) {
+      toast.error('Configure e SALVE a senha do certificado antes de fazer upload do arquivo. Clique em "Salvar Configurações Fiscais" primeiro.');
       return;
     }
 
