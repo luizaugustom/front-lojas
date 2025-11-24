@@ -436,6 +436,12 @@ export default function SettingsPage() {
       return;
     }
 
+    // Verificar se o administrador configurou a API Key do Focus NFe
+    if (!fiscalConfig?.adminHasFocusNfeApiKey) {
+      toast.error('API Key do Focus NFe não configurada pelo administrador. Solicite ao administrador que configure a API Key global do Focus NFe nas configurações do sistema.');
+      return;
+    }
+
     if (!fiscalConfig?.hasCertificatePassword && !fiscalForm.certificatePassword) {
       toast.error('Configure a senha do certificado antes de fazer upload');
       return;
@@ -1175,6 +1181,46 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Alerta se a API Key do Focus NFe não estiver configurada */}
+                  {!fiscalConfig?.adminHasFocusNfeApiKey && (
+                    <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
+                      <div className="flex items-start gap-2">
+                        <Shield className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-red-900 dark:text-red-100">
+                            ⚠️ API Key do Focus NFe não configurada
+                          </p>
+                          <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                            O administrador precisa configurar a API Key global do Focus NFe antes que você possa fazer upload do certificado digital. Solicite ao administrador que acesse as Configurações do sistema e configure a API Key do Focus NFe.
+                          </p>
+                          <p className="text-xs text-red-700 dark:text-red-300 mt-2">
+                            <strong>Ambiente atual:</strong> {fiscalConfig?.focusNfeEnvironment === 'production' ? 'Produção' : 'Homologação (Testes)'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Alerta se a API Key estiver configurada */}
+                  {fiscalConfig?.adminHasFocusNfeApiKey && (
+                    <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+                      <div className="flex items-start gap-2">
+                        <Shield className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                            ✓ API Key do Focus NFe configurada
+                          </p>
+                          <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                            O sistema está pronto para emitir notas fiscais. Configure os dados abaixo e faça upload do certificado digital.
+                          </p>
+                          <p className="text-xs text-green-700 dark:text-green-300 mt-2">
+                            <strong>Ambiente atual:</strong> {fiscalConfig?.focusNfeEnvironment === 'production' ? 'Produção' : 'Homologação (Testes)'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
