@@ -23,7 +23,6 @@ import {
   TestTube,
   CalendarClock,
   ClipboardList,
-  Printer,
   FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -51,8 +50,6 @@ const navigation = [
   { name: 'Empresas', href: '/companies', icon: Building2, roles: ['admin'] },
   // Testes da API - visível apenas para admin
   { name: 'Testes da API', href: '/test-api', icon: TestTube, roles: ['admin'] },
-  // Dispositivos - página dedicada
-  { name: 'Dispositivos', href: '/devices', icon: Printer, roles: ['empresa', 'vendedor'] },
   { name: 'Configurações', href: '/settings', icon: Settings, roles: ['admin', 'empresa'] },
 ];
 

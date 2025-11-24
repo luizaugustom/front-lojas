@@ -14,8 +14,6 @@ import {
 import { api } from '@/lib/api'; // ← API com todos os métodos incluindo notificações
 import { removeAuthToken, setUser as setUserStorage, getUser as getUserStorage, setAuthToken as setAuthTokenStorage, getAuthToken as getAuthTokenStorage } from '@/lib/auth';
 import { checkPrinterStatus } from '@/lib/printer-check';
-import { getComputerId, detectAllDevices } from '@/lib/device-detection';
-import { scaleApi } from '@/lib/api-endpoints';
 
 type AuthContextValue = {
   user: User | null;
@@ -118,35 +116,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Função para detectar e registrar dispositivos do computador
-  const detectAndRegisterDevices = useCallback(async () => {
-    try {
-      const computerId = getComputerId();
-      console.log('[AuthContext] Detectando dispositivos para computador:', computerId);
-
-      // Detecta todos os dispositivos disponíveis
-      const { printers, scales } = await detectAllDevices();
-
-      // Configuração de impressoras removida - não registra mais
-
-      // Registra balanças no backend
-      if (scales.length > 0) {
-        try {
-          await scaleApi.registerDevices({ computerId, scales });
-          console.log(`[AuthContext] ${scales.length} balança(s) registrada(s)`);
-        } catch (error) {
-          console.error('[AuthContext] Erro ao registrar balanças:', error);
-        }
-      }
-
-      if (printers.length === 0 && scales.length === 0) {
-        console.log('[AuthContext] Nenhum dispositivo detectado automaticamente. O usuário pode selecionar manualmente.');
-      }
-    } catch (error) {
-      console.error('[AuthContext] Erro ao detectar dispositivos:', error);
-    }
-  }, []);
-
   const login = useCallback(async (login: string, password: string) => {
     console.log('[AuthContext.login] Iniciando login...', { login, password: '***' });
     try {
@@ -164,21 +133,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserStorage(data.user);
       console.log('[AuthContext.login] Token e user setados no contexto e localStorage');
       
-      // Detectar e registrar dispositivos do computador após login bem-sucedido
-      try {
-        console.log('[AuthContext.login] Detectando dispositivos do computador...');
-        await detectAndRegisterDevices();
-      } catch (deviceError) {
-        console.error('[AuthContext.login] Erro ao detectar dispositivos:', deviceError);
-        // Não bloqueia o login se houver erro na detecção de dispositivos
-      }
+      // Detecção automática de dispositivos removida na versão web
+      // Isso não faz sentido na web, pois requer interação do usuário para selecionar dispositivos
+      // Dispositivos devem ser configurados manualmente através da página de configurações se necessário
       
       return data.user;
     } catch (error) {
       console.error('[AuthContext.login] Erro no login:', error);
       throw error;
     }
-  }, [detectAndRegisterDevices]);
+  }, []);
 
   const logout = useCallback(async () => {
     console.log('[AuthContext.logout] Iniciando logout...');
