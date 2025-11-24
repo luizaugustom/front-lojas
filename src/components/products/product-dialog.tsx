@@ -710,6 +710,37 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="costPrice" className="text-foreground">Preço de Custo</Label>
+              <Input
+                id="costPrice"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                {...register('costPrice', { 
+                  valueAsNumber: true,
+                  onBlur: (e) => {
+                    // Se o campo estiver vazio ao sair, limpar
+                    if (e.target.value === '') {
+                      setValue('costPrice', undefined);
+                    }
+                  }
+                })}
+                onFocus={(e) => {
+                  // Se o valor for 0, limpar o campo ao focar
+                  if (Number(e.target.value) === 0) {
+                    e.target.value = '';
+                  }
+                }}
+                disabled={loading}
+                className="text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              {errors.costPrice && (
+                <p className="text-sm text-destructive">{errors.costPrice.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="stockQuantity" className="text-foreground">Quantidade em Estoque *</Label>
               <Input
                 id="stockQuantity"

@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Phone, Mail, Hash, MapPin, CreditCard, FileText, Palette, Crown, Zap, Star, Lock, User } from 'lucide-react';
+import { Building2, Phone, Mail, Hash, MapPin, CreditCard, FileText, Palette, Crown, Zap, Star, Lock, User, Settings } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 
 interface CompanyDialogProps {
@@ -52,6 +53,13 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
     agency: '',
     accountNumber: '',
     accountType: 'corrente',
+    maxProducts: null,
+    maxCustomers: null,
+    maxSellers: null,
+    photoUploadEnabled: true,
+    maxPhotosPerProduct: null,
+    nfceEmissionEnabled: true,
+    nfeEmissionEnabled: true,
   });
 
   const [loading, setLoading] = useState(false);
@@ -84,6 +92,13 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
         agency: '',
         accountNumber: '',
         accountType: 'corrente',
+        maxProducts: company.maxProducts ?? null,
+        maxCustomers: company.maxCustomers ?? null,
+        maxSellers: company.maxSellers ?? null,
+        photoUploadEnabled: company.photoUploadEnabled ?? true,
+        maxPhotosPerProduct: company.maxPhotosPerProduct ?? null,
+        nfceEmissionEnabled: company.nfceEmissionEnabled ?? true,
+        nfeEmissionEnabled: company.nfeEmissionEnabled ?? true,
       });
     } else {
       setFormData({
@@ -172,6 +187,14 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
   };
 
   const handleChange = (field: keyof CreateCompanyDto, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleNumberChange = (field: keyof CreateCompanyDto, value: number | null) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleBooleanChange = (field: keyof CreateCompanyDto, value: boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -653,6 +676,122 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
               </div>
             </CardContent>
           </Card>
+
+          {isAdmin && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2 text-foreground">
+                  <Settings className="h-5 w-5" />
+                  Limites do Plano
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="maxProducts" className="text-foreground">
+                      Limite de Produtos (deixe vazio para ilimitado)
+                    </Label>
+                    <Input
+                      id="maxProducts"
+                      type="number"
+                      value={formData.maxProducts ?? ''}
+                      onChange={(e) => handleNumberChange('maxProducts', e.target.value ? parseInt(e.target.value) : null)}
+                      placeholder="Ilimitado"
+                      min="0"
+                      className="text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="maxCustomers" className="text-foreground">
+                      Limite de Clientes (deixe vazio para ilimitado)
+                    </Label>
+                    <Input
+                      id="maxCustomers"
+                      type="number"
+                      value={formData.maxCustomers ?? ''}
+                      onChange={(e) => handleNumberChange('maxCustomers', e.target.value ? parseInt(e.target.value) : null)}
+                      placeholder="Ilimitado"
+                      min="0"
+                      className="text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="maxSellers" className="text-foreground">
+                      Limite de Vendedores (deixe vazio para ilimitado)
+                    </Label>
+                    <Input
+                      id="maxSellers"
+                      type="number"
+                      value={formData.maxSellers ?? ''}
+                      onChange={(e) => handleNumberChange('maxSellers', e.target.value ? parseInt(e.target.value) : null)}
+                      placeholder="Ilimitado"
+                      min="0"
+                      className="text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="maxPhotosPerProduct" className="text-foreground">
+                      Limite de Fotos por Produto (deixe vazio para ilimitado)
+                    </Label>
+                    <Input
+                      id="maxPhotosPerProduct"
+                      type="number"
+                      value={formData.maxPhotosPerProduct ?? ''}
+                      onChange={(e) => handleNumberChange('maxPhotosPerProduct', e.target.value ? parseInt(e.target.value) : null)}
+                      placeholder="Ilimitado"
+                      min="0"
+                      className="text-foreground"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-4 border rounded-md">
+                    <div>
+                      <Label htmlFor="photoUploadEnabled" className="text-foreground font-medium">
+                        Upload de Fotos Habilitado
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Permite que a empresa faça upload de fotos de produtos
+                      </p>
+                    </div>
+                    <Switch
+                      id="photoUploadEnabled"
+                      checked={formData.photoUploadEnabled ?? true}
+                      onCheckedChange={(checked) => handleBooleanChange('photoUploadEnabled', checked)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-4 border rounded-md">
+                    <div>
+                      <Label htmlFor="nfceEmissionEnabled" className="text-foreground font-medium">
+                        Emissão de NFCe Habilitada
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Permite que a empresa emita NFCe
+                      </p>
+                    </div>
+                    <Switch
+                      id="nfceEmissionEnabled"
+                      checked={formData.nfceEmissionEnabled ?? true}
+                      onCheckedChange={(checked) => handleBooleanChange('nfceEmissionEnabled', checked)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-4 border rounded-md">
+                    <div>
+                      <Label htmlFor="nfeEmissionEnabled" className="text-foreground font-medium">
+                        Emissão de NFe Habilitada
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Permite que a empresa emita NFe
+                      </p>
+                    </div>
+                    <Switch
+                      id="nfeEmissionEnabled"
+                      checked={formData.nfeEmissionEnabled ?? true}
+                      onCheckedChange={(checked) => handleBooleanChange('nfeEmissionEnabled', checked)}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Botões de ação */}
           <div className="flex justify-end gap-3">

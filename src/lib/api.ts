@@ -1,6 +1,12 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { toast } from 'react-hot-toast';
-import type { Exchange, PaymentMethod, UserRole } from '@/types';
+import type {
+  Exchange,
+  PaymentMethod,
+  UserRole,
+  StoreCreditBalance,
+  StoreCreditTransactionsResponse,
+} from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const USE_MOCK = false; // Sempre usar backend real
@@ -338,6 +344,61 @@ class ApiClient {
    */
   async deleteCustomer(id: string) {
     const response = await this.client.delete(`/customer/${id}`);
+    return response.data;
+  }
+
+  // Store Credit
+  /**
+   * GET /store-credit/balance/:customerId
+   * Consultar saldo de crédito do cliente
+   * Permissão: ADMIN, COMPANY
+   */
+  async getStoreCreditBalance(customerId: string): Promise<StoreCreditBalance> {
+    const response = await this.client.get(`/store-credit/balance/${customerId}`);
+    return response.data;
+  }
+
+  /**
+   * GET /store-credit/balance-by-cpf/:cpfCnpj
+   * Consultar saldo de crédito por CPF/CNPJ
+   * Permissão: ADMIN, COMPANY, SELLER
+   */
+  async getStoreCreditBalanceByCpfCnpj(
+    cpfCnpj: string,
+  ): Promise<StoreCreditBalance | null> {
+    const response = await this.client.get(`/store-credit/balance-by-cpf/${cpfCnpj}`);
+    return response.data;
+  }
+
+  /**
+   * GET /store-credit/transactions/:customerId
+   * Listar transações de crédito do cliente
+   * Permissão: ADMIN, COMPANY
+   */
+  async getStoreCreditTransactions(
+    customerId: string,
+    page?: number,
+    limit?: number,
+  ): Promise<StoreCreditTransactionsResponse> {
+    const response = await this.client.get(`/store-credit/transactions/${customerId}`, {
+      params: { page, limit },
+    });
+    return response.data;
+  }
+
+  /**
+   * POST /store-credit/use
+   * Usar crédito do cliente
+   * Permissão: ADMIN, COMPANY, SELLER
+   * Body: { customerId, amount, saleId?, description? }
+   */
+  async useStoreCredit(data: {
+    customerId: string;
+    amount: number;
+    saleId?: string;
+    description?: string;
+  }) {
+    const response = await this.client.post('/store-credit/use', data);
     return response.data;
   }
 

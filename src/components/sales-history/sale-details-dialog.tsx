@@ -119,7 +119,7 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
     }
   };
 
-  const handleExchangeSuccess = async () => {
+  const handleExchangeSuccess = async (exchange: Exchange) => {
     await refetch();
   };
 
@@ -240,8 +240,6 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled
-                    title="Função disponível na próxima atualização"
                     onClick={() => setExchangeDialogOpen(true)}
                   >
                     <Repeat className="mr-2 h-4 w-4" />

@@ -246,6 +246,18 @@ export const companyApi = {
    * Roles: COMPANY - Verificar se tem configuração fiscal válida para NFCe
    */
   hasValidFiscalConfig: () => api.get('/company/my-company/fiscal-config/valid'),
+
+  /**
+   * PATCH /company/:id/focus-nfe-config
+   * Roles: ADMIN - Atualizar configuração do Focus NFe da empresa
+   */
+  updateFocusNfeConfig: (id: string, data: any) => api.patch(`/company/${id}/focus-nfe-config`, data),
+
+  /**
+   * GET /company/:id/focus-nfe-config
+   * Roles: ADMIN - Obter configuração do Focus NFe da empresa
+   */
+  getFocusNfeConfig: (id: string) => api.get(`/company/${id}/focus-nfe-config`),
 };
 
 // ============================================================================
