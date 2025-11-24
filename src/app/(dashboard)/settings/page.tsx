@@ -98,6 +98,14 @@ export default function SettingsPage() {
   const catalogPublicUrl = withPublicSiteUrl(catalogPageConfig?.pageUrl);
   const catalogPreviewUrl = catalogPageForm.url ? withPublicSiteUrl(`/catalog/${catalogPageForm.url}`) : null;
 
+  // Estado do certificado digital
+  const [fiscalConfig, setFiscalConfig] = useState<any>(null);
+  const [loadingFiscalConfig, setLoadingFiscalConfig] = useState(false);
+  const [certificateFile, setCertificateFile] = useState<File | null>(null);
+  const [uploadingCertificate, setUploadingCertificate] = useState(false);
+  const [certificatePassword, setCertificatePassword] = useState('');
+  const [savingCertificatePassword, setSavingCertificatePassword] = useState(false);
+
 
   // Carregar dados da empresa (incluindo plano)
   const loadCompanyData = async () => {
@@ -160,6 +168,7 @@ export default function SettingsPage() {
         loadCompanyLogo();
         loadAutoMessageStatus();
         loadCatalogPageConfig();
+        loadFiscalConfig();
       }
     }
   }, [user]);
@@ -499,6 +508,91 @@ export default function SettingsPage() {
     }
   };
 
+  // Funções para gerenciar certificado digital
+  const loadFiscalConfig = async () => {
+    try {
+      setLoadingFiscalConfig(true);
+      const response = await companyApi.getFiscalConfig();
+      setFiscalConfig(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar configurações fiscais:', error);
+    } finally {
+      setLoadingFiscalConfig(false);
+    }
+  };
+
+  const handleCertificateFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validar extensão
+      if (!file.name.endsWith('.pfx') && !file.name.endsWith('.p12')) {
+        toast.error('Arquivo deve ser .pfx ou .p12');
+        return;
+      }
+
+      // Validar tamanho (máximo 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('Arquivo muito grande. Tamanho máximo: 10MB');
+        return;
+      }
+
+      setCertificateFile(file);
+    }
+  };
+
+  const handleUploadCertificate = async () => {
+    if (!certificateFile) {
+      toast.error('Selecione um arquivo de certificado');
+      return;
+    }
+
+    if (!certificatePassword) {
+      toast.error('Digite a senha do certificado antes de fazer upload');
+      return;
+    }
+
+    try {
+      setUploadingCertificate(true);
+      
+      // Primeiro salvar a senha
+      await companyApi.updateFiscalConfig({ certificatePassword });
+      
+      // Depois fazer upload do certificado
+      await companyApi.uploadCertificate(certificateFile);
+      
+      toast.success('Certificado enviado com sucesso!');
+      setCertificateFile(null);
+      setCertificatePassword('');
+      
+      // Recarregar configurações fiscais
+      await loadFiscalConfig();
+    } catch (error: any) {
+      console.error('Erro ao enviar certificado:', error);
+      handleApiError(error);
+    } finally {
+      setUploadingCertificate(false);
+    }
+  };
+
+  const handleSaveCertificatePassword = async () => {
+    if (!certificatePassword) {
+      toast.error('Digite a senha do certificado');
+      return;
+    }
+
+    try {
+      setSavingCertificatePassword(true);
+      await companyApi.updateFiscalConfig({ certificatePassword });
+      toast.success('Senha do certificado salva com sucesso!');
+      await loadFiscalConfig();
+    } catch (error: any) {
+      console.error('Erro ao salvar senha do certificado:', error);
+      handleApiError(error);
+    } finally {
+      setSavingCertificatePassword(false);
+    }
+  };
+
   // Funções para gerenciar página de catálogo
   const loadCatalogPageConfig = async () => {
     try {
@@ -622,6 +716,7 @@ export default function SettingsPage() {
           <div className="flex flex-wrap gap-2 p-2">
             <a href="#periodo-dados"><Button variant="outline" size="sm">Período</Button></a>
             <a href="#empresa-logo-cor"><Button variant="outline" size="sm">Empresa</Button></a>
+            <a href="#certificado-digital"><Button variant="outline" size="sm">Certificado Digital</Button></a>
             <a href="#catalogo-titulo"><Button variant="outline" size="sm">Catálogo</Button></a>
             <a href="#notificacoes-fim"><Button variant="outline" size="sm">Notificações</Button></a>
             
@@ -1086,6 +1181,152 @@ export default function SettingsPage() {
                   <strong>ℹ️ Informação:</strong> O logo será exibido no header e a cor será aplicada em todo o sistema.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Certificado Digital - Apenas para Empresas */}
+        {user?.role === 'empresa' && (
+          <Card id="certificado-digital" className="scroll-mt-24">
+            <CardHeader>
+              <CardTitle id="certificado-digital-titulo" className="flex items-center gap-2 scroll-mt-24">
+                <Lock className="h-5 w-5" />
+                Certificado Digital
+              </CardTitle>
+              <CardDescription>
+                Configure o certificado digital e senha para emissão de notas fiscais
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {loadingFiscalConfig ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">Carregando...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Senha do Certificado */}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="certificate-password">
+                        Senha do Certificado Digital *
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="certificate-password"
+                          type="password"
+                          value={certificatePassword}
+                          onChange={(e) => setCertificatePassword(e.target.value)}
+                          placeholder="Digite a senha do certificado"
+                          className="flex-1"
+                        />
+                        <Button
+                          onClick={handleSaveCertificatePassword}
+                          disabled={savingCertificatePassword || !certificatePassword}
+                        >
+                          {savingCertificatePassword ? (
+                            <>
+                              <Save className="mr-2 h-4 w-4 animate-spin" />
+                              Salvando...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="mr-2 h-4 w-4" />
+                              Salvar Senha
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {fiscalConfig?.hasCertificatePassword 
+                          ? '✅ Senha do certificado já configurada'
+                          : 'Configure a senha antes de fazer upload do certificado'}
+                      </p>
+                    </div>
+
+                    {/* Upload do Certificado */}
+                    <div className="space-y-2">
+                      <Label htmlFor="certificate-upload">
+                        Arquivo do Certificado Digital (.pfx ou .p12) *
+                      </Label>
+                      <div className="mt-2">
+                        <Input
+                          id="certificate-upload"
+                          type="file"
+                          accept=".pfx,.p12"
+                          onChange={handleCertificateFileChange}
+                          className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/80"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Formatos aceitos: .pfx, .p12. Tamanho máximo: 10MB
+                      </p>
+                      {fiscalConfig?.certificateFileUrl && (
+                        <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3 mt-2">
+                          <p className="text-sm text-green-900 dark:text-green-100">
+                            ✅ Certificado já enviado
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {certificateFile && (
+                      <div className="space-y-4">
+                        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                          <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                            Arquivo selecionado:
+                          </p>
+                          <p className="text-xs text-blue-800 dark:text-blue-200">
+                            {certificateFile.name} ({(certificateFile.size / 1024).toFixed(2)} KB)
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={handleUploadCertificate}
+                            disabled={uploadingCertificate || !certificatePassword}
+                            className="flex-1 sm:flex-none"
+                          >
+                            {uploadingCertificate ? (
+                              <>
+                                <Upload className="mr-2 h-4 w-4 animate-spin" />
+                                Enviando...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Enviar Certificado
+                              </>
+                            )}
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            onClick={() => setCertificateFile(null)}
+                            disabled={uploadingCertificate}
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Informações */}
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                      ℹ️ Sobre o Certificado Digital
+                    </p>
+                    <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                      <li>• O certificado digital é necessário para emissão de notas fiscais</li>
+                      <li>• Configure primeiro a senha do certificado</li>
+                      <li>• Depois faça upload do arquivo .pfx ou .p12</li>
+                      <li>• O certificado será enviado automaticamente para o Focus NFe</li>
+                    </ul>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         )}

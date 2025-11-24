@@ -242,6 +242,24 @@ export const companyApi = {
   getFiscalConfig: () => api.get('/company/my-company/fiscal-config'),
 
   /**
+   * PATCH /company/my-company/fiscal-config
+   * Roles: COMPANY - Atualizar configurações fiscais
+   */
+  updateFiscalConfig: (data: any) => api.patch('/company/my-company/fiscal-config', data),
+
+  /**
+   * POST /company/my-company/upload-certificate
+   * Roles: COMPANY - Upload do certificado digital
+   */
+  uploadCertificate: (file: File) => {
+    const formData = new FormData();
+    formData.append('certificate', file);
+    return api.post('/company/my-company/upload-certificate', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
+  /**
    * GET /company/my-company/fiscal-config/valid
    * Roles: COMPANY - Verificar se tem configuração fiscal válida para NFCe
    */
