@@ -258,6 +258,12 @@ export const companyApi = {
    * Roles: ADMIN - Obter configuração do Focus NFe da empresa
    */
   getFocusNfeConfig: (id: string) => api.get(`/company/${id}/focus-nfe-config`),
+
+  /**
+   * GET /company/:id/fiscal-config
+   * Roles: ADMIN - Obter configurações fiscais completas da empresa (sem mascaramento)
+   */
+  getFiscalConfigForAdmin: (id: string) => api.get(`/company/${id}/fiscal-config`),
 };
 
 // ============================================================================
