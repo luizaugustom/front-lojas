@@ -36,7 +36,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
     phone: '',
     stateRegistration: '',
     municipalRegistration: '',
-    plan: PlanType.BASIC,
+    plan: PlanType.PRO,
     logoUrl: '',
     brandColor: '#3B82F6',
     zipCode: '',
@@ -60,6 +60,8 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
     maxPhotosPerProduct: null,
     nfceEmissionEnabled: true,
     nfeEmissionEnabled: true,
+    catalogPageAllowed: true,
+    autoMessageAllowed: true,
   });
 
   const [loading, setLoading] = useState(false);
@@ -75,7 +77,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
         phone: company.phone || '',
         stateRegistration: '',
         municipalRegistration: '',
-        plan: company.plan || PlanType.BASIC,
+        plan: company.plan || PlanType.PRO,
         logoUrl: '',
         brandColor: company.brandColor || '#3B82F6',
         zipCode: '',
@@ -99,6 +101,8 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
         maxPhotosPerProduct: company.maxPhotosPerProduct ?? null,
         nfceEmissionEnabled: company.nfceEmissionEnabled ?? true,
         nfeEmissionEnabled: company.nfeEmissionEnabled ?? true,
+        catalogPageAllowed: company.catalogPageAllowed ?? true,
+        autoMessageAllowed: company.autoMessageAllowed ?? true,
       });
     } else {
       setFormData({
@@ -110,7 +114,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
         phone: '',
         stateRegistration: '',
         municipalRegistration: '',
-        plan: PlanType.BASIC,
+        plan: PlanType.PRO,
         logoUrl: '',
         brandColor: '#3B82F6',
         zipCode: '',
@@ -384,8 +388,6 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
                     onChange={(e) => handleChange('plan', e.target.value as PlanType)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-foreground"
                   >
-                    <option value={PlanType.BASIC}>Basic</option>
-                    <option value={PlanType.PLUS}>Plus</option>
                     <option value={PlanType.PRO}>Pro</option>
                     <option value={PlanType.TRIAL_7_DAYS}>Teste Grátis (7 dias)</option>
                   </select>
@@ -786,6 +788,36 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
                       id="nfeEmissionEnabled"
                       checked={formData.nfeEmissionEnabled ?? true}
                       onCheckedChange={(checked) => handleBooleanChange('nfeEmissionEnabled', checked)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-4 border rounded-md">
+                    <div>
+                      <Label htmlFor="catalogPageAllowed" className="text-foreground font-medium">
+                        Permitir Catálogo Digital
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Permite que a empresa use catálogo digital público
+                      </p>
+                    </div>
+                    <Switch
+                      id="catalogPageAllowed"
+                      checked={formData.catalogPageAllowed ?? true}
+                      onCheckedChange={(checked) => handleBooleanChange('catalogPageAllowed', checked)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-4 border rounded-md">
+                    <div>
+                      <Label htmlFor="autoMessageAllowed" className="text-foreground font-medium">
+                        Permitir Mensagens Automáticas
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Permite que a empresa use mensagens automáticas de cobrança
+                      </p>
+                    </div>
+                    <Switch
+                      id="autoMessageAllowed"
+                      checked={formData.autoMessageAllowed ?? true}
+                      onCheckedChange={(checked) => handleBooleanChange('autoMessageAllowed', checked)}
                     />
                   </div>
                 </div>

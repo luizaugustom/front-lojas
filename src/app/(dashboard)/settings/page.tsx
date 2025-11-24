@@ -475,11 +475,11 @@ export default function SettingsPage() {
 
   const handleToggleAutoMessage = async (enable: boolean) => {
     try {
-      // Verificar plano antes de habilitar
+      // Verificar plano antes de habilitar (PRO ou TRIAL_7_DAYS)
       if (enable && companyData?.plan) {
         const plan = companyData.plan.toUpperCase();
-        if (plan !== 'PLUS' && plan !== 'PRO') {
-          toast.error('O envio automático de mensagens de cobrança está disponível apenas para planos Plus e Pro. Faça upgrade para utilizar esta funcionalidade.');
+        if (plan !== 'PRO' && plan !== 'TRIAL_7_DAYS') {
+          toast.error('O envio automático de mensagens de cobrança está disponível apenas para planos Pro ou teste grátis.');
           return;
         }
       }
@@ -499,7 +499,7 @@ export default function SettingsPage() {
       console.error('Erro ao alterar status de mensagens automáticas:', error);
       // Verificar se erro é relacionado ao plano
       if (error.response?.data?.message?.includes('plano')) {
-        toast.error('Esta funcionalidade está disponível apenas para planos Plus e Pro.');
+        toast.error('Esta funcionalidade está disponível apenas para planos Pro ou teste grátis.');
       } else {
         handleApiError(error);
       }
@@ -944,16 +944,16 @@ export default function SettingsPage() {
               ) : (
                 <>
                   {/* Aviso de plano */}
-                  {companyData?.plan && companyData.plan.toUpperCase() !== 'PLUS' && companyData.plan.toUpperCase() !== 'PRO' && (
+                  {companyData?.plan && companyData.plan.toUpperCase() !== 'PRO' && companyData.plan.toUpperCase() !== 'TRIAL_7_DAYS' && (
                     <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                       <div className="flex items-start gap-2">
                         <Lock className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
                         <div className="flex-1">
                           <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
-                            Funcionalidade disponível apenas para planos Plus e Pro
+                            Funcionalidade disponível apenas para planos Pro ou teste grátis
                           </p>
                           <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                            Seu plano atual: <strong>{companyData.plan}</strong>. Faça upgrade para utilizar o envio automático de mensagens de cobrança.
+                            Seu plano atual: <strong>{companyData.plan}</strong>. Entre em contato com o administrador para ajustar seu plano.
                           </p>
                         </div>
                       </div>
@@ -978,7 +978,7 @@ export default function SettingsPage() {
                     </div>
                     <Button
                       onClick={() => handleToggleAutoMessage(!autoMessageStatus?.autoMessageEnabled)}
-                      disabled={togglingAutoMessage || (companyData?.plan && companyData.plan.toUpperCase() !== 'PLUS' && companyData.plan.toUpperCase() !== 'PRO' && !autoMessageStatus?.autoMessageEnabled)}
+                      disabled={togglingAutoMessage || (companyData?.plan && companyData.plan.toUpperCase() !== 'PRO' && companyData.plan.toUpperCase() !== 'TRIAL_7_DAYS' && !autoMessageStatus?.autoMessageEnabled)}
                       variant={autoMessageStatus?.autoMessageEnabled ? "destructive" : "default"}
                     >
                       {togglingAutoMessage ? (

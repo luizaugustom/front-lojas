@@ -12,8 +12,6 @@ export type DataPeriodFilter =
 
 // Plan Types
 export enum PlanType {
-  BASIC = 'BASIC',
-  PLUS = 'PLUS',
   PRO = 'PRO',
   TRIAL_7_DAYS = 'TRIAL_7_DAYS',
 }
@@ -98,6 +96,9 @@ export interface Company {
   maxPhotosPerProduct?: number | null;
   nfceEmissionEnabled?: boolean;
   nfeEmissionEnabled?: boolean;
+  // Feature Permissions
+  catalogPageAllowed?: boolean;
+  autoMessageAllowed?: boolean;
 }
 
 // Admin Types
@@ -586,6 +587,9 @@ export interface CreateCompanyDto {
   maxPhotosPerProduct?: number | null;
   nfceEmissionEnabled?: boolean;
   nfeEmissionEnabled?: boolean;
+  // Campos opcionais - permissões de funcionalidades
+  catalogPageAllowed?: boolean;
+  autoMessageAllowed?: boolean;
 }
 
 export interface CreateAdminDto {

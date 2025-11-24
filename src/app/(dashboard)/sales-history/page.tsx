@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, Download, Eye, Filter, Printer, TrendingUp } from 'lucide-react';
+import { Calendar, Download, Eye, Filter, Printer, TrendingUp, DollarSign } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { useAuth } from '@/hooks/useAuth';
@@ -126,6 +126,43 @@ export default function SalesHistoryPage() {
     },
   });
 
+  // Verificar se é empresa
+  const isCompany = user?.role === 'empresa';
+
+  // Buscar contas a pagar do período (apenas para empresas)
+  // Apenas contas que vencem até hoje (não incluir contas futuras)
+  const { data: billsData } = useQuery({
+    queryKey: ['bills-period', period, startDate, endDate],
+    queryFn: async () => {
+      const params: any = {};
+      if (startDate) params.startDate = startDate;
+      
+      // Sempre limitar até hoje para não incluir contas futuras
+      // Mesmo que o período selecionado inclua datas futuras, só consideramos contas que já venceram
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      params.endDate = today.toISOString();
+
+      const response = await api.get('/bill-to-pay', { params });
+      return response.data;
+    },
+    enabled: isCompany,
+  });
+
+  // Buscar resumo de perdas do período (apenas para empresas)
+  const { data: lossesData } = useQuery({
+    queryKey: ['product-losses-summary', period, startDate, endDate],
+    queryFn: async () => {
+      const params: any = {};
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+
+      const response = await api.get('/product-losses/summary', { params });
+      return response.data;
+    },
+    enabled: isCompany,
+  });
+
   const sales = salesData?.sales || salesData?.data || [];
   const total = salesData?.total || 0;
   const totalPages = salesData?.totalPages || Math.ceil(total / limit);
@@ -135,6 +172,12 @@ export default function SalesHistoryPage() {
     totalRevenue: statsData?.totalRevenue ?? statsData?.totalValue ?? 0,
     averageTicket: statsData?.averageTicket || 0,
   };
+
+  // Calcular lucro líquido (apenas para empresas)
+  const bills = billsData?.bills || [];
+  const totalBills = bills.reduce((sum: number, bill: any) => sum + Number(bill.amount || 0), 0);
+  const totalLosses = Number(lossesData?.totalCost || 0);
+  const netProfit = isCompany ? stats.totalRevenue - totalBills - totalLosses : null;
 
   const handleViewDetails = (saleId: string) => {
     setSelectedSaleId(saleId);
@@ -360,7 +403,7 @@ export default function SalesHistoryPage() {
       </Card>
 
       {/* Estatísticas */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className={`grid gap-4 sm:grid-cols-2 ${isCompany ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -396,6 +439,25 @@ export default function SalesHistoryPage() {
             </div>
           </div>
         </Card>
+
+        {isCompany && netProfit !== null && (
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Lucro Líquido</p>
+                <p className={`text-2xl font-bold mt-2 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(netProfit)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Receita - Contas - Perdas
+                </p>
+              </div>
+              <div className={`h-12 w-12 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                <DollarSign className={`h-6 w-6 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              </div>
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Tabela de Vendas */}
