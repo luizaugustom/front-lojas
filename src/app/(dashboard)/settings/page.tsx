@@ -603,6 +603,15 @@ export default function SettingsPage() {
         url: response.data.catalogPageUrl || '',
         enabled: response.data.catalogPageEnabled || false,
       });
+      
+      // Verificar se a empresa tem permissão para usar catálogo
+      if (response.data.catalogPageAllowed === false) {
+        // Se não tiver permissão, desabilitar o toggle
+        setCatalogPageForm(prev => ({
+          ...prev,
+          enabled: false,
+        }));
+      }
     } catch (error) {
       console.error('Erro ao carregar configurações da página de catálogo:', error);
       setCatalogPageConfig(null);
@@ -672,25 +681,48 @@ export default function SettingsPage() {
 
   // Desativar/ativar catálogo ao clicar no toggle
   const handleToggleCatalogEnabled = async (nextEnabled: boolean) => {
-    setCatalogPageForm({ ...catalogPageForm, enabled: nextEnabled });
-
     // Desativar imediatamente sem exigir salvar
     if (!nextEnabled) {
       try {
         setUpdatingCatalogPage(true);
         await authApi.patch('/company/my-company/catalog-page', { catalogPageEnabled: false });
+        setCatalogPageForm({ ...catalogPageForm, enabled: false });
         toast.success('Página de catálogo desativada.');
         await loadCatalogPageConfig();
-      } catch (error) {
-        handleApiError(error as any);
+      } catch (error: any) {
+        console.error('Erro ao desativar catálogo:', error);
+        // Reverter estado em caso de erro
+        setCatalogPageForm({ ...catalogPageForm, enabled: true });
+        handleApiError(error);
       } finally {
         setUpdatingCatalogPage(false);
       }
       return;
     }
 
-    // Ao ativar, manter fluxo existente (requer salvar) para validar URL e plano
-    toast('Defina a URL e clique em Salvar para ativar o catálogo.');
+    // Ao ativar, verificar permissão primeiro
+    try {
+      setUpdatingCatalogPage(true);
+      // Tentar ativar diretamente para verificar permissão
+      await authApi.patch('/company/my-company/catalog-page', { catalogPageEnabled: true });
+      setCatalogPageForm({ ...catalogPageForm, enabled: true });
+      toast.success('Página de catálogo ativada!');
+      await loadCatalogPageConfig();
+    } catch (error: any) {
+      console.error('Erro ao ativar catálogo:', error);
+      // Reverter estado em caso de erro
+      setCatalogPageForm({ ...catalogPageForm, enabled: false });
+      
+      // Verificar se o erro é relacionado à permissão
+      if (error.response?.data?.message?.includes('permissão') || 
+          error.response?.data?.message?.includes('administrador')) {
+        toast.error(error.response?.data?.message || 'A empresa não tem permissão para usar catálogo digital. Entre em contato com o administrador.');
+      } else {
+        handleApiError(error);
+      }
+    } finally {
+      setUpdatingCatalogPage(false);
+    }
   };
 
   if (loadingProfile) {
@@ -1428,6 +1460,23 @@ export default function SettingsPage() {
                       </div>
                     )}
 
+                    {/* Aviso se não tiver permissão */}
+                    {catalogPageConfig?.catalogPageAllowed === false && (
+                      <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                        <div className="flex items-start gap-2">
+                          <Lock className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-red-900 dark:text-red-100">
+                              Permissão não autorizada
+                            </p>
+                            <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                              A empresa não tem permissão para usar catálogo digital. Entre em contato com o administrador para autorizar esta funcionalidade.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
                         <p className="font-medium">Ativar Página</p>
@@ -1441,9 +1490,9 @@ export default function SettingsPage() {
                           checked={catalogPageForm.enabled}
                           onChange={(e) => handleToggleCatalogEnabled(e.target.checked)}
                           className="sr-only peer"
-                          disabled={updatingCatalogPage || (companyData?.plan && companyData.plan.toUpperCase() !== 'PRO')}
+                          disabled={updatingCatalogPage || (companyData?.plan && companyData.plan.toUpperCase() !== 'PRO') || catalogPageConfig?.catalogPageAllowed === false}
                         />
-                        <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary ${companyData?.plan && companyData.plan.toUpperCase() !== 'PRO' ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                        <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary ${(companyData?.plan && companyData.plan.toUpperCase() !== 'PRO') || catalogPageConfig?.catalogPageAllowed === false ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
                       </label>
                     </div>
 
