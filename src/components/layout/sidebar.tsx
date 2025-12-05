@@ -24,6 +24,7 @@ import {
   CalendarClock,
   ClipboardList,
   FileText,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui-store';
@@ -50,6 +51,8 @@ const navigation = [
   { name: 'Empresas', href: '/companies', icon: Building2, roles: ['admin'] },
   // Testes da API - visível apenas para admin
   { name: 'Testes da API', href: '/test-api', icon: TestTube, roles: ['admin'] },
+  // Teste WhatsApp - visível apenas para admin
+  { name: 'Teste WhatsApp', href: '/whatsapp-test', icon: MessageSquare, roles: ['admin'] },
   { name: 'Configurações', href: '/settings', icon: Settings, roles: ['admin', 'empresa'] },
 ];
 
