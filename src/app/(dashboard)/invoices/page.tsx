@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileText, Download, RefreshCw, Search, PlusCircle, Trash2, Plus, Package } from 'lucide-react';
+import { FileText, Download, RefreshCw, Search, PlusCircle, Trash2, Plus, Package, XCircle, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -93,6 +93,15 @@ export default function InvoicesPage() {
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [productSearch, setProductSearch] = useState('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  
+  // Estados para cancelamento
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [documentToCancel, setDocumentToCancel] = useState<FiscalDoc | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  
+  // Estados para consulta de status
+  const [checkingStatus, setCheckingStatus] = useState<string | null>(null);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['fiscal-outbound', search],
@@ -454,11 +463,62 @@ export default function InvoicesPage() {
                 <tr key={doc.id} className="border-t">
                   <td className="px-4 py-2 text-foreground">{doc.documentType}</td>
                   <td className="px-4 py-2 font-mono text-xs text-foreground">{doc.accessKey || '-'}</td>
-                  <td className="px-4 py-2 text-foreground">{doc.status || '-'}</td>
+                  <td className="px-4 py-2 text-foreground">
+                    <div className="flex items-center gap-2">
+                      {doc.status === 'Autorizada' || doc.status === 'Autorizado' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          <CheckCircle2 className="h-3 w-3" />
+                          {doc.status}
+                        </span>
+                      ) : doc.status === 'Cancelada' || doc.status === 'Cancelado' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                          <XCircle className="h-3 w-3" />
+                          {doc.status}
+                        </span>
+                      ) : doc.status === 'MOCK' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                          <AlertCircle className="h-3 w-3" />
+                          Mock
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                          <Info className="h-3 w-3" />
+                          {doc.status || 'Desconhecido'}
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-right text-foreground">{doc.total != null ? formatCurrency(doc.total) : '-'}</td>
                   <td className="px-4 py-2 text-foreground">{doc.createdAt ? formatDateTime(doc.createdAt) : '-'}</td>
                   <td className="px-4 py-2 text-right">
                     <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            setCheckingStatus(doc.id);
+                            const response = await api.get(`/fiscal/${doc.id}/status`);
+                            const statusData = response.data;
+                            toast.success(`Status: ${statusData.sefazStatus || statusData.currentStatus}`);
+                            await refetch();
+                          } catch (e: any) {
+                            console.error(e);
+                            toast.error(e?.response?.data?.message || 'Erro ao consultar status');
+                          } finally {
+                            setCheckingStatus(null);
+                          }
+                        }}
+                        disabled={checkingStatus === doc.id || !doc.accessKey}
+                        title="Consultar status na SEFAZ"
+                      >
+                        {checkingStatus === doc.id ? (
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Info className="mr-2 h-4 w-4" />
+                        )}
+                        Status
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
@@ -469,7 +529,7 @@ export default function InvoicesPage() {
                             downloadFile(blob, `documento-${doc.id}.pdf`);
                           } catch (e) {
                             console.error(e);
-                            alert('Não foi possível baixar o PDF');
+                            toast.error('Não foi possível baixar o PDF');
                           }
                         }}
                       >
@@ -485,12 +545,26 @@ export default function InvoicesPage() {
                             downloadFile(blob, `documento-${doc.id}.xml`);
                           } catch (e) {
                             console.error(e);
-                            alert('Não foi possível baixar o XML');
+                            toast.error('Não foi possível baixar o XML');
                           }
                         }}
                       >
                         <Download className="mr-2 h-4 w-4" /> XML
                       </Button>
+                      {(doc.status !== 'Cancelada' && doc.status !== 'Cancelado' && doc.status !== 'MOCK' && doc.accessKey) && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            setDocumentToCancel(doc);
+                            setCancelReason('');
+                            setCancelDialogOpen(true);
+                          }}
+                          title="Cancelar nota fiscal"
+                        >
+                          <XCircle className="mr-2 h-4 w-4" /> Cancelar
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -963,6 +1037,94 @@ export default function InvoicesPage() {
               disabled={selectedProducts.length === 0}
             >
               Adicionar Selecionados
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Cancelamento */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar Nota Fiscal</DialogTitle>
+            <DialogDescription>
+              Informe o motivo do cancelamento. O motivo deve ter pelo menos 15 caracteres.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {documentToCancel && (
+              <div className="bg-muted p-3 rounded-md">
+                <p className="text-sm font-medium">Documento:</p>
+                <p className="text-xs text-muted-foreground">Tipo: {documentToCancel.documentType}</p>
+                <p className="text-xs text-muted-foreground">Chave: {documentToCancel.accessKey || 'N/A'}</p>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="cancelReason">Motivo do Cancelamento *</Label>
+              <Textarea
+                id="cancelReason"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Ex: Erro na digitação dos dados do cliente"
+                rows={4}
+                minLength={15}
+              />
+              <p className="text-xs text-muted-foreground">
+                Mínimo de 15 caracteres. {cancelReason.length}/15
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancelDialogOpen(false);
+                setDocumentToCancel(null);
+                setCancelReason('');
+              }}
+              disabled={cancelling}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!documentToCancel) return;
+                
+                if (cancelReason.trim().length < 15) {
+                  toast.error('O motivo do cancelamento deve ter pelo menos 15 caracteres');
+                  return;
+                }
+
+                setCancelling(true);
+                try {
+                  await api.post(`/fiscal/${documentToCancel.id}/cancel`, {
+                    reason: cancelReason.trim(),
+                  });
+                  toast.success('Nota fiscal cancelada com sucesso!');
+                  setCancelDialogOpen(false);
+                  setDocumentToCancel(null);
+                  setCancelReason('');
+                  await refetch();
+                } catch (error: any) {
+                  handleApiError(error);
+                } finally {
+                  setCancelling(false);
+                }
+              }}
+              disabled={cancelling || cancelReason.trim().length < 15}
+            >
+              {cancelling ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Cancelando...
+                </>
+              ) : (
+                <>
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Confirmar Cancelamento
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
