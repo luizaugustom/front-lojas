@@ -106,6 +106,18 @@ export default function SettingsPage() {
   const [certificatePassword, setCertificatePassword] = useState('');
   const [savingCertificatePassword, setSavingCertificatePassword] = useState(false);
 
+  // Estado dos dados fiscais
+  const [fiscalDataForm, setFiscalDataForm] = useState({
+    taxRegime: 'SIMPLES_NACIONAL',
+    cnae: '',
+    stateRegistration: '',
+    municipioIbge: '',
+    nfceSerie: '1',
+    csc: '',
+    idTokenCsc: '000001',
+  });
+  const [savingFiscalData, setSavingFiscalData] = useState(false);
+
 
   // Carregar dados da empresa (incluindo plano)
   const loadCompanyData = async () => {
@@ -513,7 +525,19 @@ export default function SettingsPage() {
     try {
       setLoadingFiscalConfig(true);
       const response = await companyApi.getFiscalConfig();
-      setFiscalConfig(response.data);
+      const config = response.data;
+      setFiscalConfig(config);
+
+      // Popular formulário de dados fiscais
+      setFiscalDataForm({
+        taxRegime: config.taxRegime || 'SIMPLES_NACIONAL',
+        cnae: config.cnae || '',
+        stateRegistration: config.stateRegistration || '',
+        municipioIbge: config.municipioIbge || '',
+        nfceSerie: config.nfceSerie || '1',
+        csc: '', // Nunca pré-preencher senhas/tokens por segurança
+        idTokenCsc: config.idTokenCsc || '000001',
+      });
     } catch (error) {
       console.error('Erro ao carregar configurações fiscais:', error);
     } finally {
@@ -590,6 +614,36 @@ export default function SettingsPage() {
       handleApiError(error);
     } finally {
       setSavingCertificatePassword(false);
+    }
+  };
+
+  const handleSaveFiscalData = async () => {
+    // Validações básicas
+    if (!fiscalDataForm.municipioIbge) {
+      toast.error('Código IBGE do município é obrigatório');
+      return;
+    }
+
+    if (fiscalDataForm.municipioIbge.length !== 7) {
+      toast.error('Código IBGE deve ter 7 dígitos');
+      return;
+    }
+
+    if (!fiscalDataForm.csc) {
+      toast.error('CSC (Código de Segurança do Contribuinte) é obrigatório');
+      return;
+    }
+
+    try {
+      setSavingFiscalData(true);
+      await companyApi.updateFiscalConfig(fiscalDataForm);
+      toast.success('Dados fiscais salvos com sucesso!');
+      await loadFiscalConfig();
+    } catch (error: any) {
+      console.error('Erro ao salvar dados fiscais:', error);
+      handleApiError(error);
+    } finally {
+      setSavingFiscalData(false);
     }
   };
 
@@ -748,6 +802,7 @@ export default function SettingsPage() {
           <div className="flex flex-wrap gap-2 p-2">
             <a href="#periodo-dados"><Button variant="outline" size="sm">Período</Button></a>
             <a href="#empresa-logo-cor"><Button variant="outline" size="sm">Empresa</Button></a>
+            <a href="#dados-fiscais"><Button variant="outline" size="sm">Dados Fiscais</Button></a>
             <a href="#certificado-digital"><Button variant="outline" size="sm">Certificado Digital</Button></a>
             <a href="#catalogo-titulo"><Button variant="outline" size="sm">Catálogo</Button></a>
             <a href="#notificacoes-fim"><Button variant="outline" size="sm">Notificações</Button></a>
@@ -1213,6 +1268,254 @@ export default function SettingsPage() {
                   <strong>ℹ️ Informação:</strong> O logo será exibido no header e a cor será aplicada em todo o sistema.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Dados Fiscais - Apenas para Empresas */}
+        {user?.role === 'empresa' && (
+          <Card id="dados-fiscais" className="scroll-mt-24">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Store className="h-5 w-5" />
+                Dados Fiscais para Emissão de NFC-e
+              </CardTitle>
+              <CardDescription>
+                Configure os dados obrigatórios para emissão de notas fiscais eletrônicas
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {loadingFiscalConfig ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">Carregando...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Aviso sobre API Key do Focus NFe */}
+                  {!fiscalConfig?.adminHasFocusNfeApiKey && (
+                    <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                      <p className="text-sm text-red-900 dark:text-red-100 font-semibold mb-1">
+                        ⚠️ API Key do Focus NFe não configurada
+                      </p>
+                      <p className="text-sm text-red-800 dark:text-red-200">
+                        O administrador precisa configurar a API Key do Focus NFe nas configurações globais antes que você possa emitir notas fiscais.
+                      </p>
+                    </div>
+                  )}
+
+                  {fiscalConfig?.adminHasFocusNfeApiKey && (
+                    <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <p className="text-sm text-green-900 dark:text-green-100 font-semibold mb-1">
+                        ✅ API Key do Focus NFe configurada
+                      </p>
+                      <p className="text-sm text-green-800 dark:text-green-200">
+                        O sistema está pronto para emitir notas fiscais. Configure os dados abaixo para começar.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="grid gap-4">
+                    {/* Regime Tributário */}
+                    <div className="space-y-2">
+                      <Label htmlFor="taxRegime">
+                        Regime Tributário *
+                      </Label>
+                      <Select
+                        value={fiscalDataForm.taxRegime}
+                        onValueChange={(value) =>
+                          setFiscalDataForm({ ...fiscalDataForm, taxRegime: value })
+                        }
+                      >
+                        <SelectTrigger id="taxRegime">
+                          <SelectValue placeholder="Selecione o regime tributário" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SIMPLES_NACIONAL">Simples Nacional</SelectItem>
+                          <SelectItem value="SIMPLES_NACIONAL_EXCESSO">Simples Nacional - Excesso</SelectItem>
+                          <SelectItem value="LUCRO_PRESUMIDO">Lucro Presumido</SelectItem>
+                          <SelectItem value="LUCRO_REAL">Lucro Real</SelectItem>
+                          <SelectItem value="MEI">MEI</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {fiscalConfig?.taxRegime && (
+                        <p className="text-xs text-muted-foreground">
+                          ✅ Configurado: {fiscalConfig.taxRegime}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Inscrição Estadual */}
+                    <div className="space-y-2">
+                      <Label htmlFor="stateRegistration">
+                        Inscrição Estadual *
+                      </Label>
+                      <Input
+                        id="stateRegistration"
+                        value={fiscalDataForm.stateRegistration}
+                        onChange={(e) =>
+                          setFiscalDataForm({ ...fiscalDataForm, stateRegistration: e.target.value })
+                        }
+                        placeholder="Ex: 123.456.789"
+                      />
+                      {fiscalConfig?.stateRegistration ? (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          ✅ Configurada: {fiscalConfig.stateRegistration}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-red-600 dark:text-red-400">
+                          ❌ Não configurada - obrigatória para emissão de NFC-e
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Código IBGE do Município */}
+                    <div className="space-y-2">
+                      <Label htmlFor="municipioIbge">
+                        Código IBGE do Município *
+                      </Label>
+                      <Input
+                        id="municipioIbge"
+                        value={fiscalDataForm.municipioIbge}
+                        onChange={(e) =>
+                          setFiscalDataForm({ ...fiscalDataForm, municipioIbge: e.target.value.replace(/\D/g, '') })
+                        }
+                        placeholder="Ex: 4205407 (Florianópolis)"
+                        maxLength={7}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        7 dígitos. Consulte em: <a href="https://www.ibge.gov.br/explica/codigos-dos-municipios.php" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">IBGE</a>
+                      </p>
+                      {fiscalConfig?.municipioIbge ? (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          ✅ Configurado: {fiscalConfig.municipioIbge}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-red-600 dark:text-red-400">
+                          ❌ Não configurado - obrigatório para emissão de NFC-e
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Série da NFC-e */}
+                    <div className="space-y-2">
+                      <Label htmlFor="nfceSerie">
+                        Série da NFC-e
+                      </Label>
+                      <Input
+                        id="nfceSerie"
+                        value={fiscalDataForm.nfceSerie}
+                        onChange={(e) =>
+                          setFiscalDataForm({ ...fiscalDataForm, nfceSerie: e.target.value.replace(/\D/g, '') })
+                        }
+                        placeholder="1"
+                        maxLength={3}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Geralmente "1". Consulte com seu contador se precisar de série diferente.
+                      </p>
+                    </div>
+
+                    {/* CNAE */}
+                    <div className="space-y-2">
+                      <Label htmlFor="cnae">
+                        CNAE (Classificação Nacional de Atividades Econômicas)
+                      </Label>
+                      <Input
+                        id="cnae"
+                        value={fiscalDataForm.cnae}
+                        onChange={(e) =>
+                          setFiscalDataForm({ ...fiscalDataForm, cnae: e.target.value.replace(/\D/g, '') })
+                        }
+                        placeholder="Ex: 4761001"
+                        maxLength={7}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        7 dígitos. Opcional, mas recomendado.
+                      </p>
+                    </div>
+
+                    {/* CSC */}
+                    <div className="space-y-2">
+                      <Label htmlFor="csc">
+                        CSC (Código de Segurança do Contribuinte) *
+                      </Label>
+                      <Input
+                        id="csc"
+                        type="password"
+                        value={fiscalDataForm.csc}
+                        onChange={(e) =>
+                          setFiscalDataForm({ ...fiscalDataForm, csc: e.target.value })
+                        }
+                        placeholder="Digite o CSC fornecido pela SEFAZ"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Obtido no portal da SEFAZ do seu estado. Mantenha em sigilo!
+                      </p>
+                      {fiscalConfig?.hasCsc ? (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          ✅ CSC já configurado
+                        </p>
+                      ) : (
+                        <p className="text-xs text-red-600 dark:text-red-400">
+                          ❌ Não configurado - obrigatório para emissão de NFC-e
+                        </p>
+                      )}
+                    </div>
+
+                    {/* ID Token CSC */}
+                    <div className="space-y-2">
+                      <Label htmlFor="idTokenCsc">
+                        ID Token CSC
+                      </Label>
+                      <Input
+                        id="idTokenCsc"
+                        value={fiscalDataForm.idTokenCsc}
+                        onChange={(e) =>
+                          setFiscalDataForm({ ...fiscalDataForm, idTokenCsc: e.target.value })
+                        }
+                        placeholder="000001"
+                        maxLength={6}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Geralmente "000001". Fornecido junto com o CSC pela SEFAZ.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleSaveFiscalData}
+                    disabled={savingFiscalData}
+                    className="w-full sm:w-auto"
+                  >
+                    {savingFiscalData ? (
+                      <>
+                        <Save className="mr-2 h-4 w-4 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Salvar Dados Fiscais
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Informação sobre campos obrigatórios */}
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm text-blue-900 dark:text-blue-100 font-semibold mb-2">
+                      ℹ️ Campos obrigatórios para emissão de NFC-e
+                    </p>
+                    <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                      <li>• Regime Tributário</li>
+                      <li>• Inscrição Estadual</li>
+                      <li>• Código IBGE do Município</li>
+                      <li>• CSC (Código de Segurança do Contribuinte)</li>
+                      <li>• Certificado Digital (próxima seção)</li>
+                    </ul>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         )}
