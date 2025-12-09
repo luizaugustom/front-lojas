@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
-import { Eye, EyeOff, Headset } from 'lucide-react';
+import { Eye, EyeOff, MessageCircle } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -244,7 +244,7 @@ export default function LoginPage() {
         className="fixed left-4 bottom-4 bg-primary hover:bg-primary/90 text-primary-foreground p-3 rounded-full shadow-lg transition-all hover:scale-110 group"
         title="Serviço de Atendimento ao Consumidor"
       >
-        <Headset className="h-6 w-6" />
+        <MessageCircle className="h-6 w-6" />
         <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           Serviço de Atendimento ao Consumidor
         </span>
