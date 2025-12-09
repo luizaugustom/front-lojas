@@ -110,23 +110,23 @@ export default function LoginPage() {
 
   return (
     <>
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 py-8">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-3 py-6">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center p-3 sm:p-4">
-          <div className="flex justify-center mb-3">
+          <div className="flex justify-center mb-2">
             <Image 
               src="/logo.png" 
               alt="MontShop Logo" 
-              width={96} 
-              height={96} 
-              className="h-24 w-24"
+              width={80} 
+              height={80} 
+              className="h-20 w-20"
             />
           </div>
-          <CardTitle className="text-2xl sm:text-3xl font-bold -m-10">MontShop</CardTitle>
-          <CardDescription className="text-sm sm:text-base">Entre com suas credenciais para acessar o sistema</CardDescription>
+          <CardTitle className="text-xl sm:text-2xl font-bold -m-10">MontShop</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Entre com suas credenciais para acessar o sistema</CardDescription>
         </CardHeader>
-        <CardContent className="p-3 sm:p-4 pt-4 sm:pt-5">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+        <CardContent className="p-3 sm:p-4 pt-3 sm:pt-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-2.5">
             <div className="space-y-1.5">
               <Label htmlFor="login" className="text-sm">Login</Label>
               <Input
@@ -195,9 +195,9 @@ export default function LoginPage() {
 
           {/* versão removida conforme solicitado */}
           {verse && (
-            <div className="mt-3 text-center text-muted-foreground">
+            <div className="mt-2 text-center text-muted-foreground">
               <p className="italic text-xs">"{verse.text}"</p>
-              <p className="mt-0.5 font-medium text-[10px]">{verse.reference}</p>
+              <p className="mt-0.5 font-medium text-[9px]">{verse.reference}</p>
             </div>
           )}
         </CardContent>
