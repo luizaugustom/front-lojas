@@ -24,14 +24,18 @@ export const productSchema = z.object({
   expirationDate: optionalStringOrUndefined(),
   unitOfMeasure: z.enum(['kg', 'g', 'ml', 'l', 'm', 'cm', 'un']).optional(),
   ncm: z.string()
-    .regex(/^\d{8}$/, 'NCM deve conter exatamente 8 dígitos numéricos')
     .nullable()
     .optional()
+    .refine(val => !val || val === '' || /^\d{8}$/.test(val), {
+      message: 'NCM deve conter exatamente 8 dígitos numéricos'
+    })
     .transform(val => val === null || val === '' ? undefined : val),
   cfop: z.string()
-    .regex(/^\d{4}$/, 'CFOP deve conter exatamente 4 dígitos numéricos')
     .nullable()
     .optional()
+    .refine(val => !val || val === '' || /^\d{4}$/.test(val), {
+      message: 'CFOP deve conter exatamente 4 dígitos numéricos'
+    })
     .transform(val => val === null || val === '' ? undefined : val),
 });
 
@@ -49,14 +53,18 @@ export const productFormSchema = z.object({
   expirationDate: optionalStringOrUndefined(),
   unitOfMeasure: z.enum(['kg', 'g', 'ml', 'l', 'm', 'cm', 'un']).nullable().optional(),
   ncm: z.string()
-    .regex(/^\d{8}$/, 'NCM deve conter exatamente 8 dígitos numéricos')
     .nullable()
     .optional()
+    .refine(val => !val || val === '' || /^\d{8}$/.test(val), {
+      message: 'NCM deve conter exatamente 8 dígitos numéricos'
+    })
     .transform(val => val === null || val === '' ? undefined : val),
   cfop: z.string()
-    .regex(/^\d{4}$/, 'CFOP deve conter exatamente 4 dígitos numéricos')
     .nullable()
     .optional()
+    .refine(val => !val || val === '' || /^\d{4}$/.test(val), {
+      message: 'CFOP deve conter exatamente 4 dígitos numéricos'
+    })
     .transform(val => val === null || val === '' ? undefined : val),
   activityId: z.any().optional(), // Aceita qualquer tipo para evitar validação de UUID
   companyId: z.any().optional(), // Aceita qualquer tipo para evitar validação de UUID

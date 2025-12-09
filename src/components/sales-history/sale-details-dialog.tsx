@@ -66,42 +66,56 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
 
     try {
       let content: string | null = null;
+      let printType: string = 'nfce';
 
+      // Primeiro, tentar obter conteúdo de impressão
       try {
         const response = await api.get(`/sale/${saleId}/print-content`);
         const data = response.data?.data || response.data;
         content = data?.content || null;
+        printType = data?.printType || 'nfce';
 
-        if (content && data?.printType) {
-          console.log(`[SaleDetailsDialog] Conteúdo de impressão obtido (${data.printType})`);
+        if (content) {
+          console.log(`[SaleDetailsDialog] Conteúdo de impressão obtido (${printType})`);
         }
       } catch (error) {
         console.warn('[SaleDetailsDialog] Falha ao obter conteúdo de impressão direto, tentando reprint.', error);
       }
 
+      // Se não conseguiu, tentar via reprint
       if (!content) {
         const reprintResponse = await api.post(`/sale/${saleId}/reprint`);
         const reprintData = reprintResponse.data?.data || reprintResponse.data;
         content = reprintData?.printContent || null;
-
-        if (!content) {
-          toast.success('Cupom reenviado para impressão!');
-          return;
-        }
+        printType = reprintData?.printType || 'nfce';
       }
 
-      const result = await printContent(content);
+      // Se conseguiu obter conteúdo, imprimir localmente
+      if (content) {
+        console.log('[SaleDetailsDialog] Imprimindo localmente...');
+        const result = await printContent(content);
 
-      if (result.success) {
-        toast.success('Cupom enviado para impressão!');
+        if (result.success) {
+          toast.success('Cupom enviado para impressão!');
+        } else {
+          toast(`Impressão local falhou: ${result.error || 'Erro desconhecido'}. Tentando impressão no servidor...`, {
+            icon: '⚠️',
+            duration: 5000,
+          });
+
+          // Se falhar localmente, tentar no servidor como fallback
+          try {
+            await api.post(`/sale/${saleId}/reprint`);
+            toast.success('Cupom enviado para impressão no servidor!');
+          } catch (serverError) {
+            console.error('[SaleDetailsDialog] Erro ao imprimir no servidor:', serverError);
+          }
+        }
       } else {
-        toast(`Impressão local falhou: ${result.error || 'Erro desconhecido'}. Tentando impressão no servidor...`, {
-          icon: '⚠️',
-          duration: 5000,
-        });
-
+        // Se não conseguiu conteúdo, tentar impressão no servidor diretamente
+        console.log('[SaleDetailsDialog] Sem conteúdo local, tentando impressão no servidor...');
         await api.post(`/sale/${saleId}/reprint`);
-        toast.success('Cupom reenviado para impressão no servidor!');
+        toast.success('Cupom enviado para impressão!');
       }
     } catch (error: unknown) {
       let errorMessage = 'Erro ao reimprimir cupom';
