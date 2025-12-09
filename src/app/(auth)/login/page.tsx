@@ -110,9 +110,9 @@ export default function LoginPage() {
 
   return (
     <>
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 py-8">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center p-4 sm:p-5">
+        <CardHeader className="space-y-1 text-center p-3 sm:p-4">
           <div className="flex justify-center mb-3">
             <Image 
               src="/logo.png" 
@@ -125,7 +125,7 @@ export default function LoginPage() {
           <CardTitle className="text-2xl sm:text-3xl font-bold -m-10">MontShop</CardTitle>
           <CardDescription className="text-sm sm:text-base">Entre com suas credenciais para acessar o sistema</CardDescription>
         </CardHeader>
-        <CardContent className="p-4 sm:p-5">
+        <CardContent className="p-3 sm:p-4 pt-4 sm:pt-5">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="login" className="text-sm">Login</Label>
@@ -245,7 +245,7 @@ export default function LoginPage() {
         title="Serviço de Atendimento ao Consumidor"
       >
         <MessageCircle className="h-6 w-6" />
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <span className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-2 transition-all duration-300 pointer-events-none">
           Serviço de Atendimento ao Consumidor
         </span>
       </a>
