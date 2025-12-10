@@ -25,6 +25,8 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/utils';
 import { DollarSign, CreditCard, Banknote, Smartphone } from 'lucide-react';
+import { PaymentReceiptConfirmDialog } from './payment-receipt-confirm-dialog';
+import { PaymentReceipt } from './payment-receipt';
 
 interface PaymentDialogProps {
   open: boolean;
@@ -41,6 +43,9 @@ interface PaymentFormData {
 export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps) {
   const { api } = useAuth();
   const [paymentType, setPaymentType] = useState<'full' | 'partial'>('full');
+  const [showReceiptConfirm, setShowReceiptConfirm] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [paymentData, setPaymentData] = useState<any>(null);
 
   const {
     register,
@@ -69,10 +74,19 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
     mutationFn: async (data: PaymentFormData) => {
       return api.post(`/installment/${installment.id}/pay`, data);
     },
-    onSuccess: (response) => {
+    onSuccess: (response, variables) => {
+      // Armazena os dados do pagamento para o comprovante
+      setPaymentData({
+        amount: variables.amount,
+        paymentMethod: variables.paymentMethod,
+        notes: variables.notes,
+        date: new Date().toISOString(),
+      });
+      
       toast.success(response.data.message || 'Pagamento registrado com sucesso!');
-      reset();
-      onClose();
+      
+      // Mostra o diálogo de confirmação de impressão
+      setShowReceiptConfirm(true);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Erro ao registrar pagamento');
@@ -100,6 +114,23 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
     } else {
       setValue('amount', 0);
     }
+  };
+
+  const handlePrintReceipt = () => {
+    setShowReceiptConfirm(false);
+    setShowReceipt(true);
+  };
+
+  const handleSkipReceipt = () => {
+    setShowReceiptConfirm(false);
+    reset();
+    onClose();
+  };
+
+  const handlePrintComplete = () => {
+    setShowReceipt(false);
+    reset();
+    onClose();
   };
 
   if (!installment) return null;
@@ -275,6 +306,27 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Modal de confirmação de impressão */}
+      <PaymentReceiptConfirmDialog
+        open={showReceiptConfirm}
+        onConfirm={handlePrintReceipt}
+        onCancel={handleSkipReceipt}
+      />
+
+      {/* Comprovante de pagamento para impressão */}
+      {showReceipt && paymentData && (
+        <PaymentReceipt
+          installment={installment}
+          payment={paymentData}
+          customerInfo={{
+            name: installment.customer?.name,
+            cpfCnpj: installment.customer?.cpfCnpj,
+            phone: installment.customer?.phone,
+          }}
+          onPrintComplete={handlePrintComplete}
+        />
+      )}
     </Dialog>
   );
 }

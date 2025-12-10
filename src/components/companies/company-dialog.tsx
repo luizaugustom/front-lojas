@@ -131,6 +131,15 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
         agency: '',
         accountNumber: '',
         accountType: 'corrente',
+        maxProducts: null,
+        maxCustomers: null,
+        maxSellers: null,
+        photoUploadEnabled: true,
+        maxPhotosPerProduct: null,
+        nfceEmissionEnabled: true,
+        nfeEmissionEnabled: true,
+        catalogPageAllowed: true,
+        autoMessageAllowed: true,
       });
     }
   }, [company, open]);
@@ -183,6 +192,18 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
         ...(formData.agency && { agency: formData.agency.trim() }),
         ...(formData.accountNumber && { accountNumber: formData.accountNumber.trim() }),
         ...(formData.accountType && { accountType: formData.accountType }),
+        // Plan limits (only include if admin is editing)
+        ...(isAdmin && {
+          maxProducts: formData.maxProducts,
+          maxCustomers: formData.maxCustomers,
+          maxSellers: formData.maxSellers,
+          maxPhotosPerProduct: formData.maxPhotosPerProduct,
+          photoUploadEnabled: formData.photoUploadEnabled,
+          nfceEmissionEnabled: formData.nfceEmissionEnabled,
+          nfeEmissionEnabled: formData.nfeEmissionEnabled,
+          catalogPageAllowed: formData.catalogPageAllowed,
+          autoMessageAllowed: formData.autoMessageAllowed,
+        }),
       };
       await onSave(dataToSave);
     } finally {
