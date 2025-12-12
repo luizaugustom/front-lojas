@@ -96,6 +96,16 @@ function sanitizeProductData(data: any) {
     price: Number(data.price || 0),
     stockQuantity: Number(data.stockQuantity || 0),
   };
+
+  // Preço de custo é opcional, mas deve ser enviado quando informado
+  if (data.costPrice !== undefined && data.costPrice !== null && String(data.costPrice).trim() !== '') {
+    sanitized.costPrice = Number(data.costPrice);
+  }
+
+  // Quantidade mínima também deve seguir quando preenchida
+  if (data.minStockQuantity !== undefined && data.minStockQuantity !== null && String(data.minStockQuantity).trim() !== '') {
+    sanitized.minStockQuantity = Number(data.minStockQuantity);
+  }
   
   // Adicionar campos opcionais apenas se tiverem valor
   if (data.category && String(data.category).trim() !== '') {
@@ -516,6 +526,12 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             if (dataToSend.unitOfMeasure) formData.append('unitOfMeasure', dataToSend.unitOfMeasure);
             if (dataToSend.cfop) formData.append('cfop', dataToSend.cfop);
             if (dataToSend.ncm) formData.append('ncm', dataToSend.ncm);
+            if (data.costPrice !== undefined && data.costPrice !== null) {
+              formData.append('costPrice', Number(data.costPrice || 0).toString());
+            }
+            if (data.minStockQuantity !== undefined && data.minStockQuantity !== null) {
+              formData.append('minStockQuantity', Number(data.minStockQuantity || 0).toString());
+            }
             
             // Adicionar fotos novas
             selectedPhotos.forEach((photo) => {
@@ -585,8 +601,8 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
           if (sanitizedData.category) formData.append('category', sanitizedData.category);
           if (data.description) formData.append('description', String(data.description));
           if (sanitizedData.expirationDate) formData.append('expirationDate', sanitizedData.expirationDate);
-          if (data.costPrice) formData.append('costPrice', Number(data.costPrice || 0).toString());
-          if (data.minStockQuantity) formData.append('minStockQuantity', Number(data.minStockQuantity || 0).toString());
+          if (data.costPrice !== undefined && data.costPrice !== null) formData.append('costPrice', Number(data.costPrice || 0).toString());
+          if (data.minStockQuantity !== undefined && data.minStockQuantity !== null) formData.append('minStockQuantity', Number(data.minStockQuantity || 0).toString());
           if (sanitizedData.unitOfMeasure) formData.append('unitOfMeasure', sanitizedData.unitOfMeasure);
           if (sanitizedData.cfop) formData.append('cfop', sanitizedData.cfop);
           if (sanitizedData.ncm) formData.append('ncm', sanitizedData.ncm);
