@@ -32,15 +32,21 @@ export function DatePicker({
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
   const [inputValue, setInputValue] = React.useState("")
+  const [isUserEditing, setIsUserEditing] = React.useState(false)
+  const previousDateRef = React.useRef<Date | undefined>(date)
 
-  // Atualiza o input quando a data muda
+  // Atualiza o input quando a data muda EXTERNAMENTE (não pelo usuário digitando)
   React.useEffect(() => {
-    if (date) {
-      setInputValue(format(date, "dd/MM/yyyy"))
-    } else {
-      setInputValue("")
+    // Se o usuário não está editando, ou se a data mudou de forma externa (diferente da edição)
+    if (!isUserEditing) {
+      if (date) {
+        setInputValue(format(date, "dd/MM/yyyy"))
+      } else {
+        setInputValue("")
+      }
     }
-  }, [date])
+    previousDateRef.current = date
+  }, [date, isUserEditing])
 
   // Função para aplicar máscara de data
   const applyDateMask = (value: string) => {
@@ -60,6 +66,7 @@ export function DatePicker({
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsUserEditing(true)
     const masked = applyDateMask(e.target.value)
     setInputValue(masked)
 
@@ -79,6 +86,7 @@ export function DatePicker({
   }
 
   const handleCalendarSelect = (selectedDate: Date | undefined) => {
+    setIsUserEditing(false)
     onSelect?.(selectedDate)
     setOpen(false)
   }

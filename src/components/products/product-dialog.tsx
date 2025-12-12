@@ -208,6 +208,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         unitOfMeasure: product.unitOfMeasure || 'un',
         ncm: product.ncm || '',
         cfop: product.cfop || '',
+        costPrice: product.costPrice,
       });
       // Limpar estado de fotos ao carregar produto
       setSelectedPhotos([]);
