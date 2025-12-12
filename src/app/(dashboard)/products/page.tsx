@@ -15,6 +15,7 @@ import { ProductFilters } from '@/components/products/product-filters';
 import { applyProductFilters, getActiveFiltersCount, type ProductFilters as ProductFiltersType } from '@/lib/productFilters';
 import type { Product, PlanUsageStats } from '@/types';
 import { AlertTriangle } from 'lucide-react';
+import { handleApiError } from '@/lib/handleApiError';
 
 export default function ProductsPage() {
   const { api, user } = useAuth();
@@ -49,13 +50,29 @@ export default function ProductsPage() {
   const filteredProducts = applyProductFilters(products, filters);
   const activeFiltersCount = getActiveFiltersCount(filters);
 
-  const handleEdit = (product: Product) => {
+  const handleEdit = async (product: Product) => {
     if (!canManageProducts) {
       toast.error('Você não tem permissão para editar produtos.');
       return;
     }
-    setSelectedProduct(product);
-    setDialogOpen(true);
+
+    try {
+      const response = (await api.get(`/product/${product.id}`)).data as { product?: Product } | Product | undefined;
+      const detailedProduct = (response as any)?.product ?? response;
+
+      // Preenche com todos os campos disponíveis, garantindo custo
+      if (detailedProduct) {
+        setSelectedProduct({ ...product, ...detailedProduct });
+      } else {
+        setSelectedProduct(product);
+      }
+    } catch (error) {
+      handleApiError(error);
+      // Fallback para o produto já carregado caso a busca detalhada falhe
+      setSelectedProduct(product);
+    } finally {
+      setDialogOpen(true);
+    }
   };
 
   const handleCreate = () => {
