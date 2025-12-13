@@ -207,6 +207,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
       console.log('[ProductDialog] Fotos do produto:', product.photos);
       console.log('[ProductDialog] Tipo das fotos:', typeof product.photos);
       console.log('[ProductDialog] Array das fotos:', Array.isArray(product.photos));
+      console.log('[ProductDialog] costPrice recebido:', product.costPrice, 'tipo:', typeof product.costPrice);
       
       reset({
         name: product.name,
@@ -218,7 +219,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         unitOfMeasure: product.unitOfMeasure || 'un',
         ncm: product.ncm || '',
         cfop: product.cfop || '',
-        costPrice: product.costPrice,
+        costPrice: product.costPrice ? Number(product.costPrice) : undefined,
       });
       // Limpar estado de fotos ao carregar produto
       setSelectedPhotos([]);
