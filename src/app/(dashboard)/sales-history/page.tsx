@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -84,6 +85,11 @@ export default function SalesHistoryPage() {
   const [limit] = useState(20);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [filterClient, setFilterClient] = useState('');
+  const [filterSeller, setFilterSeller] = useState('');
+  const [filterPayment, setFilterPayment] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState<string>('');
+  const [filterEndDate, setFilterEndDate] = useState<string>('');
 
   const availableOptions = useMemo(
     () => (user?.role === 'vendedor' ? SELLER_PERIOD_OPTIONS : COMPANY_PERIOD_OPTIONS),
@@ -363,6 +369,53 @@ export default function SalesHistoryPage() {
     }
   };
 
+  const filteredSales = useMemo(() => {
+    let list = sales as any[];
+
+    // Filtro por cliente
+    if (filterClient.trim()) {
+      const q = filterClient.toLowerCase();
+      list = list.filter((s) =>
+        (s.clientName || '').toLowerCase().includes(q) || (s.clientCpfCnpj || '').toLowerCase().includes(q),
+      );
+    }
+
+    // Filtro por vendedor
+    if (filterSeller.trim()) {
+      const q = filterSeller.toLowerCase();
+      list = list.filter((s) => (s.seller?.name || '').toLowerCase().includes(q));
+    }
+
+    // Filtro por pagamento (qualquer método que contenha)
+    if (filterPayment.trim()) {
+      const q = filterPayment.toLowerCase();
+      list = list.filter((s) =>
+        (s.paymentMethods || []).some((pm: any) => getPaymentMethodLabel(pm.method).toLowerCase().includes(q)),
+      );
+    }
+
+    // Filtro por data (intervalo específico)
+    const parseDate = (d: any) => new Date(d).getTime();
+    const startMillis = filterStartDate ? parseDate(filterStartDate) : null;
+    const endMillis = filterEndDate ? parseDate(filterEndDate) : null;
+
+    if (startMillis || endMillis) {
+      list = list.filter((s) => {
+        const saleMillis = parseDate(s.saleDate || s.createdAt);
+        if (startMillis && saleMillis < startMillis) return false;
+        if (endMillis) {
+          // incluir fim do dia
+          const endDay = new Date(filterEndDate);
+          endDay.setHours(23, 59, 59, 999);
+          if (saleMillis > endDay.getTime()) return false;
+        }
+        return true;
+      });
+    }
+
+    return list;
+  }, [sales, filterClient, filterSeller, filterPayment, filterStartDate, filterEndDate]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -380,7 +433,7 @@ export default function SalesHistoryPage() {
       </div>
 
       {/* Filtros */}
-      <Card className="p-4">
+      <Card className="p-4 space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
@@ -401,6 +454,38 @@ export default function SalesHistoryPage() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Input
+            value={filterClient}
+            onChange={(e) => setFilterClient(e.target.value)}
+            placeholder="Buscar por cliente (nome ou CPF/CNPJ)"
+          />
+          <Input
+            value={filterSeller}
+            onChange={(e) => setFilterSeller(e.target.value)}
+            placeholder="Buscar por vendedor"
+          />
+          <Input
+            value={filterPayment}
+            onChange={(e) => setFilterPayment(e.target.value)}
+            placeholder="Buscar por pagamento (ex.: PIX, Crédito)"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              type="date"
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              placeholder="Data inicial"
+            />
+            <Input
+              type="date"
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+              placeholder="Data final"
+            />
+          </div>
         </div>
       </Card>
 
@@ -465,7 +550,7 @@ export default function SalesHistoryPage() {
       {/* Tabela de Vendas */}
       <Card>
         <SalesTable
-          sales={sales}
+          sales={filteredSales}
           isLoading={isLoading}
           page={page}
           totalPages={totalPages}
