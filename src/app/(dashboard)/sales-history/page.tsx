@@ -142,6 +142,8 @@ export default function SalesHistoryPage() {
       const today = new Date();
       today.setHours(23, 59, 59, 999);
       params.endDate = today.toISOString();
+      // Considerar apenas contas pagas no período para cálculo do lucro líquido
+      params.isPaid = true;
 
       const response = await api.get('/bill-to-pay', { params });
       return response.data;
