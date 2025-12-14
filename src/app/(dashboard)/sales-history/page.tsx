@@ -179,13 +179,14 @@ export default function SalesHistoryPage() {
     totalSales: statsData?.totalSales || 0,
     totalRevenue: statsData?.totalRevenue ?? statsData?.totalValue ?? 0,
     averageTicket: statsData?.averageTicket || 0,
+    totalCostOfGoods: statsData?.totalCostOfGoods || 0,
   };
 
   // Calcular lucro líquido (apenas para empresas)
   const bills = billsData?.bills || [];
   const totalBills = bills.reduce((sum: number, bill: any) => sum + Number(bill.amount || 0), 0);
   const totalLosses = Number(lossesData?.totalCost || 0);
-  const netProfit = isCompany ? stats.totalRevenue - totalBills - totalLosses : null;
+  const netProfit = isCompany ? stats.totalRevenue - stats.totalCostOfGoods - totalBills - totalLosses : null;
 
   const handleViewDetails = (saleId: string) => {
     setSelectedSaleId(saleId);
