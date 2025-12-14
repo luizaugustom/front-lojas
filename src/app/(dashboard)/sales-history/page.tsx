@@ -182,6 +182,20 @@ export default function SalesHistoryPage() {
     totalCostOfGoods: statsData?.totalCostOfGoods || 0,
   };
 
+  // Debug: log stats data
+  if (statsData) {
+    console.log('[Sales History] Stats from API:', statsData);
+    console.log('[Sales History] Parsed stats:', stats);
+    console.log('[Sales History] Bills:', totalBills, 'Losses:', totalLosses);
+    console.log('[Sales History] Net Profit Calculation:', {
+      revenue: stats.totalRevenue,
+      cogs: stats.totalCostOfGoods,
+      bills: totalBills,
+      losses: totalLosses,
+      netProfit: stats.totalRevenue - stats.totalCostOfGoods - totalBills - totalLosses,
+    });
+  }
+
   // Calcular lucro líquido (apenas para empresas)
   const bills = billsData?.bills || [];
   const totalBills = bills.reduce((sum: number, bill: any) => sum + Number(bill.amount || 0), 0);
@@ -531,14 +545,17 @@ export default function SalesHistoryPage() {
         {isCompany && netProfit !== null && (
           <Card className="p-6">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-muted-foreground">Lucro Líquido</p>
                 <p className={`text-2xl font-bold mt-2 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(netProfit)}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Receita - Contas - Perdas
-                </p>
+                <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                  <p>Receita: {formatCurrency(stats.totalRevenue)}</p>
+                  <p>- COGS: {formatCurrency(stats.totalCostOfGoods)}</p>
+                  <p>- Contas: {formatCurrency(totalBills)}</p>
+                  <p>- Perdas: {formatCurrency(totalLosses)}</p>
+                </div>
               </div>
               <div className={`h-12 w-12 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
                 <DollarSign className={`h-6 w-6 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
