@@ -453,6 +453,24 @@ export function ProcessExchangeDialog({
       setIsSubmitting(true);
       const exchange = await api.exchangeSale(payload);
       toast.success('Troca processada com sucesso!');
+      
+      // Se gerou crédito em loja, oferecer impressão do comprovante
+      if (exchange.storeCreditAmount > 0 && (exchange as any).storeCreditVoucherData) {
+        const shouldPrint = window.confirm(
+          `Crédito em loja de ${formatCurrency(exchange.storeCreditAmount)} gerado com sucesso!\n\nDeseja imprimir o comprovante agora?`
+        );
+        
+        if (shouldPrint) {
+          try {
+            await api.post(`/sale/exchange/${exchange.id}/print-credit-voucher`);
+            toast.success('Comprovante enviado para impressão!');
+          } catch (printError) {
+            console.error('Erro ao imprimir comprovante:', printError);
+            toast.error('Erro ao imprimir comprovante. Você pode imprimi-lo depois.');
+          }
+        }
+      }
+      
       onSuccess?.(exchange);
       onClose();
     } catch (error) {

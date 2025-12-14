@@ -298,9 +298,27 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
                             </span>
                           </p>
                           {exchange.storeCreditAmount > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                              Crédito em loja: {formatCurrency(exchange.storeCreditAmount)}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs text-muted-foreground">
+                                Crédito em loja: {formatCurrency(exchange.storeCreditAmount)}
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-xs"
+                                onClick={async () => {
+                                  try {
+                                    await api.post(`/sale/exchange/${exchange.id}/print-credit-voucher`);
+                                    toast.success('Comprovante enviado para impressão!');
+                                  } catch (error) {
+                                    handleApiError(error);
+                                  }
+                                }}
+                              >
+                                <Printer className="h-3 w-3 mr-1" />
+                                Imprimir
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </div>
