@@ -182,6 +182,12 @@ export default function SalesHistoryPage() {
     totalCostOfGoods: statsData?.totalCostOfGoods || 0,
   };
 
+  // Calcular lucro líquido (apenas para empresas)
+  const bills = billsData?.bills || [];
+  const totalBills = bills.reduce((sum: number, bill: any) => sum + Number(bill.amount || 0), 0);
+  const totalLosses = Number(lossesData?.totalCost || 0);
+  const netProfit = isCompany ? stats.totalRevenue - stats.totalCostOfGoods - totalBills - totalLosses : null;
+
   // Debug: log stats data
   if (statsData) {
     console.log('[Sales History] Stats from API:', statsData);
@@ -195,12 +201,6 @@ export default function SalesHistoryPage() {
       netProfit: stats.totalRevenue - stats.totalCostOfGoods - totalBills - totalLosses,
     });
   }
-
-  // Calcular lucro líquido (apenas para empresas)
-  const bills = billsData?.bills || [];
-  const totalBills = bills.reduce((sum: number, bill: any) => sum + Number(bill.amount || 0), 0);
-  const totalLosses = Number(lossesData?.totalCost || 0);
-  const netProfit = isCompany ? stats.totalRevenue - stats.totalCostOfGoods - totalBills - totalLosses : null;
 
   const handleViewDetails = (saleId: string) => {
     setSelectedSaleId(saleId);
