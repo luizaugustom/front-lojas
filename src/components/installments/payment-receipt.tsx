@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 interface PaymentReceiptProps {
   installment: any;
@@ -36,6 +36,16 @@ const getPaymentMethodLabel = (method: string) => {
   return methods[method] || method;
 };
 
+const toNumber = (value: any): number => {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') return Number(value);
+  if (typeof value === 'object' && typeof value.toNumber === 'function') {
+    return value.toNumber();
+  }
+  return Number(value) || 0;
+};
+
 export function PaymentReceipt({
   installment,
   payment,
@@ -61,23 +71,28 @@ export function PaymentReceipt({
           setCustomerTotalAfterPayment(null);
           return;
         }
+        const resp = await api.get(`/installment/customer/${customerId}/summary`);
+        const raw = resp?.data ?? {};
+        const installmentsList: any[] = Array.isArray(raw.installments) ? raw.installments : [];
+        const totalDebtFromSummary = toNumber(raw.totalDebt);
+        const totalRemaining = totalDebtFromSummary || installmentsList
+          .filter((inst) => !inst.isPaid)
+          .reduce((sum, inst) => sum + toNumber(inst.remainingAmount ?? inst.amount), 0);
 
-        const resp = await api.get(`/customer/${customerId}/installments`);
-        const raw = resp?.data;
-        const list = raw?.installments ?? raw ?? [];
+        const currentRemaining = toNumber(installment?.remainingAmount);
+        const paidNow = Math.min(toNumber(payment.amount), currentRemaining);
+        const adjustedTotal = totalRemaining - paidNow;
 
-        const totalRemaining = list
-          .filter((inst: any) => !inst.isPaid)
-          .reduce((sum: number, inst: any) => sum + Number(inst.remainingAmount || 0), 0);
-
-        const currentRemaining = Number(installment?.remainingAmount || 0);
-        const adjustedTotal = totalRemaining - Math.min(Number(payment.amount || 0), currentRemaining);
-
-        if (!isCancelled) {
-          setCustomerTotalAfterPayment(Math.max(0, adjustedTotal));
-        }
+        if (!isCancelled) setCustomerTotalAfterPayment(Math.max(0, adjustedTotal));
       } catch (err) {
-        if (!isCancelled) {
+        if (isCancelled) return;
+
+        const fallbackDebt = toNumber(installment?.customer?.totalDebt);
+        if (fallbackDebt > 0) {
+          const currentRemaining = toNumber(installment?.remainingAmount);
+          const paidNow = Math.min(toNumber(payment.amount), currentRemaining);
+          setCustomerTotalAfterPayment(Math.max(0, fallbackDebt - paidNow));
+        } else {
           setCustomerTotalAfterPayment(null);
         }
       } finally {
@@ -103,15 +118,19 @@ export function PaymentReceipt({
     return () => clearTimeout(timer);
   }, [onPrintComplete, isLoadingDebt]);
 
-  const remainingAmount = installment.remainingAmount || 0;
-  const originalAmount = installment.amount || 0;
+  const remainingAmount = toNumber(installment.remainingAmount);
+  const originalAmount = toNumber(installment.amount);
   const paidAmount = originalAmount - remainingAmount;
-  const newRemainingAmount = remainingAmount - payment.amount;
+  const newRemainingAmount = remainingAmount - toNumber(payment.amount);
   const remainingAfterPayment = Math.max(newRemainingAmount, 0);
   const otherDebtsAfterPayment = useMemo(() => {
     if (customerTotalAfterPayment === null) return null;
     return Math.max(customerTotalAfterPayment - remainingAfterPayment, 0);
   }, [customerTotalAfterPayment, remainingAfterPayment]);
+
+  const saleDateValue = installment.sale?.saleDate || installment.sale?.createdAt;
+  const saleDateText = saleDateValue ? formatDate(saleDateValue) : '—';
+  const saleTotal = toNumber(installment.sale?.total ?? installment.sale?.totalAmount ?? installment.sale?.amount);
 
   return (
     <div className="print-only">
@@ -204,8 +223,8 @@ export function PaymentReceipt({
             <div style={{ borderTop: '1px dashed #000', margin: '6px 0' }} />
             <div>
               <div style={{ fontWeight: 'bold' }}>Resumo da venda</div>
-              <div>Data: {new Date(installment.sale.createdAt).toLocaleDateString('pt-BR')}</div>
-              <div>Total: {formatCurrency(installment.sale.totalAmount)}</div>
+              <div>Data: {saleDateText || 'Não informado'}</div>
+              <div>Total: {formatCurrency(saleTotal)}</div>
             </div>
           </>
         )}
