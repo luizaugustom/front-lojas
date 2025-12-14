@@ -550,12 +550,7 @@ export default function SalesHistoryPage() {
                 <p className={`text-2xl font-bold mt-2 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(netProfit)}
                 </p>
-                <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                  <p>Receita: {formatCurrency(stats.totalRevenue)}</p>
-                  <p>- COGS: {formatCurrency(stats.totalCostOfGoods)}</p>
-                  <p>- Contas: {formatCurrency(totalBills)}</p>
-                  <p>- Perdas: {formatCurrency(totalLosses)}</p>
-                </div>
+                <p className="text-xs text-muted-foreground mt-1">Receita - COGS - Contas - Perdas</p>
               </div>
               <div className={`h-12 w-12 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
                 <DollarSign className={`h-6 w-6 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
