@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 
 interface PaymentReceiptProps {
@@ -10,6 +11,7 @@ interface PaymentReceiptProps {
     paymentMethod: string;
     date: string;
     notes?: string;
+    sellerName?: string;
   };
   customerInfo?: {
     name: string;
@@ -41,22 +43,75 @@ export function PaymentReceipt({
   companyInfo,
   onPrintComplete,
 }: PaymentReceiptProps) {
+  const [customerTotalAfterPayment, setCustomerTotalAfterPayment] = useState<number | null>(null);
+  const [isLoadingDebt, setIsLoadingDebt] = useState<boolean>(true);
+
+  const customerId = useMemo(() => {
+    return installment?.customer?.id || installment?.customerId || null;
+  }, [installment]);
+
   useEffect(() => {
-    // Aguarda um pequeno delay para garantir que o conteúdo foi renderizado
+    let isCancelled = false;
+
+    async function loadCustomerDebts() {
+      try {
+        setIsLoadingDebt(true);
+
+        if (!customerId) {
+          setCustomerTotalAfterPayment(null);
+          return;
+        }
+
+        const resp = await api.get(`/customer/${customerId}/installments`);
+        const raw = resp?.data;
+        const list = raw?.installments ?? raw ?? [];
+
+        const totalRemaining = list
+          .filter((inst: any) => !inst.isPaid)
+          .reduce((sum: number, inst: any) => sum + Number(inst.remainingAmount || 0), 0);
+
+        const currentRemaining = Number(installment?.remainingAmount || 0);
+        const adjustedTotal = totalRemaining - Math.min(Number(payment.amount || 0), currentRemaining);
+
+        if (!isCancelled) {
+          setCustomerTotalAfterPayment(Math.max(0, adjustedTotal));
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setCustomerTotalAfterPayment(null);
+        }
+      } finally {
+        if (!isCancelled) setIsLoadingDebt(false);
+      }
+    }
+
+    loadCustomerDebts();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [customerId, installment?.remainingAmount, payment.amount]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       window.print();
       if (onPrintComplete) {
         onPrintComplete();
       }
-    }, 500);
+    }, isLoadingDebt ? 900 : 500);
 
     return () => clearTimeout(timer);
-  }, [onPrintComplete]);
+  }, [onPrintComplete, isLoadingDebt]);
 
   const remainingAmount = installment.remainingAmount || 0;
   const originalAmount = installment.amount || 0;
   const paidAmount = originalAmount - remainingAmount;
   const newRemainingAmount = remainingAmount - payment.amount;
+  const remainingAfterPayment = Math.max(newRemainingAmount, 0);
+  const otherDebtsAfterPayment = useMemo(() => {
+    if (customerTotalAfterPayment === null) return null;
+    return Math.max(customerTotalAfterPayment - remainingAfterPayment, 0);
+  }, [customerTotalAfterPayment, remainingAfterPayment]);
 
   return (
     <div className="print-only">
@@ -70,15 +125,10 @@ export function PaymentReceipt({
             .print-only * {
               visibility: visible;
             }
-            .print-only {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-            }
+            .print-only { position: absolute; left: 0; top: 0; width: 100%; }
             @page {
               size: auto;
-              margin: 10mm;
+              margin: 5mm;
             }
           }
           @media screen {
@@ -89,163 +139,85 @@ export function PaymentReceipt({
         `}
       </style>
 
-      <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-        {/* Cabeçalho */}
-        <div style={{ textAlign: 'center', marginBottom: '30px', borderBottom: '2px solid #333', paddingBottom: '15px' }}>
-          <h1 style={{ fontSize: '24px', margin: '0 0 10px 0' }}>COMPROVANTE DE PAGAMENTO</h1>
+      {/* Layout estilo cupom não fiscal (bobina) */}
+      <div style={{ padding: '8px', fontFamily: 'monospace', maxWidth: '280px', margin: '0 auto', fontSize: '12px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '6px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 'bold' }}>COMPROVANTE DE PAGAMENTO</div>
           {companyInfo && (
-            <div style={{ fontSize: '12px', color: '#666' }}>
-              <p style={{ margin: '5px 0' }}><strong>{companyInfo.name}</strong></p>
-              {companyInfo.cnpj && <p style={{ margin: '5px 0' }}>CNPJ: {companyInfo.cnpj}</p>}
-              {companyInfo.address && <p style={{ margin: '5px 0' }}>{companyInfo.address}</p>}
+            <div style={{ marginTop: '4px' }}>
+              <div style={{ fontSize: '11px' }}>{companyInfo.name}</div>
+              {companyInfo.cnpj && <div style={{ fontSize: '11px' }}>CNPJ: {companyInfo.cnpj}</div>}
+              {companyInfo.address && <div style={{ fontSize: '11px' }}>{companyInfo.address}</div>}
             </div>
           )}
         </div>
 
-        {/* Informações do Pagamento */}
-        <div style={{ marginBottom: '25px' }}>
-          <h2 style={{ fontSize: '16px', marginBottom: '15px', borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>
-            Dados do Pagamento
-          </h2>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <tbody>
-              <tr>
-                <td style={{ padding: '8px 0', width: '40%', fontWeight: 'bold' }}>Data do Pagamento:</td>
-                <td style={{ padding: '8px 0' }}>
-                  {new Date(payment.date).toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Método de Pagamento:</td>
-                <td style={{ padding: '8px 0' }}>{getPaymentMethodLabel(payment.paymentMethod)}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Valor Pago:</td>
-                <td style={{ padding: '8px 0', fontSize: '18px', color: '#16a34a', fontWeight: 'bold' }}>
-                  {formatCurrency(payment.amount)}
-                </td>
-              </tr>
-              {payment.notes && (
-                <tr>
-                  <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Observações:</td>
-                  <td style={{ padding: '8px 0' }}>{payment.notes}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div style={{ borderTop: '1px dashed #000', margin: '6px 0' }} />
+
+        <div>
+          <div style={{ fontWeight: 'bold' }}>Pagamento</div>
+          <div>Data: {new Date(payment.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(payment.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+          <div>Método: {getPaymentMethodLabel(payment.paymentMethod)}</div>
+          <div>Valor pago: {formatCurrency(payment.amount)}</div>
+          {payment.sellerName && <div>Recebido por: {payment.sellerName}</div>}
+          {payment.notes && <div>Obs: {payment.notes}</div>}
         </div>
 
-        {/* Informações do Cliente */}
+        <div style={{ borderTop: '1px dashed #000', margin: '6px 0' }} />
+
         {customerInfo && (
-          <div style={{ marginBottom: '25px' }}>
-            <h2 style={{ fontSize: '16px', marginBottom: '15px', borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>
-              Dados do Cliente
-            </h2>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '8px 0', width: '40%', fontWeight: 'bold' }}>Nome:</td>
-                  <td style={{ padding: '8px 0' }}>{customerInfo.name}</td>
-                </tr>
-                {customerInfo.cpfCnpj && (
-                  <tr>
-                    <td style={{ padding: '8px 0', fontWeight: 'bold' }}>CPF/CNPJ:</td>
-                    <td style={{ padding: '8px 0' }}>{customerInfo.cpfCnpj}</td>
-                  </tr>
-                )}
-                {customerInfo.phone && (
-                  <tr>
-                    <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Telefone:</td>
-                    <td style={{ padding: '8px 0' }}>{customerInfo.phone}</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div>
+            <div style={{ fontWeight: 'bold' }}>Cliente</div>
+            <div>{customerInfo.name}</div>
+            {customerInfo.cpfCnpj && <div>CPF/CNPJ: {customerInfo.cpfCnpj}</div>}
+            {customerInfo.phone && <div>Tel: {customerInfo.phone}</div>}
           </div>
         )}
 
-        {/* Informações da Parcela */}
-        <div style={{ marginBottom: '25px' }}>
-          <h2 style={{ fontSize: '16px', marginBottom: '15px', borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>
-            Detalhes da Parcela
-          </h2>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <tbody>
-              <tr>
-                <td style={{ padding: '8px 0', width: '40%', fontWeight: 'bold' }}>Parcela:</td>
-                <td style={{ padding: '8px 0' }}>
-                  {installment.installmentNumber} de {installment.totalInstallments}
-                </td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Valor Original da Parcela:</td>
-                <td style={{ padding: '8px 0' }}>{formatCurrency(originalAmount)}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Total Pago Anteriormente:</td>
-                <td style={{ padding: '8px 0' }}>{formatCurrency(paidAmount)}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Valor Pago Agora:</td>
-                <td style={{ padding: '8px 0', color: '#16a34a', fontWeight: 'bold' }}>
-                  {formatCurrency(payment.amount)}
-                </td>
-              </tr>
-              <tr style={{ borderTop: '2px solid #333' }}>
-                <td style={{ padding: '12px 0', fontWeight: 'bold', fontSize: '16px' }}>
-                  Saldo Restante da Parcela:
-                </td>
-                <td style={{ padding: '12px 0', fontSize: '18px', fontWeight: 'bold', color: newRemainingAmount > 0 ? '#dc2626' : '#16a34a' }}>
-                  {formatCurrency(newRemainingAmount)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div style={{ borderTop: '1px dashed #000', margin: '6px 0' }} />
+
+        <div>
+          <div style={{ fontWeight: 'bold' }}>Parcela</div>
+          <div>Ref.: {installment.installmentNumber}/{installment.totalInstallments}</div>
+          <div>Valor: {formatCurrency(originalAmount)}</div>
+          <div>Já pago: {formatCurrency(paidAmount)}</div>
+          <div>Pago agora: {formatCurrency(payment.amount)}</div>
+          <div style={{ fontWeight: 'bold' }}>Saldo da parcela: {formatCurrency(remainingAfterPayment)}</div>
         </div>
 
-        {/* Resumo da Conta */}
-        {installment.sale && (
-          <div style={{ marginBottom: '25px' }}>
-            <h2 style={{ fontSize: '16px', marginBottom: '15px', borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>
-              Resumo da Venda
-            </h2>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '8px 0', width: '40%', fontWeight: 'bold' }}>Data da Venda:</td>
-                  <td style={{ padding: '8px 0' }}>
-                    {new Date(installment.sale.createdAt).toLocaleDateString('pt-BR')}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Valor Total da Venda:</td>
-                  <td style={{ padding: '8px 0' }}>{formatCurrency(installment.sale.totalAmount)}</td>
-                </tr>
-              </tbody>
-            </table>
+        <div style={{ borderTop: '1px dashed #000', margin: '6px 0' }} />
+
+        <div>
+          <div style={{ fontWeight: 'bold' }}>Outras dívidas do cliente</div>
+          <div>
+            {isLoadingDebt && 'Calculando...'}
+            {!isLoadingDebt && otherDebtsAfterPayment !== null && (
+              <span>{formatCurrency(otherDebtsAfterPayment)}</span>
+            )}
+            {!isLoadingDebt && otherDebtsAfterPayment === null && <span>Não disponível</span>}
           </div>
+          <div style={{ fontWeight: 'bold' }}>Total em aberto: {customerTotalAfterPayment !== null ? formatCurrency(customerTotalAfterPayment) : 'Não disponível'}</div>
+        </div>
+
+        {installment.sale && (
+          <>
+            <div style={{ borderTop: '1px dashed #000', margin: '6px 0' }} />
+            <div>
+              <div style={{ fontWeight: 'bold' }}>Resumo da venda</div>
+              <div>Data: {new Date(installment.sale.createdAt).toLocaleDateString('pt-BR')}</div>
+              <div>Total: {formatCurrency(installment.sale.totalAmount)}</div>
+            </div>
+          </>
         )}
 
-        {/* Rodapé */}
-        <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid #ddd', textAlign: 'center', fontSize: '11px', color: '#666' }}>
-          <p style={{ margin: '5px 0' }}>
-            Este documento é um comprovante de pagamento e deve ser guardado para controle financeiro.
-          </p>
-          <p style={{ margin: '5px 0' }}>
-            Emitido em: {new Date().toLocaleDateString('pt-BR', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </p>
+        <div style={{ borderTop: '1px dashed #000', margin: '6px 0' }} />
+
+        <div style={{ textAlign: 'center', fontSize: '11px', color: '#444' }}>
+          <div>Emitido em: {new Date().toLocaleDateString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+          })}</div>
+          <div style={{ marginTop: '4px' }}>Documento não fiscal</div>
+          <div style={{ marginTop: '4px' }}>Obrigado pela preferência!</div>
         </div>
       </div>
     </div>

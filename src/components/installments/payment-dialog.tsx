@@ -41,7 +41,7 @@ interface PaymentFormData {
 }
 
 export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps) {
-  const { api } = useAuth();
+  const { api, user } = useAuth();
   const [paymentType, setPaymentType] = useState<'full' | 'partial'>('full');
   const [showReceiptConfirm, setShowReceiptConfirm] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -81,6 +81,7 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
         paymentMethod: variables.paymentMethod,
         notes: variables.notes,
         date: new Date().toISOString(),
+        sellerName: user?.name,
       });
       
       toast.success(response.data.message || 'Pagamento registrado com sucesso!');
