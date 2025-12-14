@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
 import { formatCurrency } from '@/lib/utils';
 import { DollarSign, CreditCard, Banknote, Smartphone } from 'lucide-react';
 import { PaymentReceiptConfirmDialog } from './payment-receipt-confirm-dialog';
@@ -42,6 +43,25 @@ interface PaymentFormData {
 
 export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps) {
   const { api, user } = useAuth();
+  const { company } = useCompany();
+  const companyInfo = useMemo(() => {
+    if (!company) return null;
+    const addressParts = [
+      company.address?.street,
+      company.address?.number,
+      company.address?.complement,
+      company.address?.neighborhood,
+      company.address?.city,
+      company.address?.state,
+    ].filter(Boolean);
+
+    return {
+      name: company.name,
+      cnpj: company.cnpj,
+      address: addressParts.join(', '),
+    };
+  }, [company]);
+
   const [paymentType, setPaymentType] = useState<'full' | 'partial'>('full');
   const [showReceiptConfirm, setShowReceiptConfirm] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -325,6 +345,7 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
             cpfCnpj: installment.customer?.cpfCnpj,
             phone: installment.customer?.phone,
           }}
+          companyInfo={companyInfo ?? undefined}
           onPrintComplete={handlePrintComplete}
         />
       )}
