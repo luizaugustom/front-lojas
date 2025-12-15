@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { printContent } from '@/lib/print-service';
+import { handleApiError } from '@/lib/handleApiError';
 import { ProcessExchangeDialog } from './process-exchange-dialog';
 import type { Exchange } from '@/types';
 
