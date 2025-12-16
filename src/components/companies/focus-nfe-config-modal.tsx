@@ -23,6 +23,7 @@ export function FocusNfeConfigModal({ open, onOpenChange, company, onSuccess }: 
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [loadingFiscalConfig, setLoadingFiscalConfig] = useState(false);
   const [fiscalConfig, setFiscalConfig] = useState<any>(null);
+  const [focusNfeConfig, setFocusNfeConfig] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [downloadingCertificate, setDownloadingCertificate] = useState(false);
   const [formData, setFormData] = useState({
@@ -53,8 +54,16 @@ export function FocusNfeConfigModal({ open, onOpenChange, company, onSuccess }: 
     try {
       const response = await companyApi.getFocusNfeConfig(company.id);
       if (response.data) {
+        setFocusNfeConfig(response.data);
+        
+        // Se está usando configuração do admin, não preencher o campo (mostrar vazio)
+        // Se tem configuração própria, preencher
+        const apiKey = response.data.isUsingCompanyConfig 
+          ? (response.data.focusNfeApiKey || '')
+          : '';
+        
         setFormData({
-          focusNfeApiKey: response.data.focusNfeApiKey || '',
+          focusNfeApiKey: apiKey,
           focusNfeEnvironment: (response.data.focusNfeEnvironment || 'sandbox') as 'sandbox' | 'production',
           ibptToken: response.data.ibptToken || '',
         });
@@ -87,7 +96,14 @@ export function FocusNfeConfigModal({ open, onOpenChange, company, onSuccess }: 
 
     setLoading(true);
     try {
-      await companyApi.updateFocusNfeConfig(company.id, formData);
+      // Se o campo API Key estiver vazio, enviar undefined para limpar configuração própria
+      // e voltar a usar a global do admin
+      const dataToSend = {
+        ...formData,
+        focusNfeApiKey: formData.focusNfeApiKey.trim() || undefined, // undefined remove a configuração própria
+      };
+      
+      await companyApi.updateFocusNfeConfig(company.id, dataToSend);
       toast.success('Configuração do Focus NFe salva com sucesso!');
       onSuccess?.();
       onOpenChange(false);
@@ -154,19 +170,35 @@ export function FocusNfeConfigModal({ open, onOpenChange, company, onSuccess }: 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="focusNfeApiKey">
-                API Key do Focus NFe *
+                API Key do Focus NFe (Opcional)
               </Label>
               <Input
                 id="focusNfeApiKey"
                 type="password"
                 value={formData.focusNfeApiKey}
                 onChange={(e) => setFormData({ ...formData, focusNfeApiKey: e.target.value })}
-                placeholder="Digite a API Key do Focus NFe"
-                required
+                placeholder="Digite a API Key do Focus NFe (opcional)"
               />
               <p className="text-xs text-muted-foreground">
-                API Key específica desta empresa no Focus NFe
+                API Key do Focus NFe para esta empresa (opcional). Se não informada, será usada a API Key global configurada pelo administrador.
               </p>
+              {focusNfeConfig && (
+                <div className="mt-2">
+                  {focusNfeConfig.isUsingCompanyConfig ? (
+                    <p className="text-xs text-green-600 dark:text-green-400">
+                      ✅ Usando API Key própria desta empresa
+                    </p>
+                  ) : focusNfeConfig.isUsingAdminConfig ? (
+                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                      ℹ️ Usando API Key global do administrador (fallback)
+                    </p>
+                  ) : (
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                      ⚠️ Nenhuma API Key configurada. Configure aqui ou solicite ao administrador que configure a API Key global.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

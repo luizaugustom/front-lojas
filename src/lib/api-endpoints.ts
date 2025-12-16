@@ -1027,4 +1027,17 @@ export const adminApi = {
    * Roles: ADMIN
    */
   delete: (id: string) => api.delete(`/admin/${id}`),
+
+  /**
+   * PATCH /admin/focus-nfe-config
+   * Roles: ADMIN - Atualizar configuração global do Focus NFe
+   * Body: { focusNfeApiKey?, focusNfeEnvironment?, ibptToken? }
+   */
+  updateFocusNfeConfig: (data: any) => api.patch('/admin/focus-nfe-config', data),
+
+  /**
+   * GET /admin/focus-nfe-config
+   * Roles: ADMIN - Obter configuração global do Focus NFe
+   */
+  getFocusNfeConfig: () => api.get('/admin/focus-nfe-config'),
 };

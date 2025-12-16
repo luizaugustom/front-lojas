@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import { handleApiError } from '@/lib/handleApiError';
-import { companyApi } from '@/lib/api-endpoints';
+import { companyApi, adminApi } from '@/lib/api-endpoints';
 import { getImageUrl } from '@/lib/image-utils';
 import { useUIStore } from '@/store/ui-store';
 import type { DataPeriodFilter } from '@/types';
@@ -118,6 +118,16 @@ export default function SettingsPage() {
   });
   const [savingFiscalData, setSavingFiscalData] = useState(false);
 
+  // Estado das configurações globais Focus NFe (apenas para admin)
+  const [adminFocusNfeConfig, setAdminFocusNfeConfig] = useState<any>(null);
+  const [loadingAdminFocusNfe, setLoadingAdminFocusNfe] = useState(false);
+  const [savingAdminFocusNfe, setSavingAdminFocusNfe] = useState(false);
+  const [adminFocusNfeForm, setAdminFocusNfeForm] = useState({
+    focusNfeApiKey: '',
+    focusNfeEnvironment: 'sandbox' as 'sandbox' | 'production',
+    ibptToken: '',
+  });
+
 
   // Carregar dados da empresa (incluindo plano)
   const loadCompanyData = async () => {
@@ -147,6 +157,39 @@ export default function SettingsPage() {
       handleApiError(error);
     } finally {
       setSavingBrandColor(false);
+    }
+  };
+
+  // Carregar configuração global Focus NFe (apenas para admin)
+  const loadAdminFocusNfeConfig = async () => {
+    try {
+      setLoadingAdminFocusNfe(true);
+      const response = await adminApi.getFocusNfeConfig();
+      setAdminFocusNfeConfig(response.data);
+      setAdminFocusNfeForm({
+        focusNfeApiKey: response.data?.focusNfeApiKey || '',
+        focusNfeEnvironment: (response.data?.focusNfeEnvironment || 'sandbox') as 'sandbox' | 'production',
+        ibptToken: response.data?.ibptToken || '',
+      });
+    } catch (error) {
+      console.error('Erro ao carregar configuração Focus NFe:', error);
+      setAdminFocusNfeConfig(null);
+    } finally {
+      setLoadingAdminFocusNfe(false);
+    }
+  };
+
+  const handleSaveAdminFocusNfeConfig = async () => {
+    try {
+      setSavingAdminFocusNfe(true);
+      await adminApi.updateFocusNfeConfig(adminFocusNfeForm);
+      toast.success('Configuração global do Focus NFe salva com sucesso!');
+      await loadAdminFocusNfeConfig();
+    } catch (error: any) {
+      console.error('Erro ao salvar configuração Focus NFe:', error);
+      handleApiError(error);
+    } finally {
+      setSavingAdminFocusNfe(false);
     }
   };
 
@@ -181,6 +224,8 @@ export default function SettingsPage() {
         loadAutoMessageStatus();
         loadCatalogPageConfig();
         loadFiscalConfig();
+      } else if (user.role === 'admin') {
+        loadAdminFocusNfeConfig();
       }
     }
   }, [user]);
@@ -811,7 +856,141 @@ export default function SettingsPage() {
         </nav>
       )}
 
+      {user?.role === 'admin' && (
+        <nav className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b rounded-md">
+          <div className="flex flex-wrap gap-2 p-2">
+            <a href="#focus-nfe-global"><Button variant="outline" size="sm">Focus NFe Global</Button></a>
+            <a href="#notificacoes-fim"><Button variant="outline" size="sm">Notificações</Button></a>
+          </div>
+        </nav>
+      )}
+
       <div className="grid gap-6">
+        {/* Configurações Globais Focus NFe - Apenas para Admin */}
+        {user?.role === 'admin' && (
+          <Card id="focus-nfe-global" className="scroll-mt-24">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <SettingsIcon className="h-5 w-5" />
+                Focus NFe - Configuração Global
+              </CardTitle>
+              <CardDescription>
+                Configure a API Key global do Focus NFe que será usada por todas as empresas como padrão. 
+                As empresas podem configurar sua própria API Key, mas se não configurada, usarão esta global.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {loadingAdminFocusNfe ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">Carregando configuração...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm text-blue-900 dark:text-blue-100 font-semibold mb-1">
+                      ℹ️ Sobre a Configuração Global
+                    </p>
+                    <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                      <li>• Esta API Key será usada por todas as empresas como padrão</li>
+                      <li>• Empresas podem configurar sua própria API Key (opcional)</li>
+                      <li>• Se uma empresa não tiver API Key própria, usará esta global</li>
+                      <li>• Uma única assinatura Focus NFe pode servir múltiplas empresas</li>
+                    </ul>
+                  </div>
+
+                  <div className="grid gap-4">
+                    {/* API Key Global */}
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-focusNfeApiKey">
+                        API Key Global do Focus NFe *
+                      </Label>
+                      <Input
+                        id="admin-focusNfeApiKey"
+                        type="password"
+                        value={adminFocusNfeForm.focusNfeApiKey}
+                        onChange={(e) => setAdminFocusNfeForm({ ...adminFocusNfeForm, focusNfeApiKey: e.target.value })}
+                        placeholder="Digite a API Key global do Focus NFe"
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        API Key compartilhada por todas as empresas. Obtenha em: <a href="https://focusnfe.com.br" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">focusnfe.com.br</a>
+                      </p>
+                      {adminFocusNfeConfig?.hasFocusNfeApiKey && (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          ✅ API Key global configurada
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Ambiente */}
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-focusNfeEnvironment">
+                        Ambiente *
+                      </Label>
+                      <Select
+                        value={adminFocusNfeForm.focusNfeEnvironment}
+                        onValueChange={(value) => setAdminFocusNfeForm({ ...adminFocusNfeForm, focusNfeEnvironment: value as 'sandbox' | 'production' })}
+                      >
+                        <SelectTrigger id="admin-focusNfeEnvironment">
+                          <SelectValue placeholder="Selecione o ambiente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sandbox">Sandbox (Homologação) - Para testes</SelectItem>
+                          <SelectItem value="production">Production (Produção) - Para emissão real</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Ambiente onde as notas fiscais serão emitidas. Use "Sandbox" para testes e "Production" para emissão real.
+                      </p>
+                    </div>
+
+                    {/* Token IBPT */}
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-ibptToken">
+                        Token IBPT (Opcional)
+                      </Label>
+                      <Input
+                        id="admin-ibptToken"
+                        type="password"
+                        value={adminFocusNfeForm.ibptToken}
+                        onChange={(e) => setAdminFocusNfeForm({ ...adminFocusNfeForm, ibptToken: e.target.value })}
+                        placeholder="Digite o token IBPT (opcional)"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Token da API IBPT para cálculo de tributos aproximados. Opcional, mas recomendado para melhor precisão.
+                        Obtenha em: <a href="https://deolhonoimposto.ibpt.org.br" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">ibpt.org.br</a>
+                      </p>
+                      {adminFocusNfeConfig?.hasIbptToken && (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          ✅ Token IBPT configurado
+                        </p>
+                      )}
+                    </div>
+
+                    <Button
+                      onClick={handleSaveAdminFocusNfeConfig}
+                      disabled={savingAdminFocusNfe}
+                      className="w-full"
+                    >
+                      {savingAdminFocusNfe ? (
+                        <>
+                          <Save className="mr-2 h-4 w-4 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Salvar Configuração Global
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
         {user?.role === 'empresa' && (
           <Card id="periodo-dados">
             <CardHeader>

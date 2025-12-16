@@ -31,7 +31,9 @@ const nextConfig = {
     ignoreBuildErrors: false, // Em produção, deveria ser false
   },
   eslint: {
-    ignoreDuringBuilds: true, // Temporariamente true para resolver conflitos de dependências
+    // Em produção, é recomendado manter false para garantir qualidade do código
+    // Se houver erros de lint, corrija-os antes de fazer deploy
+    ignoreDuringBuilds: process.env.NODE_ENV === 'development',
   },
   // Configurações de headers de segurança
   async headers() {
