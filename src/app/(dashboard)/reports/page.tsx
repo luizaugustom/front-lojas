@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { Download, FileText, Calendar, Package, ShoppingCart, FileBarChart, Users, DollarSign, Info } from 'lucide-react';
+import { Download, FileText, Calendar, Package, ShoppingCart, FileBarChart, Users, DollarSign, Info, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -26,6 +26,7 @@ import type { GenerateReportDto, ReportHistory, Seller } from '@/types';
 
 const reportTypes = [
   { value: 'sales', label: 'Relatório de Vendas', icon: ShoppingCart },
+  { value: 'cancelled_sales', label: 'Relatório de Vendas Canceladas', icon: XCircle },
   { value: 'products', label: 'Relatório de Produtos', icon: Package },
   { value: 'invoices', label: 'Relatório de Notas Fiscais', icon: FileText },
   { value: 'complete', label: 'Relatório Completo', icon: FileBarChart },

@@ -283,7 +283,7 @@ export const installmentSaleSchema = z.object({
 // Report Schemas
 export const reportSchema = z
   .object({
-    reportType: z.enum(['sales', 'products', 'invoices', 'complete']),
+    reportType: z.enum(['sales', 'products', 'invoices', 'complete', 'cancelled_sales']),
     format: z.enum(['json', 'xml', 'excel']),
     startDate: optionalString(),
     endDate: optionalString(),

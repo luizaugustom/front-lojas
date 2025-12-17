@@ -24,8 +24,9 @@ import { formatCurrency, calculateChange, calculateMultiplePaymentChange, handle
 import { useCartStore } from '@/store/cart-store';
 import { InstallmentSaleModal } from './installment-sale-modal';
 import { PrintConfirmationDialog } from './print-confirmation-dialog';
+import { CustomerCopyConfirmationDialog } from './customer-copy-confirmation-dialog';
 import { useAuth } from '@/hooks/useAuth';
-import { printContent } from '@/lib/print-service';
+import { printContent as printContentService } from '@/lib/print-service';
 import type { CreateSaleDto, PaymentMethod, PaymentMethodDetail, InstallmentData, Seller } from '@/types';
 
 interface CheckoutDialogProps {
@@ -54,12 +55,14 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const [selectedSellerId, setSelectedSellerId] = useState<string>('');
   const [loadingSellers, setLoadingSellers] = useState(false);
   const [showPrintConfirmation, setShowPrintConfirmation] = useState(false);
+  const [showCustomerCopyConfirmation, setShowCustomerCopyConfirmation] = useState(false);
   const [createdSaleId, setCreatedSaleId] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
   const [hasValidFiscalConfig, setHasValidFiscalConfig] = useState<boolean | null>(null);
   const [loadingFiscalConfig, setLoadingFiscalConfig] = useState(false);
   // Cache do conteúdo de impressão para reimpressão
-  const [cachedPrintContent, setCachedPrintContent] = useState<{ content: string; type: string } | null>(null);
+  const [cachedPrintContent, setCachedPrintContent] = useState<{ content: string | { storeCopy: string; customerCopy: string; isInstallmentSale: boolean }; type: string } | null>(null);
+  const [customerCopyContent, setCustomerCopyContent] = useState<string | null>(null);
   // Store credit
   const [storeCreditBalance, setStoreCreditBalance] = useState<number>(0);
   const [storeCreditCustomerId, setStoreCreditCustomerId] = useState<string | null>(null);
@@ -344,13 +347,13 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     
     setPrinting(true);
     try {
-      let printContentText: string | null = null;
+      let printContent: string | { storeCopy: string; customerCopy: string; isInstallmentSale: boolean } | null = null;
       let printType: string = 'nfce';
 
       // Primeiro, tentar usar conteúdo em cache se disponível
       if (cachedPrintContent?.content) {
         console.log('[Checkout] Usando conteúdo de impressão em cache');
-        printContentText = cachedPrintContent.content;
+        printContent = cachedPrintContent.content;
         printType = cachedPrintContent.type || 'nfce';
       } else {
         // Se não tem cache, buscar do backend
@@ -359,13 +362,13 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
         const responseData = response.data?.data || response.data;
         
         if (responseData?.content) {
-          printContentText = responseData.content;
+          printContent = responseData.content;
           printType = responseData.printType || 'nfce';
           
           // Armazenar em cache para futuras reimpressões
-          if (printContentText) {
+          if (printContent) {
             setCachedPrintContent({
-              content: printContentText,
+              content: printContent,
               type: printType,
             });
           }
@@ -375,12 +378,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
           const reprintData = reprintResponse.data?.data || reprintResponse.data;
           
           if (reprintData?.printContent) {
-            printContentText = reprintData.printContent;
+            printContent = reprintData.printContent;
             printType = reprintData.printType || 'nfce';
             
-            if (printContentText) {
+            if (printContent) {
               setCachedPrintContent({
-                content: printContentText,
+                content: printContent,
                 type: printType,
               });
             }
@@ -388,13 +391,43 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
         }
       }
 
-      // Se conseguiu obter conteúdo, imprimir localmente
-      if (printContentText) {
+      // Verificar se é venda a prazo com vias separadas
+      if (printContent && typeof printContent === 'object' && 'isInstallmentSale' in printContent) {
+        // Venda a prazo - imprimir primeiro a via da loja
+        console.log('[Checkout] Venda a prazo detectada, imprimindo via da loja...');
+        const printResult = await printContentService(printContent.storeCopy);
+        
+        if (printResult.success) {
+          toast.success('Via da loja enviada para impressão!');
+          // Armazenar conteúdo da via do cliente e mostrar modal de confirmação
+          setCustomerCopyContent(printContent.customerCopy);
+          setShowPrintConfirmation(false);
+          setShowCustomerCopyConfirmation(true);
+        } else {
+          toast(`Impressão local falhou: ${printResult.error}. Tentando impressão no servidor...`, {
+            icon: '⚠️',
+            duration: 5000,
+          });
+          
+          // Se falhar localmente, tentar no servidor como fallback
+          try {
+            await saleApi.reprint(createdSaleId);
+            toast.success('Via da loja enviada para impressão no servidor!');
+            setShowPrintConfirmation(false);
+            setShowCustomerCopyConfirmation(true);
+          } catch (serverError) {
+            console.error('[Checkout] Erro ao imprimir no servidor:', serverError);
+            handlePrintComplete();
+          }
+        }
+      } else if (printContent && typeof printContent === 'string') {
+        // Venda normal - imprimir normalmente
         console.log('[Checkout] Imprimindo localmente...');
-        const printResult = await printContent(printContentText);
+        const printResult = await printContentService(printContent);
         
         if (printResult.success) {
           toast.success('NFC-e enviada para impressão!');
+          handlePrintComplete();
         } else {
           toast(`Impressão local falhou: ${printResult.error}. Tentando impressão no servidor...`, {
             icon: '⚠️',
@@ -405,8 +438,10 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
           try {
             await saleApi.reprint(createdSaleId);
             toast.success('NFC-e enviada para impressão no servidor!');
+            handlePrintComplete();
           } catch (serverError) {
             console.error('[Checkout] Erro ao imprimir no servidor:', serverError);
+            handlePrintComplete();
           }
         }
       } else {
@@ -414,9 +449,8 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
         console.log('[Checkout] Sem conteúdo local, tentando impressão no servidor...');
         await saleApi.reprint(createdSaleId);
         toast.success('NFC-e enviada para impressão!');
+        handlePrintComplete();
       }
-
-      handlePrintComplete();
     } catch (error: any) {
       console.error('[Checkout] Erro ao imprimir NFC-e:', error);
       
@@ -439,6 +473,40 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     }
   };
 
+  const handleCustomerCopyConfirm = async () => {
+    if (!customerCopyContent) return;
+    
+    setPrinting(true);
+    try {
+      console.log('[Checkout] Imprimindo via do cliente...');
+      const printResult = await printContentService(customerCopyContent);
+      
+      if (printResult.success) {
+        toast.success('Via do cliente enviada para impressão!');
+      } else {
+        toast(`Impressão local falhou: ${printResult.error}`, {
+          icon: '⚠️',
+          duration: 5000,
+        });
+      }
+      
+      handlePrintComplete();
+    } catch (error: any) {
+      console.error('[Checkout] Erro ao imprimir via do cliente:', error);
+      toast.error('Erro ao imprimir via do cliente');
+      handlePrintComplete();
+    } finally {
+      setPrinting(false);
+      setShowCustomerCopyConfirmation(false);
+      setCustomerCopyContent(null);
+    }
+  };
+
+  const handleCustomerCopyCancel = () => {
+    toast.success('Venda registrada. Via do cliente não foi impressa.');
+    handlePrintComplete();
+  };
+
   const handlePrintCancel = () => {
     toast.success('Venda registrada sem impressão');
     handlePrintComplete();
@@ -452,7 +520,9 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     setInstallmentData(null);
     setSelectedCustomerId('');
     setShowPrintConfirmation(false);
+    setShowCustomerCopyConfirmation(false);
     setCreatedSaleId(null);
+    setCustomerCopyContent(null);
     onClose();
   };
 
@@ -981,6 +1051,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       open={showPrintConfirmation}
       onConfirm={handlePrintConfirm}
       onCancel={handlePrintCancel}
+      loading={printing}
+    />
+    <CustomerCopyConfirmationDialog
+      open={showCustomerCopyConfirmation}
+      onConfirm={handleCustomerCopyConfirm}
+      onCancel={handleCustomerCopyCancel}
       loading={printing}
     />
   </>

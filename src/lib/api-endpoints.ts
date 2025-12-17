@@ -457,6 +457,13 @@ export const saleApi = {
    * Roles: ADMIN, COMPANY
    */
   delete: (id: string, data?: any) => api.delete(`/sale/${id}`, { data }),
+
+  /**
+   * POST /sale/:id/cancel
+   * Roles: ADMIN, COMPANY - Cancelar venda
+   * Body: { reason: string }
+   */
+  cancel: (id: string, data: { reason: string }) => api.post(`/sale/${id}/cancel`, data),
 };
 
 // ============================================================================
