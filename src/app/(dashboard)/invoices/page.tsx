@@ -85,6 +85,11 @@ export default function InvoicesPage() {
   
   // Informações de pagamento
   const [paymentMethod, setPaymentMethod] = useState('01'); // 01=Dinheiro
+  // Grupo Card (NT 2025.001) - Obrigatório para pagamentos com cartão
+  const [cardIntegrationType, setCardIntegrationType] = useState<string>('');
+  const [acquirerCnpj, setAcquirerCnpj] = useState<string>('');
+  const [cardBrand, setCardBrand] = useState<string>('');
+  const [cardOperationType, setCardOperationType] = useState<string>('');
   const [additionalInfo, setAdditionalInfo] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -248,6 +253,10 @@ export default function InvoicesPage() {
       unitOfMeasure: 'UN'
     }]);
     setPaymentMethod('01');
+    setCardIntegrationType('');
+    setAcquirerCnpj('');
+    setCardBrand('');
+    setCardOperationType('');
     setAdditionalInfo('');
     setEmitOpen(true);
   };
@@ -380,6 +389,21 @@ export default function InvoicesPage() {
         payload.payment = {
           method: paymentMethod,
         };
+        
+        // Adicionar dados do grupo Card (NT 2025.001) - Obrigatório para pagamentos com cartão
+        const isCardPayment = paymentMethod === '03' || paymentMethod === '04';
+        if (isCardPayment) {
+          if (!cardIntegrationType || !acquirerCnpj || !cardBrand || !cardOperationType) {
+            toast.error(`Pagamento com ${paymentMethod === '03' ? 'cartão de crédito' : 'cartão de débito'} requer preenchimento completo dos dados do cartão (NT 2025.001)`);
+            setSubmitting(false);
+            return;
+          }
+          
+          payload.payment.cardIntegrationType = cardIntegrationType;
+          payload.payment.acquirerCnpj = acquirerCnpj.replace(/\D/g, '');
+          payload.payment.cardBrand = cardBrand;
+          payload.payment.cardOperationType = cardOperationType;
+        }
         
         if (additionalInfo.trim()) {
           payload.additionalInfo = additionalInfo.trim();
@@ -877,7 +901,19 @@ export default function InvoicesPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Forma de Pagamento *</Label>
-                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <Select value={paymentMethod} onValueChange={(value) => {
+                      setPaymentMethod(value);
+                      // Limpar campos do grupo Card quando mudar método de pagamento
+                      if (value !== '03' && value !== '04') {
+                        setCardIntegrationType('');
+                        setAcquirerCnpj('');
+                        setCardBrand('');
+                        setCardOperationType('');
+                      } else {
+                        // Definir tipo de operação padrão baseado no método
+                        setCardOperationType(value === '03' ? '01' : '03');
+                      }
+                    }}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -901,6 +937,95 @@ export default function InvoicesPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  {/* Campos do Grupo Card (NT 2025.001) - Obrigatório para pagamentos com cartão */}
+                  {(paymentMethod === '03' || paymentMethod === '04') && (
+                    <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <Label className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                          Dados do Cartão (NT 2025.001 - Obrigatório)
+                        </Label>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label htmlFor="cardIntegrationType" className="text-xs">
+                            Tipo de Integração *
+                          </Label>
+                          <Select
+                            value={cardIntegrationType}
+                            onValueChange={setCardIntegrationType}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1 - Pagamento Integrado</SelectItem>
+                              <SelectItem value="2">2 - Pagamento Não Integrado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <Label htmlFor="cardBrand" className="text-xs">
+                            Bandeira *
+                          </Label>
+                          <Select
+                            value={cardBrand}
+                            onValueChange={setCardBrand}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="01">01 - Visa</SelectItem>
+                              <SelectItem value="02">02 - Mastercard</SelectItem>
+                              <SelectItem value="03">03 - American Express</SelectItem>
+                              <SelectItem value="04">04 - Elo</SelectItem>
+                              <SelectItem value="05">05 - Hipercard</SelectItem>
+                              <SelectItem value="99">99 - Outras</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <Label htmlFor="acquirerCnpj" className="text-xs">
+                            CNPJ da Credenciadora * (14 dígitos)
+                          </Label>
+                          <Input
+                            id="acquirerCnpj"
+                            placeholder="00000000000000"
+                            value={acquirerCnpj}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '').substring(0, 14);
+                              setAcquirerCnpj(value);
+                            }}
+                            maxLength={14}
+                          />
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <Label htmlFor="cardOperationType" className="text-xs">
+                            Tipo de Operação *
+                          </Label>
+                          <Select
+                            value={cardOperationType}
+                            onValueChange={setCardOperationType}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="01">01 - Crédito à Vista</SelectItem>
+                              <SelectItem value="02">02 - Crédito Parcelado</SelectItem>
+                              <SelectItem value="03">03 - Débito</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </Card>
 
