@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDateTime, downloadFile } from '@/lib/utils';
 import { PaginationControls } from '@/components/ui/pagination-controls';
+import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
 
 interface FiscalDoc {
   id: string;
@@ -86,7 +87,7 @@ export default function InvoicesPage() {
   // Informações de pagamento
   const [paymentMethod, setPaymentMethod] = useState('01'); // 01=Dinheiro
   // Grupo Card (NT 2025.001) - Obrigatório para pagamentos com cartão
-  const [cardIntegrationType, setCardIntegrationType] = useState<string>('');
+  // Sistema não tem máquinas integradas, sempre usar "2 - Pagamento Não Integrado"
   const [acquirerCnpj, setAcquirerCnpj] = useState<string>('');
   const [cardBrand, setCardBrand] = useState<string>('');
   const [cardOperationType, setCardOperationType] = useState<string>('');
@@ -253,7 +254,6 @@ export default function InvoicesPage() {
       unitOfMeasure: 'UN'
     }]);
     setPaymentMethod('01');
-    setCardIntegrationType('');
     setAcquirerCnpj('');
     setCardBrand('');
     setCardOperationType('');
@@ -393,14 +393,35 @@ export default function InvoicesPage() {
         // Adicionar dados do grupo Card (NT 2025.001) - Obrigatório para pagamentos com cartão
         const isCardPayment = paymentMethod === '03' || paymentMethod === '04';
         if (isCardPayment) {
-          if (!cardIntegrationType || !acquirerCnpj || !cardBrand || !cardOperationType) {
-            toast.error(`Pagamento com ${paymentMethod === '03' ? 'cartão de crédito' : 'cartão de débito'} requer preenchimento completo dos dados do cartão (NT 2025.001)`);
+          // Sistema não tem máquinas integradas, sempre usar "2 - Pagamento Não Integrado"
+          const cardIntegrationType = '2';
+          
+          // Verificar quais campos estão faltando para dar mensagem mais específica
+          const missingFields: string[] = [];
+          if (!acquirerCnpj || acquirerCnpj.replace(/\D/g, '').length !== 14) missingFields.push('CNPJ da Credenciadora');
+          if (!cardBrand) missingFields.push('Bandeira do Cartão');
+          if (!cardOperationType) missingFields.push('Tipo de Operação');
+          
+          if (missingFields.length > 0) {
+            toast.error(
+              `Pagamento com ${paymentMethod === '03' ? 'cartão de crédito' : 'cartão de débito'} requer preenchimento completo dos dados do cartão (NT 2025.001). ` +
+              `Campos faltando: ${missingFields.join(', ')}`,
+              { duration: 6000 }
+            );
+            setSubmitting(false);
+            return;
+          }
+          
+          // Validar CNPJ da credenciadora (deve ter 14 dígitos)
+          const cnpjCleaned = acquirerCnpj.replace(/\D/g, '');
+          if (cnpjCleaned.length !== 14) {
+            toast.error('CNPJ da credenciadora deve ter exatamente 14 dígitos numéricos', { duration: 5000 });
             setSubmitting(false);
             return;
           }
           
           payload.payment.cardIntegrationType = cardIntegrationType;
-          payload.payment.acquirerCnpj = acquirerCnpj.replace(/\D/g, '');
+          payload.payment.acquirerCnpj = cnpjCleaned;
           payload.payment.cardBrand = cardBrand;
           payload.payment.cardOperationType = cardOperationType;
         }
@@ -905,7 +926,6 @@ export default function InvoicesPage() {
                       setPaymentMethod(value);
                       // Limpar campos do grupo Card quando mudar método de pagamento
                       if (value !== '03' && value !== '04') {
-                        setCardIntegrationType('');
                         setAcquirerCnpj('');
                         setCardBrand('');
                         setCardOperationType('');
@@ -950,24 +970,6 @@ export default function InvoicesPage() {
                       
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <Label htmlFor="cardIntegrationType" className="text-xs">
-                            Tipo de Integração *
-                          </Label>
-                          <Select
-                            value={cardIntegrationType}
-                            onValueChange={setCardIntegrationType}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1">1 - Pagamento Integrado</SelectItem>
-                              <SelectItem value="2">2 - Pagamento Não Integrado</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-1">
                           <Label htmlFor="cardBrand" className="text-xs">
                             Bandeira *
                           </Label>
@@ -991,17 +993,12 @@ export default function InvoicesPage() {
                         
                         <div className="space-y-1">
                           <Label htmlFor="acquirerCnpj" className="text-xs">
-                            CNPJ da Credenciadora * (14 dígitos)
+                            CNPJ da Credenciadora *
                           </Label>
-                          <Input
+                          <AcquirerCnpjSelect
                             id="acquirerCnpj"
-                            placeholder="00000000000000"
                             value={acquirerCnpj}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, '').substring(0, 14);
-                              setAcquirerCnpj(value);
-                            }}
-                            maxLength={14}
+                            onChange={setAcquirerCnpj}
                           />
                         </div>
                         

@@ -24,9 +24,9 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
 
   return (
     <Card className="flex flex-col h-full">
-      <CardHeader className="border-b py-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+      <CardHeader className="border-b py-1.5">
+        <CardTitle className="flex items-center gap-2 text-xs">
+          <ShoppingCart className="h-3 w-3" aria-hidden="true" />
           Carrinho ({items.length})
         </CardTitle>
       </CardHeader>

@@ -497,6 +497,7 @@ export interface CreateSaleDto {
   clientName?: string;
   clientCpfCnpj?: string;
   sellerId?: string; // ID do vendedor quando vendido por empresa
+  discount?: number; // Valor do desconto aplicado na venda
 }
 
 export interface CreateCustomerDto {

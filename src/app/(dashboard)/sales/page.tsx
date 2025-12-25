@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Barcode, FileText, ShoppingCart } from 'lucide-react';
+import { Search, FileText, ShoppingCart } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -340,20 +340,14 @@ export default function SalesPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="mb-4">
           <h1 className="text-2xl font-bold tracking-tight mb-2">Vendas</h1>
-          <div className="flex gap-2">
-            <InputWithIcon
-              placeholder="Buscar produtos..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              icon={<Search className="h-4 w-4" />}
-              iconPosition="left"
-              className="flex-1"
-            />
-            <Button onClick={() => setScannerOpen(true)}>
-              <Barcode className="mr-2 h-4 w-4" />
-              Escanear
-            </Button>
-          </div>
+          <InputWithIcon
+            placeholder="Buscar produtos..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            icon={<Search className="h-4 w-4" />}
+            iconPosition="left"
+            className="flex-1"
+          />
         </div>
 
         <div className="flex-1 overflow-y-auto">

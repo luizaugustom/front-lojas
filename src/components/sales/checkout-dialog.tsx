@@ -27,6 +27,7 @@ import { PrintConfirmationDialog } from './print-confirmation-dialog';
 import { CustomerCopyConfirmationDialog } from './customer-copy-confirmation-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { printContent as printContentService } from '@/lib/print-service';
+import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
 import type { CreateSaleDto, PaymentMethod, PaymentMethodDetail, InstallmentData, Seller } from '@/types';
 
 interface CheckoutDialogProps {
@@ -69,7 +70,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const [loadingStoreCredit, setLoadingStoreCredit] = useState(false);
   const [useStoreCredit, setUseStoreCredit] = useState(false);
   const [storeCreditAmount, setStoreCreditAmount] = useState<number>(0);
-  const { items, discount, getTotal, clearCart } = useCartStore();
+  const { items, discount, getTotal, getSubtotal, clearCart } = useCartStore();
   const { user, isAuthenticated, api } = useAuth();
 
   const total = getTotal();
@@ -611,7 +612,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
 
     setLoading(true);
     try {
-  // Criar dados da venda com validações mínimas e sem conversões desnecessárias
+      // Criar dados da venda com validações mínimas e sem conversões desnecessárias
       // Todos os IDs já são UUID v4 válidos
       const saleData: CreateSaleDto = {
         items: items.map((item) => {
@@ -627,6 +628,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
             quantity: item.quantity,
           };
         }),
+        discount: discount > 0 ? roundToCents(discount) : undefined,
         paymentMethods: validPaymentDetails.map((payment) => {
           // Garantir que o valor seja sempre >= 0.01
           const amount = Math.max(Number(payment.amount) || 0, 0.01);
@@ -650,14 +652,41 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
           
           // Adicionar dados do grupo Card (NT 2025.001) - Obrigatório para cartão
           if (payment.method === 'credit_card' || payment.method === 'debit_card') {
-            if (!payment.cardIntegrationType || !payment.acquirerCnpj || !payment.cardBrand || !payment.cardOperationType) {
-              toast.error(`Pagamento com ${payment.method === 'credit_card' ? 'cartão de crédito' : 'cartão de débito'} requer preenchimento completo dos dados do cartão (NT 2025.001)`);
+            // Sistema não tem máquinas integradas, sempre usar "2 - Pagamento Não Integrado"
+            const cardIntegrationType = '2';
+            
+            // Verificar quais campos estão faltando para dar mensagem mais específica
+            const missingFields: string[] = [];
+            if (!payment.acquirerCnpj || payment.acquirerCnpj.replace(/\D/g, '').length !== 14) missingFields.push('CNPJ da Credenciadora');
+            if (!payment.cardBrand) missingFields.push('Bandeira do Cartão');
+            if (!payment.cardOperationType) missingFields.push('Tipo de Operação');
+            
+            if (missingFields.length > 0) {
+              toast.error(
+                `Pagamento com ${payment.method === 'credit_card' ? 'cartão de crédito' : 'cartão de débito'} requer preenchimento completo dos dados do cartão (NT 2025.001). ` +
+                `Campos faltando: ${missingFields.join(', ')}`,
+                { duration: 6000 }
+              );
               setLoading(false);
               return;
             }
             
-            paymentMethod.cardIntegrationType = payment.cardIntegrationType;
-            paymentMethod.acquirerCnpj = payment.acquirerCnpj.replace(/\D/g, '');
+            // Validar CNPJ da credenciadora (deve ter 14 dígitos)
+            if (!payment.acquirerCnpj) {
+              toast.error('CNPJ da credenciadora é obrigatório', { duration: 5000 });
+              setLoading(false);
+              return;
+            }
+            
+            const cnpjCleaned = payment.acquirerCnpj.replace(/\D/g, '');
+            if (cnpjCleaned.length !== 14) {
+              toast.error('CNPJ da credenciadora deve ter exatamente 14 dígitos numéricos', { duration: 5000 });
+              setLoading(false);
+              return;
+            }
+            
+            paymentMethod.cardIntegrationType = cardIntegrationType;
+            paymentMethod.acquirerCnpj = cnpjCleaned;
             paymentMethod.cardBrand = payment.cardBrand;
             paymentMethod.cardOperationType = payment.cardOperationType;
           }
@@ -920,6 +949,22 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                         setShowInstallmentModal(true);
                       } else {
                         updatePaymentMethod(index, 'method', value);
+                        
+                        // Inicializar campos do grupo Card (NT 2025.001) quando método for cartão
+                        if (value === 'credit_card' || value === 'debit_card') {
+                          // Definir valores padrão para os campos do grupo Card
+                          // Sistema não tem máquinas integradas, sempre usar "2 - Pagamento Não Integrado"
+                          updatePaymentMethod(index, 'cardIntegrationType', '2');
+                          const defaultCardOperationType = value === 'credit_card' ? '01' : '03';
+                          updatePaymentMethod(index, 'cardOperationType', defaultCardOperationType);
+                        } else {
+                          // Limpar campos do grupo Card quando método não for cartão
+                          updatePaymentMethod(index, 'cardIntegrationType', undefined);
+                          updatePaymentMethod(index, 'acquirerCnpj', undefined);
+                          updatePaymentMethod(index, 'cardBrand', undefined);
+                          updatePaymentMethod(index, 'cardOperationType', undefined);
+                        }
+                        
                         // Manter o valor do input quando apenas o método muda
                         // Se o valor estiver zerado, preencher com o valor restante
                         const currentAmount = paymentDetails[index].amount;
@@ -1023,25 +1068,6 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                   
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label htmlFor={`cardIntegrationType-${index}`} className="text-xs">
-                        Tipo de Integração *
-                      </Label>
-                      <Select
-                        value={payment.cardIntegrationType || ''}
-                        onValueChange={(value) => updatePaymentMethod(index, 'cardIntegrationType', value)}
-                        disabled={loading}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1 - Pagamento Integrado</SelectItem>
-                          <SelectItem value="2">2 - Pagamento Não Integrado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-1">
                       <Label htmlFor={`cardBrand-${index}`} className="text-xs">
                         Bandeira *
                       </Label>
@@ -1066,18 +1092,13 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                     
                     <div className="space-y-1">
                       <Label htmlFor={`acquirerCnpj-${index}`} className="text-xs">
-                        CNPJ da Credenciadora * (14 dígitos)
+                        CNPJ da Credenciadora *
                       </Label>
-                      <Input
+                      <AcquirerCnpjSelect
                         id={`acquirerCnpj-${index}`}
-                        placeholder="00000000000000"
                         value={payment.acquirerCnpj || ''}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, '').substring(0, 14);
-                          updatePaymentMethod(index, 'acquirerCnpj', value);
-                        }}
+                        onChange={(value) => updatePaymentMethod(index, 'acquirerCnpj', value)}
                         disabled={loading}
-                        maxLength={14}
                       />
                     </div>
                     
@@ -1110,6 +1131,16 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
 
           <div className="rounded-lg bg-muted p-4 space-y-2">
             <div className="flex justify-between">
+              <span>Subtotal:</span>
+              <span>{formatCurrency(getSubtotal())}</span>
+            </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-green-600 dark:text-green-400">
+                <span>Desconto:</span>
+                <span>-{formatCurrency(discount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between border-t pt-2">
               <span>Total da Venda:</span>
               <span className="font-bold">{formatCurrency(total)}</span>
             </div>
