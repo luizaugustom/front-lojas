@@ -27,11 +27,11 @@ interface MetricCardProps {
 function MetricCard({ title, value, change, icon: Icon, trend = 'neutral' }: MetricCardProps) {
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-2 pb-1">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent className="px-4 py-1.5 pt-0">
+      <CardContent className="px-4 py-1 pt-0">
         <div className="text-xl font-bold">{value}</div>
         {change !== undefined && (
           <p className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
