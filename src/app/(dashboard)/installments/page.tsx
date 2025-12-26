@@ -278,12 +278,12 @@ export default function InstallmentsPage() {
         {/* Cards de Estatísticas */}
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-2.5 pb-1.5">
               <CardTitle className="text-sm font-medium">Total a Receber</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="px-4 py-2 pt-0">
+              <div className="text-xl font-bold">
                 {formatCurrency(stats?.totalReceivable || 0)}
               </div>
               <p className="text-xs text-muted-foreground">
@@ -293,12 +293,12 @@ export default function InstallmentsPage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-2.5 pb-1.5">
               <CardTitle className="text-sm font-medium">Atrasados</CardTitle>
               <AlertTriangle className="h-4 w-4 text-destructive" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">
+            <CardContent className="px-4 py-2 pt-0">
+              <div className="text-xl font-bold text-destructive">
                 {formatCurrency(stats?.overdueAmount || 0)}
               </div>
               <p className="text-xs text-muted-foreground">
@@ -308,12 +308,12 @@ export default function InstallmentsPage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-2.5 pb-1.5">
               <CardTitle className="text-sm font-medium">Parcelas em Aberto</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.pendingInstallments || 0}</div>
+            <CardContent className="px-4 py-2 pt-0">
+              <div className="text-xl font-bold">{stats?.pendingInstallments || 0}</div>
             </CardContent>
           </Card>
         </div>

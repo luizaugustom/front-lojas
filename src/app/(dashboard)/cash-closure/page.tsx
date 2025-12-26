@@ -803,12 +803,12 @@ export default function CashClosurePage() {
             {/* Cards de Estatísticas */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-2.5 pb-1.5">
                   <CardTitle className="text-sm font-medium">Saldo Inicial</CardTitle>
                   <Wallet className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
+                <CardContent className="px-4 py-2 pt-0">
+                  <div className="text-xl font-bold">
                     {formatCurrency(currentClosure.openingAmount || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -818,12 +818,12 @@ export default function CashClosurePage() {
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-2.5 pb-1.5">
                   <CardTitle className="text-sm font-medium">Vendas em Dinheiro</CardTitle>
                   <Wallet className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-600">
+                <CardContent className="px-4 py-2 pt-0">
+                  <div className="text-xl font-bold text-green-600">
                     {formatCurrency(stats?.totalCashSales || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -833,12 +833,12 @@ export default function CashClosurePage() {
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-2.5 pb-1.5">
                   <CardTitle className="text-sm font-medium">Saldo Esperado</CardTitle>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
+                <CardContent className="px-4 py-2 pt-0">
+                  <div className="text-xl font-bold">
                     {formatCurrency(expectedClosing)}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -848,12 +848,12 @@ export default function CashClosurePage() {
               </Card>
 
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-2.5 pb-1.5">
                   <CardTitle className="text-sm font-medium">Diferença</CardTitle>
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${
+                <CardContent className="px-4 py-2 pt-0">
+                  <div className={`text-xl font-bold ${
                     Math.abs(difference) < 0.01 ? 'text-green-600' :
                     difference > 0 ? 'text-blue-600' : 'text-red-600'
                   }`}>

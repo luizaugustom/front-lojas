@@ -27,12 +27,12 @@ interface MetricCardProps {
 function MetricCard({ title, value, change, icon: Icon, trend = 'neutral' }: MetricCardProps) {
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-2.5 pb-1.5">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+      <CardContent className="px-4 py-2 pt-0">
+        <div className="text-xl font-bold">{value}</div>
         {change !== undefined && (
           <p className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
             {trend === 'up' && <TrendingUp className="h-3 w-3 text-green-500" />}

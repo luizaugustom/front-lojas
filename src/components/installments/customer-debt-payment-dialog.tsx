@@ -25,8 +25,11 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Loader2, Square, CheckSquare } from 'lucide-react';
+import { PaymentReceiptConfirmDialog } from './payment-receipt-confirm-dialog';
+import { BulkPaymentReceipt } from './bulk-payment-receipt';
 
 interface CustomerDebtPaymentDialogProps {
   open: boolean;
@@ -82,7 +85,8 @@ export function CustomerDebtPaymentDialog({
   customer,
   onPaid,
 }: CustomerDebtPaymentDialogProps) {
-  const { api } = useAuth();
+  const { api, user } = useAuth();
+  const { company } = useCompany();
   const customerId = customer?.id;
 
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
@@ -98,6 +102,27 @@ export function CustomerDebtPaymentDialog({
       }
     >
   >({});
+  const [showReceiptConfirm, setShowReceiptConfirm] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [paymentData, setPaymentData] = useState<any>(null);
+
+  const companyInfo = useMemo(() => {
+    if (!company) return null;
+    const addressParts = [
+      company.address?.street,
+      company.address?.number,
+      company.address?.complement,
+      company.address?.neighborhood,
+      company.address?.city,
+      company.address?.state,
+    ].filter(Boolean);
+
+    return {
+      name: company.name,
+      cnpj: company.cnpj,
+      address: addressParts.join(', '),
+    };
+  }, [company]);
 
   const {
     data,
@@ -119,6 +144,9 @@ export function CustomerDebtPaymentDialog({
       setSelection({});
       setPaymentMethod('cash');
       setNotes('');
+      setShowReceiptConfirm(false);
+      setShowReceipt(false);
+      setPaymentData(null);
     }
   }, [open]);
 
@@ -258,11 +286,23 @@ export function CustomerDebtPaymentDialog({
       if (!customerId) return null;
       return api.post(`/installment/customer/${customerId}/pay/bulk`, payload);
     },
-    onSuccess: async (response) => {
+    onSuccess: async (response, variables) => {
+      // Armazena os dados do pagamento para o comprovante
+      setPaymentData({
+        totalPaid: response?.data?.totalPaid || 0,
+        paymentMethod: variables.paymentMethod,
+        notes: variables.notes,
+        date: new Date().toISOString(),
+        sellerName: user?.name,
+        payments: response?.data?.payments || [],
+      });
+      
       toast.success(response?.data?.message || 'Pagamentos registrados com sucesso!');
       await refetch();
       onPaid?.();
-      onClose();
+      
+      // Mostra o diálogo de confirmação de impressão
+      setShowReceiptConfirm(true);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Erro ao registrar pagamentos');
@@ -306,6 +346,23 @@ export function CustomerDebtPaymentDialog({
       notes: notes || undefined,
       payAll: true,
     });
+  };
+
+  const handlePrintReceipt = () => {
+    setShowReceiptConfirm(false);
+    setShowReceipt(true);
+  };
+
+  const handleSkipReceipt = () => {
+    setShowReceiptConfirm(false);
+    setPaymentData(null);
+    onClose();
+  };
+
+  const handlePrintComplete = () => {
+    setShowReceipt(false);
+    setPaymentData(null);
+    onClose();
   };
 
   return (
@@ -512,6 +569,29 @@ export function CustomerDebtPaymentDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Modal de confirmação de impressão */}
+      <PaymentReceiptConfirmDialog
+        open={showReceiptConfirm}
+        onConfirm={handlePrintReceipt}
+        onCancel={handleSkipReceipt}
+      />
+
+      {/* Comprovante de pagamento para impressão */}
+      {showReceipt && paymentData && (
+        <BulkPaymentReceipt
+          paymentData={paymentData}
+          customerInfo={customer ? {
+            id: customer.id,
+            name: customer.name || '',
+            cpfCnpj: customer.cpfCnpj,
+            phone: undefined,
+          } : undefined}
+          companyInfo={companyInfo ?? undefined}
+          installmentsData={data?.installments}
+          onPrintComplete={handlePrintComplete}
+        />
+      )}
     </Dialog>
   );
 }
