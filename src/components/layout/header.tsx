@@ -4,13 +4,11 @@ import { Menu, Moon, Sun, LogOut, Megaphone, Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useUIStore } from '@/store/ui-store';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { AdminBroadcastDialog } from '@/components/admin-broadcast-dialog';
 import { DateRangeModal } from '@/components/date-range/DateRangeModal';
-import { useDateRangeStore } from '@/store/date-range-store';
 import { companyApi } from '@/lib/api-endpoints';
 import { getImageUrl } from '@/lib/image-utils';
 import { logger } from '@/lib/logger';
@@ -19,7 +17,6 @@ export function Header() {
   const router = useRouter();
   const { theme, toggleTheme, toggleSidebar } = useUIStore();
   const { logout, user } = useAuth();
-  const { isActive } = useDateRangeStore();
 
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
   const [dateRangeModalOpen, setDateRangeModalOpen] = useState(false);
@@ -149,24 +146,16 @@ export function Header() {
         )}
 
         {/* Botão de filtro de data */}
-        <div className="relative">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setDateRangeModalOpen(true)}
-            className="focus:ring-2 focus:ring-primary focus:ring-offset-2"
-            aria-label="Filtrar por período de datas"
-            title="Filtrar dados por período"
-          >
-            <Calendar className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
-          </Button>
-          {isActive && (
-            <Badge 
-              className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-primary"
-              title="Filtro de data ativo"
-            />
-          )}
-        </div>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => setDateRangeModalOpen(true)}
+          className="focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          aria-label="Filtrar por período de datas"
+          title="Filtrar dados por período"
+        >
+          <Calendar className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+        </Button>
 
         {/* Botão de tema */}
         <Button 
