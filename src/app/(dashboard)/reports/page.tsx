@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useDateRange } from '@/hooks/useDateRange';
 import { handleApiError } from '@/lib/handleApiError';
 import { reportSchema } from '@/lib/validations';
 import { downloadFile, getFileExtension } from '@/lib/utils';
@@ -40,12 +41,13 @@ const formats = [
 
 export default function ReportsPage() {
   const { api, user } = useAuth();
+  const { queryKeyPart } = useDateRange();
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<ReportHistory[]>([]);
 
   // Carregar vendedores para o filtro
   const { data: sellersData } = useQuery({
-    queryKey: ['sellers'],
+    queryKey: ['sellers', queryKeyPart],
     queryFn: async () => (await api.get('/seller')).data,
     enabled: user?.role === 'empresa',
   });

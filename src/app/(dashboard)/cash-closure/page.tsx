@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
+import { useDateRange } from '@/hooks/useDateRange';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils';
 import { printContent } from '@/lib/print-service';
@@ -215,10 +216,16 @@ export default function CashClosurePage() {
     refetchInterval: 30000, // Atualiza a cada 30 segundos
   });
 
+  const { queryParams, queryKeyPart } = useDateRange();
   // Buscar histórico
   const { data: historyData, refetch: refetchHistory } = useQuery<CashClosureHistoryResponse>({
-    queryKey: ['cash-history'],
-    queryFn: async () => (await api.get('/cash-closure/history')).data as CashClosureHistoryResponse,
+    queryKey: ['cash-history', queryKeyPart],
+    queryFn: async () => {
+      const params: any = {};
+      if (queryParams.startDate) params.startDate = queryParams.startDate;
+      if (queryParams.endDate) params.endDate = queryParams.endDate;
+      return (await api.get('/cash-closure/history', { params })).data as CashClosureHistoryResponse;
+    },
     enabled: showHistory,
   });
 

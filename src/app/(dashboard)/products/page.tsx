@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { InputWithIcon } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
+import { useDateRange } from '@/hooks/useDateRange';
 import { ProductsTable } from '@/components/products/products-table';
 import { ProductDialog } from '@/components/products/product-dialog';
 import { ProductLossDialog } from '@/components/product-losses/product-loss-dialog';
@@ -19,6 +20,7 @@ import { handleApiError } from '@/lib/handleApiError';
 
 export default function ProductsPage() {
   const { api, user } = useAuth();
+  const { queryKeyPart } = useDateRange();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [lossDialogOpen, setLossDialogOpen] = useState(false);
@@ -32,7 +34,7 @@ export default function ProductsPage() {
   const canManageProducts = user ? user.role !== 'vendedor' : false;
 
   const { data: productsResponse, isLoading, refetch } = useQuery({
-    queryKey: ['products', search],
+    queryKey: ['products', queryKeyPart, search],
     queryFn: async () => {
       const response = (await api.get('/product', { params: { search } })).data;
       return response;

@@ -6,6 +6,7 @@ import { Calendar, Download, Eye, Filter, Printer, TrendingUp, DollarSign } from
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { useAuth } from '@/hooks/useAuth';
+import { useDateRange } from '@/hooks/useDateRange';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
@@ -82,6 +83,7 @@ function resolveDateRange(period: DataPeriodFilter): { startDate?: string; endDa
 
 export default function SalesHistoryPage() {
   const { api, user } = useAuth();
+  const { queryParams, queryKeyPart, dateRange } = useDateRange();
   const [period, setPeriod] = useState<DataPeriodFilter>('THIS_YEAR');
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
@@ -109,11 +111,40 @@ export default function SalesHistoryPage() {
   }, [availableOptions, user?.dataPeriod, user?.role]);
 
   // Calcular datas com base no período selecionado
-  const { startDate, endDate } = useMemo(() => resolveDateRange(period), [period]);
+  const periodRange = useMemo(() => resolveDateRange(period), [period]);
+  
+  // Combinar filtro global com filtro de período: usar o mais restritivo
+  const { startDate, endDate } = useMemo(() => {
+    const globalStart = queryParams.startDate ? new Date(queryParams.startDate) : null;
+    const globalEnd = queryParams.endDate ? new Date(queryParams.endDate) : null;
+    const periodStart = periodRange.startDate ? new Date(periodRange.startDate) : null;
+    const periodEnd = periodRange.endDate ? new Date(periodRange.endDate) : null;
+    
+    // Encontrar a intersecção dos ranges
+    let finalStart: Date | null = null;
+    let finalEnd: Date | null = null;
+    
+    if (globalStart && periodStart) {
+      finalStart = globalStart > periodStart ? globalStart : periodStart;
+    } else {
+      finalStart = globalStart || periodStart;
+    }
+    
+    if (globalEnd && periodEnd) {
+      finalEnd = globalEnd < periodEnd ? globalEnd : periodEnd;
+    } else {
+      finalEnd = globalEnd || periodEnd;
+    }
+    
+    return {
+      startDate: finalStart?.toISOString(),
+      endDate: finalEnd?.toISOString(),
+    };
+  }, [periodRange, queryParams]);
 
   // Buscar vendas
   const { data: salesData, isLoading, refetch } = useQuery({
-    queryKey: ['sales-history', period, page, limit, startDate, endDate],
+    queryKey: ['sales-history', queryKeyPart, period, page, limit, startDate, endDate],
     queryFn: async () => {
       const params: any = { page, limit };
       if (startDate) params.startDate = startDate;
@@ -126,7 +157,7 @@ export default function SalesHistoryPage() {
 
   // Buscar estatísticas
   const { data: statsData } = useQuery({
-    queryKey: ['sales-stats', period, startDate, endDate],
+    queryKey: ['sales-stats', queryKeyPart, period, startDate, endDate],
     queryFn: async () => {
       const params: any = {};
       if (startDate) params.startDate = startDate;
@@ -143,7 +174,7 @@ export default function SalesHistoryPage() {
   // Buscar contas a pagar do período (apenas para empresas)
   // Apenas contas que vencem até hoje (não incluir contas futuras)
   const { data: billsData } = useQuery({
-    queryKey: ['bills-period', period, startDate, endDate],
+    queryKey: ['bills-period', queryKeyPart, period, startDate, endDate],
     queryFn: async () => {
       const params: any = {};
       if (startDate) params.startDate = startDate;
@@ -164,7 +195,7 @@ export default function SalesHistoryPage() {
 
   // Buscar resumo de perdas do período (apenas para empresas)
   const { data: lossesData } = useQuery({
-    queryKey: ['product-losses-summary', period, startDate, endDate],
+    queryKey: ['product-losses-summary', queryKeyPart, period, startDate, endDate],
     queryFn: async () => {
       const params: any = {};
       if (startDate) params.startDate = startDate;

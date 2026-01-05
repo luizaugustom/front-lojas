@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useDateRange } from '@/hooks/useDateRange';
 import { InstallmentsTable } from '@/components/installments/installments-table';
 import { CustomersDebtList } from '@/components/installments/customers-debt-list';
 import { PaymentDialog } from '@/components/installments/payment-dialog';
@@ -24,6 +25,7 @@ type DateFilter = 'all' | 'this-week' | 'last-week' | 'this-month' | 'last-month
 
 export default function InstallmentsPage() {
   const { api, user } = useAuth();
+  const { dateRange, queryKeyPart } = useDateRange();
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState<any>(null);
   const [customerDebtDialogOpen, setCustomerDebtDialogOpen] = useState(false);
@@ -36,8 +38,8 @@ export default function InstallmentsPage() {
   const isSeller = user?.role === 'vendedor';
   const isCompany = user?.role === 'empresa';
 
-  // Calcular datas baseadas no filtro
-  const { startDate, endDate } = useMemo(() => {
+  // Calcular datas baseadas no filtro da página
+  const pageDateRange = useMemo(() => {
     const now = new Date();
     now.setHours(23, 59, 59, 999);
 
@@ -94,6 +96,32 @@ export default function InstallmentsPage() {
     }
   }, [dateFilter]);
 
+  // Combinar filtro global com filtro da página para filtrar no frontend
+  const { startDate, endDate } = useMemo(() => {
+    const globalStart = dateRange.startDate;
+    const globalEnd = dateRange.endDate;
+    const pageStart = pageDateRange.startDate;
+    const pageEnd = pageDateRange.endDate;
+    
+    // Encontrar a intersecção dos ranges
+    let finalStart: Date | undefined = undefined;
+    let finalEnd: Date | undefined = undefined;
+    
+    if (globalStart && pageStart) {
+      finalStart = globalStart > pageStart ? globalStart : pageStart;
+    } else {
+      finalStart = globalStart || pageStart;
+    }
+    
+    if (globalEnd && pageEnd) {
+      finalEnd = globalEnd < pageEnd ? globalEnd : pageEnd;
+    } else {
+      finalEnd = globalEnd || pageEnd;
+    }
+    
+    return { startDate: finalStart, endDate: finalEnd };
+  }, [pageDateRange, dateRange]);
+
   // Função para filtrar parcelas: parcelas futuras sempre aparecem, parcelas do passado só se estiverem no intervalo
   const filterInstallments = (installments: any[]) => {
     if (dateFilter === 'all' || !startDate || !endDate) {
@@ -133,7 +161,7 @@ export default function InstallmentsPage() {
 
   // Buscar parcelas pendentes (usado por vendedores para ver clientes com dívidas)
   const { data: pendingInstallments, isLoading: pendingLoading, refetch: refetchPending } = useQuery({
-    queryKey: ['installments-pending'],
+    queryKey: ['installments-pending', queryKeyPart],
     queryFn: async () => {
       const response = await api.get('/installment?isPaid=false');
       return normalizeInstallments(response.data);
@@ -143,7 +171,7 @@ export default function InstallmentsPage() {
 
   // Para empresas: buscar todas as parcelas
   const { data: allInstallments, isLoading: allLoading, refetch: refetchAll } = useQuery({
-    queryKey: ['installments-all'],
+    queryKey: ['installments-all', queryKeyPart],
     queryFn: async () => {
       const response = await api.get('/installment');
       return normalizeInstallments(response.data);
@@ -153,7 +181,7 @@ export default function InstallmentsPage() {
 
   // Para empresas: buscar parcelas vencidas
   const { data: overdueInstallments, isLoading: overdueLoading, refetch: refetchOverdue } = useQuery({
-    queryKey: ['installments-overdue'],
+    queryKey: ['installments-overdue', queryKeyPart],
     queryFn: async () => {
       const response = await api.get('/installment/overdue');
       return normalizeInstallments(response.data);
@@ -163,7 +191,7 @@ export default function InstallmentsPage() {
 
   // Para empresas: buscar parcelas pagas
   const { data: paidInstallments, isLoading: paidLoading, refetch: refetchPaid } = useQuery({
-    queryKey: ['installments-paid'],
+    queryKey: ['installments-paid', queryKeyPart],
     queryFn: async () => {
       const response = await api.get('/installment?isPaid=true');
       return normalizeInstallments(response.data);
@@ -173,7 +201,7 @@ export default function InstallmentsPage() {
 
   // Para empresas: buscar estatísticas
   const { data: stats } = useQuery({
-    queryKey: ['installments-stats'],
+    queryKey: ['installments-stats', queryKeyPart],
     queryFn: async () => {
       const response = await api.get('/installment/stats');
       return response.data || {};

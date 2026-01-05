@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { FileText, RefreshCw, Search, Download, Upload, PlusCircle, Trash2, Pencil, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useDateRange } from '@/hooks/useDateRange';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input, InputWithIcon } from '@/components/ui/input';
@@ -66,8 +67,9 @@ export default function InboundInvoicesPage() {
     }
   }, [user]);
 
+  const { queryKeyPart } = useDateRange();
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['inbound-fiscal', search],
+    queryKey: ['inbound-fiscal', queryKeyPart, search],
     queryFn: async () => (await api.get('/fiscal', { params: { search, documentType: 'inbound' } })).data,
   });
 

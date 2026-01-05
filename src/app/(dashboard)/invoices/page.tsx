@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { FileText, Download, RefreshCw, Search, PlusCircle, Trash2, Plus, Package, XCircle, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useDateRange } from '@/hooks/useDateRange';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input, InputWithIcon } from '@/components/ui/input';
@@ -109,8 +110,9 @@ export default function InvoicesPage() {
   // Estados para consulta de status
   const [checkingStatus, setCheckingStatus] = useState<string | null>(null);
 
+  const { queryKeyPart } = useDateRange();
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['fiscal-outbound', search],
+    queryKey: ['fiscal-outbound', queryKeyPart, search],
     queryFn: async () => (await api.get('/fiscal', { params: { search, documentType: 'outbound' } })).data,
   });
 

@@ -7,6 +7,7 @@ import { ShoppingCart, Package, Users, DollarSign, TrendingUp, TrendingDown, Ale
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
+import { useDateRange } from '@/hooks/useDateRange';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ProductImage } from '@/components/products/product-image';
@@ -51,16 +52,17 @@ function MetricCard({ title, value, change, icon: Icon, trend = 'neutral' }: Met
 export default function DashboardPage() {
   const { api, isAuthenticated, user } = useAuth();
   const router = useRouter();
+  const { queryParams, queryKeyPart } = useDateRange();
 
-  // Dates for current month
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
-
-  // Sales this month
+  // Sales com filtro global de data
   const { data: salesData, isLoading: isSalesLoading, error: salesError } = useQuery({
-    queryKey: ['sales', 'month', startOfMonth, endOfMonth],
-    queryFn: async () => (await api.get('/sale', { params: { startDate: startOfMonth, endDate: endOfMonth, limit: 1000 } })).data,
+    queryKey: ['sales', 'dashboard', queryKeyPart],
+    queryFn: async () => {
+      const params: any = { limit: 1000 };
+      if (queryParams.startDate) params.startDate = queryParams.startDate;
+      if (queryParams.endDate) params.endDate = queryParams.endDate;
+      return (await api.get('/sale', { params })).data;
+    },
     enabled: isAuthenticated,
   });
 
@@ -73,13 +75,25 @@ export default function DashboardPage() {
     return [];
   };
 
-  // Sales last 7 days (for chart)
-  const start7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 0, 0, 0);
-  const end7 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  // Sales last 7 days (for chart) - usa filtro global se disponível, senão últimos 7 dias
+  const { dateRange } = useDateRange();
+  const now = new Date();
+  const chartStartDate = dateRange.startDate || new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 0, 0, 0);
+  const chartEndDate = dateRange.endDate || new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  
+  // Para o gráfico, sempre mostra os últimos 7 dias dentro do período filtrado ou últimos 7 dias globais
+  const start7 = new Date(Math.max(
+    chartEndDate.getTime() - 6 * 24 * 60 * 60 * 1000,
+    chartStartDate?.getTime() || 0
+  ));
+  start7.setHours(0, 0, 0, 0);
+  const end7 = chartEndDate;
+  end7.setHours(23, 59, 59, 999);
   const start7Iso = start7.toISOString();
   const end7Iso = end7.toISOString();
+  
   const { data: last7SalesRaw } = useQuery({
-    queryKey: ['sales', 'last7', start7Iso, end7Iso],
+    queryKey: ['sales', 'last7', queryKeyPart, start7Iso, end7Iso],
     queryFn: async () => (await api.get('/sale', { params: { startDate: start7Iso, endDate: end7Iso, limit: 1000 } })).data,
     enabled: isAuthenticated,
   });
