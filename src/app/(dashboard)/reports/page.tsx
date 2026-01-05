@@ -412,33 +412,6 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      {/* Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1.5 w-full">
-        {reportTypes.map((type) => (
-          <Card
-            key={type.value}
-            className={`cursor-pointer transition-all hover:shadow-md ${reportTypeValue === type.value ? 'ring-2 ring-primary' : ''}`}
-            onClick={() => {
-              setValue('reportType', type.value as any, { shouldValidate: true, shouldDirty: true });
-            }}
-          >
-            <CardContent className="py-2 px-3">
-              <div className="flex justify-center mb-0.5">
-                <div className={`rounded-full p-1.5 ${reportTypeValue === type.value ? 'bg-primary text-primary-foreground' : 'bg-primary/10'}`}>
-                  <type.icon className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="font-medium text-sm text-center leading-tight">{type.label.replace('Relatório de ', '')}</div>
-              <div className="text-xs text-muted-foreground mt-0 text-center leading-tight">
-                {type.value === 'sales' && 'Vendas e faturamento'}
-                {type.value === 'products' && 'Estoque e movimentação'}
-                {type.value === 'invoices' && 'Documentos fiscais'}
-                {type.value === 'complete' && 'Todos os dados + comissões'}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
       {/* Informações sobre o Relatório Completo */}
       {reportTypeValue === 'complete' && (
