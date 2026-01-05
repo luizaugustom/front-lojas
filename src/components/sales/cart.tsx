@@ -53,8 +53,8 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
   return (
     <Card className="flex flex-col h-full">
       <CardHeader className="border-b py-1">
-        <CardTitle className="flex items-center gap-2 text-[10px]">
-          <ShoppingCart className="h-2.5 w-2.5" aria-hidden="true" />
+        <CardTitle className="flex items-center gap-2 text-[8px]">
+          <ShoppingCart className="h-3.5 w-3.5" aria-hidden="true" />
           Carrinho ({items.length})
         </CardTitle>
       </CardHeader>
@@ -182,7 +182,7 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
                 }
               }}
               placeholder="0.00 ou 5%"
-              className="no-spinner h-6"
+              className="no-spinner h-5 text-xs px-2 py-1"
             />
           </div>
         </div>
