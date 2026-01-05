@@ -383,7 +383,7 @@ export default function SalesPage() {
         <div className="pointer-events-auto relative">
           {!mobileCartOpen && (
             <div
-              className="absolute -top-10 right-1/2 translate-x-1/2 rounded-full px-3 py-1 text-xs font-medium text-white"
+              className="absolute -top-10 right-1/2 translate-x-1/2 rounded-full px-3 py-1 text-[10px] font-medium text-white"
               style={{
                 background: `linear-gradient(135deg, ${gradientStart}, ${gradientEnd})`,
                 boxShadow: `0 12px 25px ${buttonShadow}`,
@@ -410,7 +410,7 @@ export default function SalesPage() {
                 boxShadow: `inset 0 4px 8px ${hexToRgba('#000000', 0.08)}`,
               }}
             >
-              <ShoppingCart className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+              <ShoppingCart className="h-6 w-6 transition-transform duration-300 group-hover:scale-110" />
               {items.length > 0 && (
                 <span
                   className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white text-xs font-semibold"
