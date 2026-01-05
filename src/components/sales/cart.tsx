@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Minus, Plus, Trash2, ShoppingCart, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProductImage } from '@/components/products/product-image';
 import { useCartStore } from '@/store/cart-store';
-import { formatCurrency, handleNumberInputChange } from '@/lib/utils-clean';
+import { formatCurrency, parseDiscount } from '@/lib/utils-clean';
 
 interface CartProps {
   onCheckout: () => void;
@@ -17,16 +17,44 @@ interface CartProps {
 
 export function Cart({ onCheckout, onBudget }: CartProps) {
   const { items, discount, updateQuantity, removeItem, setDiscount, getSubtotal, getTotal, clearCart } = useCartStore();
-  const [discountInput, setDiscountInput] = useState(discount.toString());
+  const [discountInput, setDiscountInput] = useState('');
+  const [isPercentageDiscount, setIsPercentageDiscount] = useState(false);
+  const [percentageValue, setPercentageValue] = useState<number | null>(null);
 
   const subtotal = getSubtotal();
   const total = getTotal();
 
+  // Recalcular desconto percentual quando o subtotal mudar
+  useEffect(() => {
+    if (isPercentageDiscount && percentageValue !== null && subtotal > 0) {
+      const parsed = parseDiscount(`${percentageValue}%`, subtotal);
+      setDiscount(parsed.absoluteValue);
+    }
+  }, [subtotal, isPercentageDiscount, percentageValue, setDiscount]);
+
+  // Sincronizar discountInput quando o desconto mudar externamente (ex: limpar carrinho)
+  useEffect(() => {
+    if (discount === 0) {
+      setDiscountInput('');
+      setIsPercentageDiscount(false);
+      setPercentageValue(null);
+    }
+  }, [discount]);
+
+  // Resetar desconto quando o carrinho for limpo
+  useEffect(() => {
+    if (items.length === 0) {
+      setDiscountInput('');
+      setIsPercentageDiscount(false);
+      setPercentageValue(null);
+    }
+  }, [items.length]);
+
   return (
     <Card className="flex flex-col h-full">
-      <CardHeader className="border-b py-1.5">
-        <CardTitle className="flex items-center gap-2 text-xs">
-          <ShoppingCart className="h-3 w-3" aria-hidden="true" />
+      <CardHeader className="border-b py-1">
+        <CardTitle className="flex items-center gap-2 text-[10px]">
+          <ShoppingCart className="h-2.5 w-2.5" aria-hidden="true" />
           Carrinho ({items.length})
         </CardTitle>
       </CardHeader>
@@ -91,7 +119,7 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
       {/* Seção fixa na parte inferior */}
       <div className="border-t bg-background flex-shrink-0">
         {/* Totais e desconto */}
-        <div className="p-2 space-y-2">
+        <div className="p-1.5 space-y-1.5">
           <div className="space-y-0.5 text-xs">
             <div className="flex justify-between">
               <span>Subtotal:</span>
@@ -105,7 +133,7 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
             )}
             <div className="flex justify-between text-sm font-bold border-t pt-0.5">
               <span>Total:</span>
-              <span>{formatCurrency(total)}</span>
+              <span className="text-base">{formatCurrency(total)}</span>
             </div>
           </div>
 
@@ -115,18 +143,46 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
               id="discount"
               type="text"
               value={discountInput}
-              onChange={(e) => handleNumberInputChange(e, (value) => {
+              onChange={(e) => {
+                const value = e.target.value;
                 setDiscountInput(value);
-                setDiscount(Number(value) || 0);
-              })}
-              onBlur={() => {
-                if (discountInput === '') {
-                  setDiscountInput('0');
+                
+                // Se o campo estiver vazio, limpar desconto
+                if (value.trim() === '') {
                   setDiscount(0);
+                  setIsPercentageDiscount(false);
+                  setPercentageValue(null);
+                  return;
+                }
+                
+                // Parsear o desconto
+                const parsed = parseDiscount(value, subtotal);
+                setDiscount(parsed.absoluteValue);
+                setIsPercentageDiscount(parsed.isPercentage);
+                setPercentageValue(parsed.percentageValue);
+              }}
+              onBlur={() => {
+                if (discountInput.trim() === '') {
+                  setDiscountInput('');
+                  setDiscount(0);
+                  setIsPercentageDiscount(false);
+                  setPercentageValue(null);
+                } else {
+                  // Recalcular para garantir que está correto
+                  const parsed = parseDiscount(discountInput, subtotal);
+                  setDiscount(parsed.absoluteValue);
+                  
+                  // Manter o formato original no input (com % se for percentual)
+                  if (parsed.isPercentage && parsed.percentageValue !== null) {
+                    setDiscountInput(`${parsed.percentageValue}%`);
+                  } else if (parsed.absoluteValue > 0) {
+                    // Formatar valor absoluto com 2 casas decimais
+                    setDiscountInput(parsed.absoluteValue.toFixed(2).replace('.', ','));
+                  }
                 }
               }}
-              placeholder="0.00"
-              className="no-spinner h-8"
+              placeholder="0.00 ou 5%"
+              className="no-spinner h-6"
             />
           </div>
         </div>
@@ -143,8 +199,8 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
           </div>
           {onBudget && (
             <Button 
-              variant="secondary" 
-              className="w-full" 
+              variant="ghost" 
+              className="w-full text-primary text-sm" 
               onClick={onBudget} 
               disabled={items.length === 0}
             >
