@@ -8,7 +8,7 @@ import * as XLSX from 'xlsx';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -536,7 +536,9 @@ export default function SalesHistoryPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
             <CardTitle className="text-sm font-medium">Total de Vendas</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent className="px-4 py-1 pt-0">
             <div className="text-xl font-bold">{stats.totalSales}</div>
@@ -546,7 +548,9 @@ export default function SalesHistoryPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
             <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
+            <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            </div>
           </CardHeader>
           <CardContent className="px-4 py-1 pt-0">
             <div className="text-xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
@@ -556,7 +560,9 @@ export default function SalesHistoryPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
             <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-blue-600" />
+            </div>
           </CardHeader>
           <CardContent className="px-4 py-1 pt-0">
             <div className="text-xl font-bold">{formatCurrency(stats.averageTicket)}</div>
@@ -567,7 +573,9 @@ export default function SalesHistoryPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
               <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
-              <DollarSign className={`h-4 w-4 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                <DollarSign className={`h-4 w-4 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              </div>
             </CardHeader>
             <CardContent className="px-4 py-1 pt-0">
               <div className={`text-xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
