@@ -148,6 +148,7 @@ export interface PaymentMethodDetail {
   acquirerCnpj?: string; // CNPJ da credenciadora (14 dígitos)
   cardBrand?: string; // '01' = Visa, '02' = Mastercard, '03' = Amex, '04' = Elo, '05' = Hipercard, '99' = Outras
   cardOperationType?: string; // '01' = Crédito à vista, '02' = Crédito parcelado, '03' = Débito
+  installmentCount?: number; // Número de parcelas (obrigatório quando cardOperationType = '02')
 }
 
 export interface SaleItem {

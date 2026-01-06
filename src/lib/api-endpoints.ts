@@ -998,6 +998,56 @@ export const dashboardApi = {
 };
 
 // ============================================================================
+// CARD ACQUIRER RATE
+// ============================================================================
+
+export const cardAcquirerRateApi = {
+  /**
+   * GET /card-acquirer-rates
+   * Roles: COMPANY - Listar todas as taxas de credenciadora
+   */
+  list: () => api.get('/card-acquirer-rates'),
+
+  /**
+   * GET /card-acquirer-rates/:id
+   * Roles: COMPANY - Buscar taxa por ID
+   */
+  get: (id: string) => api.get(`/card-acquirer-rates/${id}`),
+
+  /**
+   * POST /card-acquirer-rates
+   * Roles: COMPANY - Criar nova taxa de credenciadora
+   */
+  create: (data: {
+    acquirerCnpj: string;
+    acquirerName: string;
+    debitRate: number;
+    creditRate: number;
+    installmentRates?: Record<string, number>;
+    isActive?: boolean;
+  }) => api.post('/card-acquirer-rates', data),
+
+  /**
+   * PATCH /card-acquirer-rates/:id
+   * Roles: COMPANY - Atualizar taxa de credenciadora
+   */
+  update: (id: string, data: {
+    acquirerCnpj?: string;
+    acquirerName?: string;
+    debitRate?: number;
+    creditRate?: number;
+    installmentRates?: Record<string, number>;
+    isActive?: boolean;
+  }) => api.patch(`/card-acquirer-rates/${id}`, data),
+
+  /**
+   * DELETE /card-acquirer-rates/:id
+   * Roles: COMPANY - Remover taxa de credenciadora
+   */
+  delete: (id: string) => api.delete(`/card-acquirer-rates/${id}`),
+};
+
+// ============================================================================
 // ADMIN
 // ============================================================================
 

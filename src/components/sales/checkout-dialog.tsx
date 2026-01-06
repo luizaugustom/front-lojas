@@ -23,11 +23,13 @@ import { saleSchema } from '@/lib/validations';
 import { formatCurrency, calculateChange, calculateMultiplePaymentChange, handleNumberInputChange, isValidId, validateUUID } from '@/lib/utils-clean';
 import { useCartStore } from '@/store/cart-store';
 import { InstallmentSaleModal } from './installment-sale-modal';
+import { CreditCardInstallmentModal } from './credit-card-installment-modal';
 import { PrintConfirmationDialog } from './print-confirmation-dialog';
 import { CustomerCopyConfirmationDialog } from './customer-copy-confirmation-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { printContent as printContentService } from '@/lib/print-service';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
+import { CardBrandSelect } from '@/components/ui/card-brand-select';
 import type { CreateSaleDto, PaymentMethod, PaymentMethodDetail, InstallmentData, Seller } from '@/types';
 
 interface CheckoutDialogProps {
@@ -49,6 +51,8 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const [paymentInputValues, setPaymentInputValues] = useState<Record<number, string>>({});
   const [showInstallmentModal, setShowInstallmentModal] = useState(false);
   const [installmentData, setInstallmentData] = useState<InstallmentData | null>(null);
+  const [showCreditCardInstallmentModal, setShowCreditCardInstallmentModal] = useState(false);
+  const [creditCardInstallmentPaymentIndex, setCreditCardInstallmentPaymentIndex] = useState<number | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [selectedCustomerName, setSelectedCustomerName] = useState<string>('');
   const [selectedCustomerCpfCnpj, setSelectedCustomerCpfCnpj] = useState<string>('');
@@ -689,6 +693,10 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
             paymentMethod.acquirerCnpj = cnpjCleaned;
             paymentMethod.cardBrand = payment.cardBrand;
             paymentMethod.cardOperationType = payment.cardOperationType;
+            // Adicionar installmentCount se for crédito parcelado
+            if (payment.cardOperationType === '02' && payment.installmentCount) {
+              paymentMethod.installmentCount = payment.installmentCount;
+            }
           }
           
           // Garantir que additionalInfo seja string vazia se null/undefined
@@ -1066,62 +1074,63 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                     </Label>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label htmlFor={`cardBrand-${index}`} className="text-xs">
-                        Bandeira *
-                      </Label>
-                      <Select
-                        value={payment.cardBrand || ''}
-                        onValueChange={(value) => updatePaymentMethod(index, 'cardBrand', value)}
-                        disabled={loading}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="01">01 - Visa</SelectItem>
-                          <SelectItem value="02">02 - Mastercard</SelectItem>
-                          <SelectItem value="03">03 - American Express</SelectItem>
-                          <SelectItem value="04">04 - Elo</SelectItem>
-                          <SelectItem value="05">05 - Hipercard</SelectItem>
-                          <SelectItem value="99">99 - Outras</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <Label htmlFor={`acquirerCnpj-${index}`} className="text-xs">
-                        CNPJ da Credenciadora *
-                      </Label>
-                      <AcquirerCnpjSelect
-                        id={`acquirerCnpj-${index}`}
-                        value={payment.acquirerCnpj || ''}
-                        onChange={(value) => updatePaymentMethod(index, 'acquirerCnpj', value)}
+                    <div className="space-y-3">
+                      <CardBrandSelect
+                        id={`cardBrand-${index}`}
+                        value={(payment.cardBrand as '01' | '02' | '03' | '04' | '05' | '99') || ''}
+                        onChange={(value) => updatePaymentMethod(index, 'cardBrand', value)}
                         disabled={loading}
                       />
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label htmlFor={`acquirerCnpj-${index}`} className="text-xs">
+                            CNPJ da Credenciadora *
+                          </Label>
+                          <AcquirerCnpjSelect
+                            id={`acquirerCnpj-${index}`}
+                            value={payment.acquirerCnpj || ''}
+                            onChange={(value) => updatePaymentMethod(index, 'acquirerCnpj', value)}
+                            disabled={loading}
+                          />
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <Label htmlFor={`cardOperationType-${index}`} className="text-xs">
+                            Tipo de Operação *
+                          </Label>
+                          <Select
+                            value={payment.cardOperationType || (payment.method === 'credit_card' ? '01' : '03')}
+                            onValueChange={(value) => {
+                              updatePaymentMethod(index, 'cardOperationType', value);
+                              // Se selecionou crédito parcelado, abrir modal
+                              if (value === '02') {
+                                setCreditCardInstallmentPaymentIndex(index);
+                                setShowCreditCardInstallmentModal(true);
+                              } else {
+                                // Limpar installmentCount se mudou de parcelado
+                                updatePaymentMethod(index, 'installmentCount', undefined);
+                              }
+                            }}
+                            disabled={loading}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="01">01 - Crédito à Vista</SelectItem>
+                              <SelectItem value="02">02 - Crédito Parcelado</SelectItem>
+                              <SelectItem value="03">03 - Débito</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {payment.cardOperationType === '02' && payment.installmentCount && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Parcelado em {payment.installmentCount}x
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    
-                    <div className="space-y-1">
-                      <Label htmlFor={`cardOperationType-${index}`} className="text-xs">
-                        Tipo de Operação *
-                      </Label>
-                      <Select
-                        value={payment.cardOperationType || (payment.method === 'credit_card' ? '01' : '03')}
-                        onValueChange={(value) => updatePaymentMethod(index, 'cardOperationType', value)}
-                        disabled={loading}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="01">01 - Crédito à Vista</SelectItem>
-                          <SelectItem value="02">02 - Crédito Parcelado</SelectItem>
-                          <SelectItem value="03">03 - Débito</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
                 </div>
                 </>
               )}
@@ -1185,6 +1194,24 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
           onConfirm={handleInstallmentConfirm}
           totalAmount={getRemainingAmount()}
         />
+
+        {/* Modal de Parcelas para Crédito Parcelado */}
+        {creditCardInstallmentPaymentIndex !== null && (
+          <CreditCardInstallmentModal
+            open={showCreditCardInstallmentModal}
+            onClose={() => {
+              setShowCreditCardInstallmentModal(false);
+              setCreditCardInstallmentPaymentIndex(null);
+            }}
+            onConfirm={(installmentCount) => {
+              if (creditCardInstallmentPaymentIndex !== null) {
+                updatePaymentMethod(creditCardInstallmentPaymentIndex, 'installmentCount', installmentCount);
+              }
+            }}
+            totalAmount={paymentDetails[creditCardInstallmentPaymentIndex]?.amount || 0}
+            acquirerCnpj={paymentDetails[creditCardInstallmentPaymentIndex]?.acquirerCnpj}
+          />
+        )}
       </DialogContent>
     </Dialog>
     
