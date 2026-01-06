@@ -53,8 +53,8 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
   return (
     <Card className="flex flex-col h-full">
       <CardHeader className="border-b py-0">
-        <CardTitle className="flex items-center gap-1.5 !text-[6px] sm:!text-[6px] lg:!text-[6px]">
-          <ShoppingCart className="h-3.5 w-3.5" aria-hidden="true" />
+        <CardTitle className="flex items-center gap-1.5 !text-[11.4px] sm:!text-[11.4px] lg:!text-[11.4px]">
+          <ShoppingCart className="h-[26.6px] w-[26.6px]" aria-hidden="true" />
           Carrinho ({items.length})
         </CardTitle>
       </CardHeader>
