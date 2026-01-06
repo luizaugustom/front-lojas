@@ -386,7 +386,6 @@ export default function SalesPage() {
               className="absolute -top-10 right-1/2 translate-x-1/2 rounded-full px-3 py-1 text-[10px] font-medium text-white"
               style={{
                 background: `linear-gradient(135deg, ${gradientStart}, ${gradientEnd})`,
-                boxShadow: `0 12px 25px ${buttonShadow}`,
               }}
             >
               Carrinho ({items.length})
@@ -400,14 +399,12 @@ export default function SalesPage() {
             className="group flex items-center gap-2 rounded-full px-5 py-3 text-white transition-all focus:outline-none"
             style={{
               background: `linear-gradient(135deg, ${gradientStart}, ${gradientEnd})`,
-              boxShadow: `0 18px 38px ${buttonShadow}, 0 0 0 4px ${buttonOutline}`,
             }}
           >
             <div
-              className="relative flex h-10 w-10 items-center justify-center rounded-full shadow-inner transition-all duration-300 group-hover:scale-105"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 group-hover:scale-105"
               style={{
                 backgroundColor: hexToRgba('#ffffff', 0.18),
-                boxShadow: `inset 0 4px 8px ${hexToRgba('#000000', 0.08)}`,
               }}
             >
               <ShoppingCart className="h-6 w-6 transition-transform duration-300 group-hover:scale-110" />
@@ -416,7 +413,6 @@ export default function SalesPage() {
                   className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white text-xs font-semibold"
                   style={{
                     color: badgeTextColor,
-                    boxShadow: `0 4px 10px ${badgeShadow}`,
                   }}
                 >
                   {items.length}
@@ -452,13 +448,12 @@ export default function SalesPage() {
       {/* Mobile Cart Dialog */}
       <Dialog open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
         <DialogContent className="md:hidden top-auto bottom-6 left-1/2 translate-y-0 translate-x-[-50%] w-[min(100vw-2rem,420px)] max-h-[85vh] border-0 bg-transparent p-0 shadow-none">
-          <div
-            className="relative overflow-hidden rounded-3xl border bg-background/95 backdrop-blur-xl"
-            style={{
-              borderColor: headerBorder,
-              boxShadow: `0 25px 60px ${headerShadow}`,
-            }}
-          >
+            <div
+              className="relative overflow-hidden rounded-3xl border bg-background/95 backdrop-blur-xl"
+              style={{
+                borderColor: headerBorder,
+              }}
+            >
             <div
               className="flex items-center gap-3 border-b border-white/5 px-4 py-3 text-white"
               style={{
@@ -466,10 +461,9 @@ export default function SalesPage() {
               }}
             >
               <div
-                className="flex h-11 w-11 items-center justify-center rounded-full shadow-lg"
+                className="flex h-11 w-11 items-center justify-center rounded-full"
                 style={{
                   backgroundColor: headerIconBg,
-                  boxShadow: `0 10px 25px ${headerShadow}`,
                 }}
               >
                 <ShoppingCart className="h-5 w-5" />
