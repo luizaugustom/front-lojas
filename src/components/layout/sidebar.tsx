@@ -54,6 +54,7 @@ const navigation = [
   // Teste WhatsApp - visível apenas para admin
   { name: 'Teste WhatsApp', href: '/whatsapp-test', icon: MessageSquare, roles: ['admin'] },
   { name: 'Configurações', href: '/settings', icon: Settings, roles: ['admin', 'empresa'] },
+  { name: 'Taxas de Cartão', href: '/settings/card-rates', icon: CreditCard, roles: ['empresa'] },
 ];
 
 export function Sidebar() {

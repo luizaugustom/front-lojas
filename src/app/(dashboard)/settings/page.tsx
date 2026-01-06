@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, Upload, X, Image, MessageSquare, Store, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -814,7 +815,7 @@ export default function SettingsPage() {
             <a href="#certificado-digital"><Button variant="outline" size="sm">Certificado Digital</Button></a>
             <a href="#catalogo-titulo"><Button variant="outline" size="sm">Catálogo</Button></a>
             <a href="#notificacoes-fim"><Button variant="outline" size="sm">Notificações</Button></a>
-            
+            <Link href="/settings/card-rates"><Button variant="outline" size="sm">Taxas de Cartão</Button></Link>
           </div>
         </nav>
       )}
