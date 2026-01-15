@@ -62,6 +62,7 @@ export function InstallmentSaleModal({
   const [minSearchLength] = useState(3); // Mínimo de 3 caracteres para buscar
   const [lastSearchTerm, setLastSearchTerm] = useState(''); // Controle de busca duplicada
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Controle de carregamento inicial
+  const [companyConfig, setCompanyConfig] = useState<{ installmentInterestRate?: number; maxInstallments?: number } | null>(null);
 
   const {
     register,
@@ -73,10 +74,11 @@ export function InstallmentSaleModal({
     resolver: zodResolver(require('@/lib/validations').installmentSaleSchema),
   });
 
-  // Carregar clientes quando o modal abrir (otimizado)
+  // Carregar configurações da empresa e clientes quando o modal abrir
   useEffect(() => {
     if (open && isAuthenticated && isInitialLoad) {
       console.log('[DEBUG] Carregamento inicial do modal');
+      loadCompanyConfig();
       loadCustomers();
       // Definir data padrão para um mês após a data atual, preservando o dia corrente quando possível
       const now = new Date();
@@ -103,6 +105,24 @@ export function InstallmentSaleModal({
       setFirstDueDate(utcDate);
     }
   }, [open, isAuthenticated, isInitialLoad]);
+
+  // Carregar configurações da empresa
+  const loadCompanyConfig = async () => {
+    try {
+      const response = await api.get('/company/my-company');
+      setCompanyConfig({
+        installmentInterestRate: response.data?.installmentInterestRate ?? 0,
+        maxInstallments: response.data?.maxInstallments ?? 12,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar configurações da empresa:', error);
+      // Usar valores padrão em caso de erro
+      setCompanyConfig({
+        installmentInterestRate: 0,
+        maxInstallments: 12,
+      });
+    }
+  };
 
 
   // Função de busca otimizada com controle de chamadas duplicadas
@@ -329,12 +349,37 @@ export function InstallmentSaleModal({
   };
 
   const calculateInstallmentValue = () => {
+    const interestRate = companyConfig?.installmentInterestRate ?? 0;
+    if (interestRate > 0) {
+      // Valor da parcela com juros: (valorTotal / numParcelas) * (1 + taxaJuros/100)
+      return (totalAmount / installments) * (1 + interestRate / 100);
+    }
     return totalAmount / installments;
+  };
+
+  const calculateTotalWithInterest = () => {
+    const interestRate = companyConfig?.installmentInterestRate ?? 0;
+    if (interestRate > 0) {
+      const installmentValueWithInterest = calculateInstallmentValue();
+      return installmentValueWithInterest * installments;
+    }
+    return totalAmount;
+  };
+
+  const calculateTotalInterest = () => {
+    return calculateTotalWithInterest() - totalAmount;
   };
 
   const onSubmit = (data: { description?: string }) => {
     if (!selectedCustomer) {
       toast.error('Selecione um cliente!');
+      return;
+    }
+
+    // Validar limite de parcelas
+    const maxInstallments = companyConfig?.maxInstallments ?? 12;
+    if (installments < 1 || installments > maxInstallments) {
+      toast.error(`Número de parcelas deve estar entre 1 e ${maxInstallments}`);
       return;
     }
 
@@ -539,7 +584,7 @@ export function InstallmentSaleModal({
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 24 }, (_, i) => i + 1).map((num) => (
+                      {Array.from({ length: companyConfig?.maxInstallments ?? 12 }, (_, i) => i + 1).map((num) => (
                         <SelectItem key={num} value={num.toString()}>
                           {num}x
                         </SelectItem>
@@ -586,9 +631,21 @@ export function InstallmentSaleModal({
                     <p className="font-medium">{selectedCustomer.name}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Total:</span>
+                    <span className="text-muted-foreground">Valor Original:</span>
                     <p className="font-medium">{formatCurrency(totalAmount)}</p>
                   </div>
+                  {companyConfig?.installmentInterestRate && companyConfig.installmentInterestRate > 0 && (
+                    <>
+                      <div>
+                        <span className="text-muted-foreground">Juros ({companyConfig.installmentInterestRate}%):</span>
+                        <p className="font-medium text-green-600 dark:text-green-400">+{formatCurrency(calculateTotalInterest())}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Total com Juros:</span>
+                        <p className="font-medium text-primary">{formatCurrency(calculateTotalWithInterest())}</p>
+                      </div>
+                    </>
+                  )}
                   <div>
                     <span className="text-muted-foreground">Parcelas:</span>
                     <p className="font-medium">{installments}x de {formatCurrency(calculateInstallmentValue())}</p>

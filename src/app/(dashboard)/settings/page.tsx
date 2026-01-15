@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, Upload, X, Image, MessageSquare, Store, ExternalLink } from 'lucide-react';
+import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, Upload, X, Image, MessageSquare, Store, ExternalLink, Percent, CreditCard } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,6 +114,13 @@ export default function SettingsPage() {
     ibptToken: '',
   });
 
+  // Estado das configurações de parcelamento
+  const [installmentConfig, setInstallmentConfig] = useState({
+    installmentInterestRate: 0,
+    maxInstallments: 12,
+  });
+  const [savingInstallmentConfig, setSavingInstallmentConfig] = useState(false);
+
 
   // Carregar dados da empresa (incluindo plano)
   const loadCompanyData = async () => {
@@ -189,6 +196,7 @@ export default function SettingsPage() {
         loadAutoMessageStatus();
         loadCatalogPageConfig();
         loadFiscalConfig();
+        loadInstallmentConfig();
       } else if (user.role === 'admin') {
         loadAdminFocusNfeConfig();
       }
@@ -740,6 +748,49 @@ export default function SettingsPage() {
       }
     } finally {
       setUpdatingCatalogPage(false);
+    }
+  };
+
+  // Carregar configurações de parcelamento
+  const loadInstallmentConfig = async () => {
+    try {
+      const response = await authApi.get('/company/my-company');
+      const data = response.data;
+      setInstallmentConfig({
+        installmentInterestRate: data?.installmentInterestRate ?? 0,
+        maxInstallments: data?.maxInstallments ?? 12,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar configurações de parcelamento:', error);
+    }
+  };
+
+  // Salvar configurações de parcelamento
+  const handleSaveInstallmentConfig = async () => {
+    // Validações
+    if (installmentConfig.installmentInterestRate < 0 || installmentConfig.installmentInterestRate > 100) {
+      toast.error('Taxa de juros deve estar entre 0% e 100%');
+      return;
+    }
+
+    if (installmentConfig.maxInstallments < 1) {
+      toast.error('Limite de parcelas deve ser no mínimo 1');
+      return;
+    }
+
+    try {
+      setSavingInstallmentConfig(true);
+      await companyApi.updateMyCompany({
+        installmentInterestRate: installmentConfig.installmentInterestRate,
+        maxInstallments: installmentConfig.maxInstallments,
+      });
+      toast.success('Configurações de parcelamento salvas com sucesso!');
+      await loadInstallmentConfig();
+    } catch (error: any) {
+      console.error('Erro ao salvar configurações de parcelamento:', error);
+      handleApiError(error);
+    } finally {
+      setSavingInstallmentConfig(false);
     }
   };
 
@@ -1760,6 +1811,107 @@ export default function SettingsPage() {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Configurações de Parcelamento - Apenas para Empresas */}
+        {user?.role === 'empresa' && (
+          <Card id="parcelamento" className="scroll-mt-24">
+            <CardHeader>
+              <CardTitle id="parcelamento-titulo" className="flex items-center gap-2 scroll-mt-24">
+                <CreditCard className="h-5 w-5" />
+                Configurações de Parcelamento
+              </CardTitle>
+              <CardDescription>
+                Configure a taxa de juros e o limite máximo de parcelas para vendas a prazo
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                {/* Taxa de Juros */}
+                <div className="space-y-2">
+                  <Label htmlFor="installmentInterestRate">
+                    Taxa de Juros por Parcela (%)
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="installmentInterestRate"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={installmentConfig.installmentInterestRate}
+                      onChange={(e) =>
+                        setInstallmentConfig({
+                          ...installmentConfig,
+                          installmentInterestRate: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="0.00"
+                      className="flex-1"
+                    />
+                    <Percent className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Taxa de juros aplicada em cada parcela. Ex: 2.5% significa que cada parcela terá 2.5% de juros sobre o valor da parcela.
+                  </p>
+                </div>
+
+                {/* Limite de Parcelas */}
+                <div className="space-y-2">
+                  <Label htmlFor="maxInstallments">
+                    Limite Máximo de Parcelas
+                  </Label>
+                  <Input
+                    id="maxInstallments"
+                    type="number"
+                    min="1"
+                    value={installmentConfig.maxInstallments}
+                    onChange={(e) =>
+                      setInstallmentConfig({
+                        ...installmentConfig,
+                        maxInstallments: parseInt(e.target.value) || 12,
+                      })
+                    }
+                    placeholder="12"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Número máximo de parcelas permitidas para vendas a prazo. Padrão: 12 parcelas.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSaveInstallmentConfig}
+                disabled={savingInstallmentConfig}
+                className="w-full sm:w-auto"
+              >
+                {savingInstallmentConfig ? (
+                  <>
+                    <Save className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Salvar Configurações
+                  </>
+                )}
+              </Button>
+
+              {/* Informações */}
+              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                  ℹ️ Sobre os Juros em Parcelas
+                </p>
+                <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                  <li>• Os juros são aplicados em cada parcela da venda a prazo</li>
+                  <li>• O valor total da venda será atualizado automaticamente para incluir os juros</li>
+                  <li>• Os juros aumentam o lucro líquido da empresa</li>
+                  <li>• O limite de parcelas será validado ao criar vendas a prazo</li>
+                </ul>
+              </div>
             </CardContent>
           </Card>
         )}
