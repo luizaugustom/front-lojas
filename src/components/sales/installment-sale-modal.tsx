@@ -62,7 +62,10 @@ export function InstallmentSaleModal({
   const [minSearchLength] = useState(3); // Mínimo de 3 caracteres para buscar
   const [lastSearchTerm, setLastSearchTerm] = useState(''); // Controle de busca duplicada
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Controle de carregamento inicial
-  const [companyConfig, setCompanyConfig] = useState<{ installmentInterestRate?: number; maxInstallments?: number } | null>(null);
+  const [companyConfig, setCompanyConfig] = useState<{ installmentInterestRate?: number; maxInstallments?: number }>({
+    installmentInterestRate: 0,
+    maxInstallments: 12,
+  });
 
   const {
     register,
@@ -73,6 +76,24 @@ export function InstallmentSaleModal({
   } = useForm<{ description?: string }>({
     resolver: zodResolver(require('@/lib/validations').installmentSaleSchema),
   });
+
+  // Carregar configurações da empresa
+  const loadCompanyConfig = async () => {
+    try {
+      const response = await api.get('/company/my-company');
+      setCompanyConfig({
+        installmentInterestRate: response.data?.installmentInterestRate ?? 0,
+        maxInstallments: response.data?.maxInstallments ?? 12,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar configurações da empresa:', error);
+      // Usar valores padrão em caso de erro
+      setCompanyConfig({
+        installmentInterestRate: 0,
+        maxInstallments: 12,
+      });
+    }
+  };
 
   // Carregar configurações da empresa e clientes quando o modal abrir
   useEffect(() => {
@@ -104,25 +125,8 @@ export function InstallmentSaleModal({
 
       setFirstDueDate(utcDate);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isAuthenticated, isInitialLoad]);
-
-  // Carregar configurações da empresa
-  const loadCompanyConfig = async () => {
-    try {
-      const response = await api.get('/company/my-company');
-      setCompanyConfig({
-        installmentInterestRate: response.data?.installmentInterestRate ?? 0,
-        maxInstallments: response.data?.maxInstallments ?? 12,
-      });
-    } catch (error) {
-      console.error('Erro ao carregar configurações da empresa:', error);
-      // Usar valores padrão em caso de erro
-      setCompanyConfig({
-        installmentInterestRate: 0,
-        maxInstallments: 12,
-      });
-    }
-  };
 
 
   // Função de busca otimizada com controle de chamadas duplicadas
@@ -584,7 +588,7 @@ export function InstallmentSaleModal({
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: companyConfig?.maxInstallments ?? 12 }, (_, i) => i + 1).map((num) => (
+                      {Array.from({ length: (companyConfig?.maxInstallments ?? 12) || 12 }, (_, i) => i + 1).map((num) => (
                         <SelectItem key={num} value={num.toString()}>
                           {num}x
                         </SelectItem>
@@ -634,7 +638,7 @@ export function InstallmentSaleModal({
                     <span className="text-muted-foreground">Valor Original:</span>
                     <p className="font-medium">{formatCurrency(totalAmount)}</p>
                   </div>
-                  {companyConfig?.installmentInterestRate && companyConfig.installmentInterestRate > 0 && (
+                  {companyConfig.installmentInterestRate && companyConfig.installmentInterestRate > 0 && (
                     <>
                       <div>
                         <span className="text-muted-foreground">Juros ({companyConfig.installmentInterestRate}%):</span>
