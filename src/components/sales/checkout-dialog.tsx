@@ -26,6 +26,7 @@ import { InstallmentSaleModal } from './installment-sale-modal';
 import { CreditCardInstallmentModal } from './credit-card-installment-modal';
 import { PrintConfirmationDialog } from './print-confirmation-dialog';
 import { CustomerCopyConfirmationDialog } from './customer-copy-confirmation-dialog';
+import { InstallmentBilletViewer } from '@/components/installments/installment-billet-viewer';
 import { useAuth } from '@/hooks/useAuth';
 import { printContent as printContentService } from '@/lib/print-service';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
@@ -68,6 +69,9 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   // Cache do conteúdo de impressão para reimpressão
   const [cachedPrintContent, setCachedPrintContent] = useState<{ content: string | { storeCopy: string; customerCopy: string; isInstallmentSale: boolean }; type: string } | null>(null);
   const [customerCopyContent, setCustomerCopyContent] = useState<string | null>(null);
+  // Boletos PDF
+  const [billetsPdf, setBilletsPdf] = useState<string | null>(null);
+  const [showBillets, setShowBillets] = useState(false);
   // Store credit
   const [storeCreditBalance, setStoreCreditBalance] = useState<number>(0);
   const [storeCreditCustomerId, setStoreCreditCustomerId] = useState<string | null>(null);
@@ -130,6 +134,9 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       setStoreCreditCustomerId(null);
       setUseStoreCredit(false);
       setStoreCreditAmount(0);
+      // Resetar boletos
+      setBilletsPdf(null);
+      setShowBillets(false);
     }
   }, [open]);
 
@@ -770,6 +777,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       const saleId = saleData_resp?.id;
       const printContent = saleData_resp?.printContent;
       const printType = saleData_resp?.printType || 'nfce';
+      const billetsPdfBase64 = saleData_resp?.billetsPdf;
       
       if (!saleId) {
         console.error('[Checkout] Venda criada mas ID não foi retornado:', response);
@@ -787,14 +795,22 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
           type: printType,
         });
       }
+
+      // Se houver boletos PDF, armazenar e mostrar
+      if (billetsPdfBase64) {
+        setBilletsPdf(billetsPdfBase64);
+        setCreatedSaleId(saleId);
+        setShowBillets(true);
+        toast.success('Boletos gerados! Visualize e imprima os boletos.');
+      }
       
       // Impressão via Electron removida - mostrar modal de confirmação se houver conteúdo
-      if (printContent) {
-        // Mostrar modal de confirmação
+      if (printContent && !billetsPdfBase64) {
+        // Mostrar modal de confirmação apenas se não houver boletos (boletos têm prioridade)
         console.log('[Checkout] Desktop não detectado, mostrando modal de confirmação');
         setCreatedSaleId(saleId);
         setShowPrintConfirmation(true);
-      } else {
+      } else if (!billetsPdfBase64) {
         // Sem conteúdo de impressão - apenas finalizar
         handlePrintComplete();
       }
@@ -1228,6 +1244,19 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       onCancel={handleCustomerCopyCancel}
       loading={printing}
     />
+
+    {/* Visualizador de Boletos */}
+    {createdSaleId && (
+      <InstallmentBilletViewer
+        open={showBillets}
+        onClose={() => {
+          setShowBillets(false);
+          handlePrintComplete();
+        }}
+        saleId={createdSaleId}
+        billetsPdfBase64={billetsPdf || undefined}
+      />
+    )}
   </>
   );
 }

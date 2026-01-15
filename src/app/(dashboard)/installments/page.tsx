@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DollarSign, AlertTriangle, CheckCircle2, Filter, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,8 @@ import { CustomersDebtList } from '@/components/installments/customers-debt-list
 import { PaymentDialog } from '@/components/installments/payment-dialog';
 import { CustomerDebtPaymentDialog } from '@/components/installments/customer-debt-payment-dialog';
 import { formatCurrency } from '@/lib/utils';
+import { useDeviceStore } from '@/store/device-store';
+import toast from 'react-hot-toast';
 
 type DateFilter = 'all' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'this-year';
 
@@ -34,6 +36,16 @@ export default function InstallmentsPage() {
     totalRemaining: number;
   } | null>(null);
   const [dateFilter, setDateFilter] = useState<DateFilter>('this-month');
+  const [lastScanned, setLastScanned] = useState(0);
+
+  const {
+    barcodeBuffer,
+    setBarcodeBuffer,
+    scanSuccess,
+    setScanSuccess,
+    scannerActive,
+    setScannerActive,
+  } = useDeviceStore();
 
   const isSeller = user?.role === 'vendedor';
   const isCompany = user?.role === 'empresa';
@@ -258,6 +270,76 @@ export default function InstallmentsPage() {
   const handleCustomerDebtPaid = () => {
     refreshInstallmentLists();
   };
+
+  // Função para buscar parcela por código de barras
+  const handleBarcodeScanned = async (barcode: string) => {
+    try {
+      const response = await api.get(`/installment/barcode/${barcode}`);
+      const installment = response.data;
+
+      if (installment) {
+        // Abrir modal de pagamento automaticamente
+        setSelectedInstallment(installment);
+        setPaymentDialogOpen(true);
+        setScanSuccess(true);
+        setTimeout(() => setScanSuccess(false), 1200);
+        toast.success(`Parcela encontrada: ${installment.installmentNumber}/${installment.totalInstallments}`);
+      }
+    } catch (error: any) {
+      console.error('Erro ao buscar parcela por código de barras:', error);
+      if (error.response?.status === 404) {
+        toast.error('Parcela não encontrada com este código de barras');
+      } else {
+        toast.error('Erro ao buscar parcela');
+      }
+    }
+  };
+
+  // Leitura de código de barras
+  useEffect(() => {
+    if (!scannerActive) {
+      setScannerActive(true);
+    }
+
+    const scanStartedAtRef = { current: null as number | null };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.key) return;
+
+      if (e.key === 'Enter') {
+        const code = barcodeBuffer.trim();
+        if (code.length >= 3) {
+          const startedAt = scanStartedAtRef.current ?? Date.now();
+          const duration = Date.now() - startedAt;
+          const avgPerChar = duration / Math.max(1, code.length);
+          const isLikelyScanner = avgPerChar < 80;
+
+          const now = Date.now();
+          if (isLikelyScanner && now - lastScanned > 500) {
+            console.log('[Installments Barcode Scanner] Código escaneado:', code);
+            handleBarcodeScanned(code);
+            setLastScanned(now);
+          }
+        }
+        setBarcodeBuffer('');
+        scanStartedAtRef.current = null;
+      } else if (e.key.length === 1) {
+        if (!barcodeBuffer) {
+          scanStartedAtRef.current = Date.now();
+        }
+        setBarcodeBuffer((s) => {
+          const newBuffer = s + e.key;
+          return newBuffer.length > 50 ? newBuffer.slice(-50) : newBuffer;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      setScannerActive(false);
+    };
+  }, [barcodeBuffer, lastScanned, scannerActive, setScannerActive, setBarcodeBuffer]);
 
   // Se for vendedor, mostrar versão simplificada
   if (isSeller) {

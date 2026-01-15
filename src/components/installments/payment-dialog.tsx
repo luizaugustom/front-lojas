@@ -28,6 +28,7 @@ import { formatCurrency } from '@/lib/utils';
 import { DollarSign, CreditCard, Banknote, Smartphone } from 'lucide-react';
 import { PaymentReceiptConfirmDialog } from './payment-receipt-confirm-dialog';
 import { PaymentReceipt } from './payment-receipt';
+import { InstallmentBilletViewer } from './installment-billet-viewer';
 
 interface PaymentDialogProps {
   open: boolean;
@@ -66,6 +67,8 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
   const [showReceiptConfirm, setShowReceiptConfirm] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [paymentData, setPaymentData] = useState<any>(null);
+  const [newBilletPdf, setNewBilletPdf] = useState<string | null>(null);
+  const [showNewBillet, setShowNewBillet] = useState(false);
 
   const {
     register,
@@ -103,11 +106,20 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
         date: new Date().toISOString(),
         sellerName: user?.name,
       });
-      
-      toast.success(response.data.message || 'Pagamento registrado com sucesso!');
-      
-      // Mostra o diálogo de confirmação de impressão
-      setShowReceiptConfirm(true);
+
+      // Verificar se há novo boleto (pagamento parcial)
+      if (response.data?.newBilletPdf) {
+        setNewBilletPdf(response.data.newBilletPdf);
+        toast.success('Pagamento registrado! Novo boleto gerado para o valor restante.');
+        // Mostrar o boleto após um breve delay
+        setTimeout(() => {
+          setShowNewBillet(true);
+        }, 500);
+      } else {
+        toast.success(response.data.message || 'Pagamento registrado com sucesso!');
+        // Mostra o diálogo de confirmação de impressão apenas se não houver novo boleto
+        setShowReceiptConfirm(true);
+      }
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Erro ao registrar pagamento');
@@ -151,7 +163,20 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
   const handlePrintComplete = () => {
     setShowReceipt(false);
     reset();
+    setNewBilletPdf(null);
+    setShowNewBillet(false);
     onClose();
+  };
+
+  const handleNewBilletClose = () => {
+    setShowNewBillet(false);
+    setNewBilletPdf(null);
+    // Após fechar o boleto, mostrar confirmação de comprovante se necessário
+    if (paymentData) {
+      setShowReceiptConfirm(true);
+    } else {
+      handlePrintComplete();
+    }
   };
 
   if (!installment) return null;
@@ -347,6 +372,16 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
           }}
           companyInfo={companyInfo ?? undefined}
           onPrintComplete={handlePrintComplete}
+        />
+      )}
+
+      {/* Visualizador de novo boleto (pagamento parcial) */}
+      {newBilletPdf && installment && (
+        <InstallmentBilletViewer
+          open={showNewBillet}
+          onClose={handleNewBilletClose}
+          saleId={installment.saleId}
+          billetsPdfBase64={newBilletPdf}
         />
       )}
     </Dialog>
