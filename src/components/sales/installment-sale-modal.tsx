@@ -588,7 +588,7 @@ export function InstallmentSaleModal({
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: (companyConfig?.maxInstallments ?? 12) || 12 }, (_, i) => i + 1).map((num) => (
+                      {Array.from({ length: Math.max(1, Math.min(companyConfig?.maxInstallments ?? 12, 24)) }, (_, i) => i + 1).map((num) => (
                         <SelectItem key={num} value={num.toString()}>
                           {num}x
                         </SelectItem>

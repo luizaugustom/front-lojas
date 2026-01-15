@@ -80,6 +80,7 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
   } = useForm<PaymentFormData>({
     defaultValues: {
       paymentMethod: 'cash',
+      amount: 0,
     },
   });
 
@@ -90,8 +91,14 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
       const fullAmount = installment.remainingAmount || 0;
       setValue('amount', fullAmount);
       setPaymentType('full');
+    } else if (!open) {
+      reset({
+        paymentMethod: 'cash',
+        amount: 0,
+      });
+      setPaymentType('full');
     }
-  }, [open, installment, setValue]);
+  }, [open, installment, setValue, reset]);
 
   const paymentMutation = useMutation({
     mutationFn: async (data: PaymentFormData) => {
@@ -179,11 +186,11 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
     }
   };
 
-  if (!installment) return null;
-
-  const remainingAmount = installment.remainingAmount || 0;
-  const originalAmount = installment.amount || 0;
+  const remainingAmount = installment?.remainingAmount || 0;
+  const originalAmount = installment?.amount || 0;
   const paidAmount = originalAmount - remainingAmount;
+
+  if (!installment || !open) return null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -264,7 +271,7 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
                 placeholder="0,00"
                 style={{ paddingLeft: '2.75rem' }}
                 className="pr-3 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                {...register('amount', {
+                {...(installment ? register('amount', {
                   required: 'Valor é obrigatório',
                   min: { value: 0.01, message: 'Valor mínimo é R$ 0,01' },
                   max: {
@@ -272,13 +279,13 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
                     message: 'Valor não pode ser maior que o restante',
                   },
                   valueAsNumber: true,
-                })}
+                }) : {})}
                 onFocus={(e) => {
                   if (Number(e.target.value) === 0) {
                     e.target.value = '';
                   }
                 }}
-                disabled={paymentType === 'full'}
+                disabled={paymentType === 'full' || !installment}
               />
             </div>
             {errors.amount && (
