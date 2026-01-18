@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DollarSign, AlertTriangle, CheckCircle2, Filter, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -272,7 +272,7 @@ export default function InstallmentsPage() {
   };
 
   // Função para buscar parcela por código de barras
-  const handleBarcodeScanned = async (barcode: string) => {
+  const handleBarcodeScanned = useCallback(async (barcode: string) => {
     try {
       const response = await api.get(`/installment/barcode/${barcode}`);
       const installment = response.data;
@@ -293,7 +293,7 @@ export default function InstallmentsPage() {
         toast.error('Erro ao buscar parcela');
       }
     }
-  };
+  }, [api, setSelectedInstallment, setPaymentDialogOpen, setScanSuccess]);
 
   // Leitura de código de barras
   useEffect(() => {
@@ -302,12 +302,13 @@ export default function InstallmentsPage() {
     }
 
     const scanStartedAtRef = { current: null as number | null };
+    const bufferRef = { current: '' };
 
     const onKey = (e: KeyboardEvent) => {
       if (!e.key) return;
 
       if (e.key === 'Enter') {
-        const code = barcodeBuffer.trim();
+        const code = bufferRef.current.trim();
         if (code.length >= 3) {
           const startedAt = scanStartedAtRef.current ?? Date.now();
           const duration = Date.now() - startedAt;
@@ -321,16 +322,15 @@ export default function InstallmentsPage() {
             setLastScanned(now);
           }
         }
+        bufferRef.current = '';
         setBarcodeBuffer('');
         scanStartedAtRef.current = null;
       } else if (e.key.length === 1) {
-        if (!barcodeBuffer) {
+        if (!bufferRef.current) {
           scanStartedAtRef.current = Date.now();
         }
-        setBarcodeBuffer((s) => {
-          const newBuffer = s + e.key;
-          return newBuffer.length > 50 ? newBuffer.slice(-50) : newBuffer;
-        });
+        bufferRef.current = (bufferRef.current + e.key).slice(-50);
+        setBarcodeBuffer(bufferRef.current);
       }
     };
 
@@ -339,7 +339,7 @@ export default function InstallmentsPage() {
       window.removeEventListener('keydown', onKey);
       setScannerActive(false);
     };
-  }, [barcodeBuffer, lastScanned, scannerActive, setScannerActive, setBarcodeBuffer]);
+  }, [lastScanned, scannerActive, setScannerActive, setBarcodeBuffer, handleBarcodeScanned]);
 
   // Se for vendedor, mostrar versão simplificada
   if (isSeller) {
