@@ -7,7 +7,7 @@ import '@/lib/api-config'; // Aplicar correções da API automaticamente
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'MontShop',
+  title: 'Sistema Montshop - Gestão Lojas',
   description: 'Sistema de gerenciamento de lojas completo',
   manifest: '/manifest.json',
   themeColor: '#3B82F6',

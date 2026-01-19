@@ -114,6 +114,16 @@ export default function CatalogPageClient() {
     }
   }, [url]);
 
+  // Atualizar título da página com nome da empresa do catálogo
+  useEffect(() => {
+    if (data?.company?.name) {
+      document.title = data.company.name;
+    } else {
+      // Manter título padrão enquanto carrega
+      document.title = 'Sistema Montshop - Gestão Lojas';
+    }
+  }, [data?.company?.name]);
+
   // Aplicar cor da empresa na scrollbar quando os dados forem carregados
   useEffect(() => {
     if (data?.company.brandColor && typeof document !== 'undefined') {
