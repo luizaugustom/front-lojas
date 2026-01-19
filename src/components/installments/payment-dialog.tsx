@@ -87,17 +87,23 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
   const amount = watch('amount');
 
   useEffect(() => {
-    if (open && installment) {
+    let isMounted = true;
+    
+    if (open && installment && isMounted) {
       const fullAmount = installment.remainingAmount || 0;
       setValue('amount', fullAmount);
       setPaymentType('full');
-    } else if (!open) {
+    } else if (!open && isMounted) {
       reset({
         paymentMethod: 'cash',
         amount: 0,
       });
       setPaymentType('full');
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [open, installment, setValue, reset]);
 
   const paymentMutation = useMutation({
@@ -120,12 +126,16 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
         toast.success('Pagamento registrado! Novo boleto gerado para o valor restante.');
         // Mostrar o boleto após um breve delay
         setTimeout(() => {
-          setShowNewBillet(true);
+          if (open) {
+            setShowNewBillet(true);
+          }
         }, 500);
       } else {
         toast.success(response.data.message || 'Pagamento registrado com sucesso!');
         // Mostra o diálogo de confirmação de impressão apenas se não houver novo boleto
-        setShowReceiptConfirm(true);
+        if (open) {
+          setShowReceiptConfirm(true);
+        }
       }
     },
     onError: (error: any) => {
@@ -271,7 +281,7 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
                 placeholder="0,00"
                 style={{ paddingLeft: '2.75rem' }}
                 className="pr-3 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                {...(installment ? register('amount', {
+                {...(installment && open ? register('amount', {
                   required: 'Valor é obrigatório',
                   min: { value: 0.01, message: 'Valor mínimo é R$ 0,01' },
                   max: {

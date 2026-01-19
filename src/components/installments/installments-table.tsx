@@ -72,13 +72,27 @@ export function InstallmentsTable({
   const paginatedInstallments = filteredInstallments.slice((page - 1) * pageSize, page * pageSize);
 
   useEffect(() => {
-    if (page > totalPages) {
+    let isMounted = true;
+    
+    if (page > totalPages && isMounted) {
       setPage(totalPages);
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [page, totalPages]);
 
   useEffect(() => {
-    setPage(1);
+    let isMounted = true;
+    
+    if (isMounted) {
+      setPage(1);
+    }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [debouncedSearchTerm, totalItems]);
 
   const clearSearch = () => {

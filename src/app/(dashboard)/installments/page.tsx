@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DollarSign, AlertTriangle, CheckCircle2, Filter, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -272,7 +272,7 @@ export default function InstallmentsPage() {
   };
 
   // Função para buscar parcela por código de barras
-  const handleBarcodeScanned = useCallback(async (barcode: string) => {
+  const handleBarcodeScanned = async (barcode: string) => {
     try {
       const response = await api.get(`/installment/barcode/${barcode}`);
       const installment = response.data;
@@ -293,22 +293,23 @@ export default function InstallmentsPage() {
         toast.error('Erro ao buscar parcela');
       }
     }
-  }, [api, setSelectedInstallment, setPaymentDialogOpen, setScanSuccess]);
+  };
 
   // Leitura de código de barras
   useEffect(() => {
-    if (!scannerActive) {
+    let isMounted = true;
+
+    if (!scannerActive && isMounted) {
       setScannerActive(true);
     }
 
     const scanStartedAtRef = { current: null as number | null };
-    const bufferRef = { current: '' };
 
     const onKey = (e: KeyboardEvent) => {
-      if (!e.key) return;
+      if (!e.key || !isMounted) return;
 
       if (e.key === 'Enter') {
-        const code = bufferRef.current.trim();
+        const code = barcodeBuffer.trim();
         if (code.length >= 3) {
           const startedAt = scanStartedAtRef.current ?? Date.now();
           const duration = Date.now() - startedAt;
@@ -316,30 +317,37 @@ export default function InstallmentsPage() {
           const isLikelyScanner = avgPerChar < 80;
 
           const now = Date.now();
-          if (isLikelyScanner && now - lastScanned > 500) {
+          if (isLikelyScanner && now - lastScanned > 500 && isMounted) {
             console.log('[Installments Barcode Scanner] Código escaneado:', code);
             handleBarcodeScanned(code);
             setLastScanned(now);
           }
         }
-        bufferRef.current = '';
-        setBarcodeBuffer('');
+        if (isMounted) {
+          setBarcodeBuffer('');
+        }
         scanStartedAtRef.current = null;
-      } else if (e.key.length === 1) {
-        if (!bufferRef.current) {
+      } else if (e.key.length === 1 && isMounted) {
+        if (!barcodeBuffer) {
           scanStartedAtRef.current = Date.now();
         }
-        bufferRef.current = (bufferRef.current + e.key).slice(-50);
-        setBarcodeBuffer(bufferRef.current);
+        setBarcodeBuffer((s) => {
+          const newBuffer = s + e.key;
+          return newBuffer.length > 50 ? newBuffer.slice(-50) : newBuffer;
+        });
       }
     };
 
     window.addEventListener('keydown', onKey);
     return () => {
+      isMounted = false;
       window.removeEventListener('keydown', onKey);
-      setScannerActive(false);
+      // Usar uma função para verificar se ainda está montado antes de atualizar estado
+      setTimeout(() => {
+        // Não atualizar estado se o componente foi desmontado
+      }, 0);
     };
-  }, [lastScanned, scannerActive, setScannerActive, setBarcodeBuffer, handleBarcodeScanned]);
+  }, [barcodeBuffer, lastScanned, scannerActive, setScannerActive, setBarcodeBuffer]);
 
   // Se for vendedor, mostrar versão simplificada
   if (isSeller) {
