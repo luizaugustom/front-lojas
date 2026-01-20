@@ -9,48 +9,38 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Printer } from 'lucide-react';
+import { FileText } from 'lucide-react';
 
-interface PrintConfirmationDialogProps {
+interface BilletPrintConfirmationDialogProps {
   open: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   loading?: boolean;
-  printType?: string | null;
 }
 
-export function PrintConfirmationDialog({
+export function BilletPrintConfirmationDialog({
   open,
   onConfirm,
   onCancel,
   loading = false,
-  printType,
-}: PrintConfirmationDialogProps) {
-  const normalizedType = (printType || 'nfce')?.toLowerCase();
-  const isNonFiscal = normalizedType === 'non-fiscal';
-  const title = isNonFiscal ? 'Imprimir cupom não fiscal?' : 'Imprimir NFC-e?';
-  const description = isNonFiscal
-    ? 'Deseja imprimir o cupom não fiscal desta venda agora?'
-    : 'Deseja imprimir a Nota Fiscal do Consumidor Eletrônica (NFC-e) desta venda agora?';
-  const footerMessage = 'O documento será enviado para a impressora térmica configurada.';
-
+}: BilletPrintConfirmationDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onCancel}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Printer className="h-6 w-6 text-primary" />
+              <FileText className="h-6 w-6 text-primary" />
             </div>
             <DialogTitle className="text-xl">
-              {title}
+              Visualizar e Imprimir Boletos?
             </DialogTitle>
           </div>
           <DialogDescription className="text-base mt-2">
-            {description}
+            Deseja visualizar e imprimir os boletos desta venda agora?
             <br />
             <br />
-            {footerMessage}
+            Os boletos serão exibidos em uma nova janela onde você poderá visualizar, baixar e imprimir.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">
@@ -59,15 +49,15 @@ export function PrintConfirmationDialog({
             onClick={onCancel}
             disabled={loading}
           >
-            Não Imprimir
+            Não, Pular
           </Button>
           <Button
             onClick={onConfirm}
             disabled={loading}
             className="gap-2"
           >
-            <Printer className="h-4 w-4" />
-            {loading ? 'Imprimindo...' : 'Imprimir'}
+            <FileText className="h-4 w-4" />
+            {loading ? 'Abrindo...' : 'Sim, Visualizar'}
           </Button>
         </DialogFooter>
       </DialogContent>

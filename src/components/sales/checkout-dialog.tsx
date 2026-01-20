@@ -26,6 +26,7 @@ import { InstallmentSaleModal } from './installment-sale-modal';
 import { CreditCardInstallmentModal } from './credit-card-installment-modal';
 import { PrintConfirmationDialog } from './print-confirmation-dialog';
 import { CustomerCopyConfirmationDialog } from './customer-copy-confirmation-dialog';
+import { BilletPrintConfirmationDialog } from './billet-print-confirmation-dialog';
 import { InstallmentBilletViewer } from '@/components/installments/installment-billet-viewer';
 import { useAuth } from '@/hooks/useAuth';
 import { printContent as printContentService } from '@/lib/print-service';
@@ -72,6 +73,11 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   // Boletos PDF
   const [billetsPdf, setBilletsPdf] = useState<string | null>(null);
   const [showBillets, setShowBillets] = useState(false);
+  const [showBilletPrintConfirmation, setShowBilletPrintConfirmation] = useState(false);
+  const [pendingPrintContent, setPendingPrintContent] = useState<{
+    content: any;
+    type: string;
+  } | null>(null);
   // Store credit
   const [storeCreditBalance, setStoreCreditBalance] = useState<number>(0);
   const [storeCreditCustomerId, setStoreCreditCustomerId] = useState<string | null>(null);
@@ -524,6 +530,35 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     handlePrintComplete();
   };
 
+  const handleBilletPrintConfirm = () => {
+    setShowBilletPrintConfirmation(false);
+    setShowBillets(true);
+  };
+
+  const handleBilletPrintCancel = () => {
+    setShowBilletPrintConfirmation(false);
+    // Se houver printContent pendente, mostrar modal de confirmação de NFCe/cupom
+    if (pendingPrintContent) {
+      setCachedPrintContent(pendingPrintContent);
+      setShowPrintConfirmation(true);
+      setPendingPrintContent(null);
+    } else {
+      handlePrintComplete();
+    }
+  };
+
+  const handleBilletsClose = () => {
+    setShowBillets(false);
+    // Se houver printContent pendente, mostrar modal de confirmação de NFCe/cupom
+    if (pendingPrintContent) {
+      setCachedPrintContent(pendingPrintContent);
+      setShowPrintConfirmation(true);
+      setPendingPrintContent(null);
+    } else {
+      handlePrintComplete();
+    }
+  };
+
   const handlePrintComplete = () => {
     // Limpar carrinho e resetar formulário
     clearCart();
@@ -533,8 +568,10 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     setSelectedCustomerId('');
     setShowPrintConfirmation(false);
     setShowCustomerCopyConfirmation(false);
+    setShowBilletPrintConfirmation(false);
     setCreatedSaleId(null);
     setCustomerCopyContent(null);
+    setPendingPrintContent(null);
     onClose();
   };
 
@@ -612,14 +649,23 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
 
     // Usar validPaymentDetails para cálculos (que é igual a paymentDetails se não houve filtragem)
     const totalPaid = validPaymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
-    const remainingAmount = total - totalPaid;
+    
+    // Calcular crédito a ser usado ANTES da validação
+    let creditToUse = 0;
+    if (useStoreCredit && storeCreditCustomerId && storeCreditBalance > 0) {
+      const remainingAfterPayments = total - totalPaid;
+      creditToUse = Math.min(storeCreditBalance, Math.max(0, remainingAfterPayments));
+    }
+    
+    // Total pago incluindo crédito
+    const totalPaidWithCredit = totalPaid + creditToUse;
+    const remainingAmount = total - totalPaidWithCredit;
 
-    // Validar se o valor pago é suficiente (pode ser maior devido ao troco)
+    // Validar se o valor pago (incluindo crédito) é suficiente (pode ser maior devido ao troco)
     if (remainingAmount > 0.01) {
-      toast.error(`Valor total dos pagamentos (${formatCurrency(totalPaid)}) deve ser pelo menos igual ao total da venda (${formatCurrency(total)})!`);
+      toast.error(`Valor total dos pagamentos (${formatCurrency(totalPaid)}${creditToUse > 0.01 ? ` + crédito ${formatCurrency(creditToUse)}` : ''} = ${formatCurrency(totalPaidWithCredit)}) deve ser pelo menos igual ao total da venda (${formatCurrency(total)})!`);
       return;
     }
-
 
     setLoading(true);
     try {
@@ -730,33 +776,30 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       
       // Usar crédito se disponível e solicitado
       let creditUsed = 0;
-      if (useStoreCredit && storeCreditCustomerId && storeCreditBalance > 0) {
-        const remainingAfterPayments = total - totalPaid;
-        const creditToUse = Math.min(storeCreditBalance, Math.max(0, remainingAfterPayments));
-        
-        if (creditToUse > 0.01) {
-          try {
-            await api.useStoreCredit({
-              customerId: storeCreditCustomerId,
-              amount: creditToUse,
-              description: `Crédito utilizado na venda`,
-            });
-            
-            creditUsed = creditToUse;
-            
-            // Adicionar crédito como método de pagamento
-            saleData.paymentMethods.push({
-              method: 'store_credit',
-              amount: roundToCents(creditUsed),
-              additionalInfo: '',
-            });
-            
-            toast.success(`Crédito de ${formatCurrency(creditUsed)} aplicado na venda`);
-          } catch (error: any) {
-            console.error('[Checkout] Erro ao usar crédito:', error);
-            toast.error(error?.response?.data?.message || 'Erro ao usar crédito. A venda continuará sem crédito.');
-            // Continuar com a venda mesmo se houver erro ao usar crédito
-          }
+      let remainingCreditBalance = 0;
+      if (creditToUse > 0.01) {
+        try {
+          await api.useStoreCredit({
+            customerId: storeCreditCustomerId!,
+            amount: creditToUse,
+            description: `Crédito utilizado na venda`,
+          });
+          
+          creditUsed = creditToUse;
+          remainingCreditBalance = storeCreditBalance - creditUsed;
+          
+          // Adicionar crédito como método de pagamento
+          saleData.paymentMethods.push({
+            method: 'store_credit',
+            amount: roundToCents(creditUsed),
+            additionalInfo: '',
+          });
+          
+          toast.success(`Crédito de ${formatCurrency(creditUsed)} aplicado na venda`);
+        } catch (error: any) {
+          console.error('[Checkout] Erro ao usar crédito:', error);
+          toast.error(error?.response?.data?.message || 'Erro ao usar crédito. A venda continuará sem crédito.');
+          // Continuar com a venda mesmo se houver erro ao usar crédito
         }
       }
       
@@ -771,6 +814,40 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       // Criar venda - IDs já são UUID v4 válidos
       // Não usar skipPrint para que o backend gere o conteúdo de impressão
       const response = await saleApi.create(saleData);
+      
+      // Se houver saldo restante de crédito, perguntar se quer imprimir comprovante
+      if (creditUsed > 0 && remainingCreditBalance > 0.01 && storeCreditCustomerId) {
+        const shouldPrintVoucher = window.confirm(
+          `Crédito de ${formatCurrency(creditUsed)} foi utilizado na venda.\n\n` +
+          `Saldo restante: ${formatCurrency(remainingCreditBalance)}\n\n` +
+          `Deseja imprimir um comprovante com o saldo restante?`
+        );
+        
+        if (shouldPrintVoucher) {
+          try {
+            const voucherData = await api.printRemainingBalanceVoucher({
+              customerId: storeCreditCustomerId,
+              amountUsed: creditUsed,
+            });
+            
+            // Se for desktop e tiver conteúdo, imprimir localmente
+            if (voucherData.content && typeof window !== 'undefined' && (window as any).electronAPI?.printers) {
+              const printResult = await printContentService(voucherData.content);
+              
+              if (printResult.success) {
+                toast.success('Comprovante de saldo restante impresso com sucesso!');
+              } else {
+                throw new Error(printResult.error || 'Erro ao imprimir');
+              }
+            } else {
+              toast.success('Comprovante de saldo restante enviado para impressão!');
+            }
+          } catch (voucherError: any) {
+            console.error('[Checkout] Erro ao imprimir comprovante de saldo restante:', voucherError);
+            toast.error('Erro ao imprimir comprovante. Você pode imprimi-lo depois.');
+          }
+        }
+      }
       
       // Extrair ID da venda e conteúdo de impressão da resposta
       const saleData_resp = response.data?.data || response.data;
@@ -788,29 +865,30 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       console.log('[Checkout] Venda criada com sucesso:', saleId);
       toast.success('Venda realizada com sucesso!');
       
-      // Armazenar conteúdo de impressão em cache para reimpressão posterior
-      if (printContent) {
+      setCreatedSaleId(saleId);
+
+      // Se houver boletos PDF, mostrar modal de confirmação primeiro
+      if (billetsPdfBase64) {
+        setBilletsPdf(billetsPdfBase64);
+        
+        // Se também houver printContent, armazenar para depois dos boletos
+        if (printContent) {
+          setPendingPrintContent({
+            content: printContent,
+            type: printType,
+          });
+        }
+        
+        // Mostrar modal de confirmação de boletos
+        setShowBilletPrintConfirmation(true);
+      } else if (printContent) {
+        // Se não houver boletos mas houver printContent, mostrar modal de confirmação de NFCe/cupom
         setCachedPrintContent({
           content: printContent,
           type: printType,
         });
-      }
-
-      // Se houver boletos PDF, armazenar e mostrar
-      if (billetsPdfBase64) {
-        setBilletsPdf(billetsPdfBase64);
-        setCreatedSaleId(saleId);
-        setShowBillets(true);
-        toast.success('Boletos gerados! Visualize e imprima os boletos.');
-      }
-      
-      // Impressão via Electron removida - mostrar modal de confirmação se houver conteúdo
-      if (printContent && !billetsPdfBase64) {
-        // Mostrar modal de confirmação apenas se não houver boletos (boletos têm prioridade)
-        console.log('[Checkout] Desktop não detectado, mostrando modal de confirmação');
-        setCreatedSaleId(saleId);
         setShowPrintConfirmation(true);
-      } else if (!billetsPdfBase64) {
+      } else {
         // Sem conteúdo de impressão - apenas finalizar
         handlePrintComplete();
       }
@@ -1231,12 +1309,21 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       </DialogContent>
     </Dialog>
     
+    {/* Dialog de Confirmação de Impressão de Boletos */}
+    <BilletPrintConfirmationDialog
+      open={showBilletPrintConfirmation}
+      onConfirm={handleBilletPrintConfirm}
+      onCancel={handleBilletPrintCancel}
+      loading={loading}
+    />
+
     {/* Dialog de Confirmação de Impressão */}
     <PrintConfirmationDialog
       open={showPrintConfirmation}
       onConfirm={handlePrintConfirm}
       onCancel={handlePrintCancel}
       loading={printing}
+      printType={cachedPrintContent?.type || null}
     />
     <CustomerCopyConfirmationDialog
       open={showCustomerCopyConfirmation}
@@ -1249,10 +1336,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     {createdSaleId && (
       <InstallmentBilletViewer
         open={showBillets}
-        onClose={() => {
-          setShowBillets(false);
-          handlePrintComplete();
-        }}
+        onClose={handleBilletsClose}
         saleId={createdSaleId}
         billetsPdfBase64={billetsPdf || undefined}
       />

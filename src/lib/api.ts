@@ -403,6 +403,20 @@ class ApiClient {
   }
 
   /**
+   * POST /store-credit/print-remaining-balance-voucher
+   * Imprimir comprovante de saldo restante de crédito em loja
+   * Permissão: ADMIN, COMPANY, SELLER
+   * Body: { customerId, amountUsed }
+   */
+  async printRemainingBalanceVoucher(data: {
+    customerId: string;
+    amountUsed: number;
+  }) {
+    const response = await this.client.post('/store-credit/print-remaining-balance-voucher', data);
+    return response.data;
+  }
+
+  /**
    * POST /customer/send-bulk-promotional-email
    * Enviar email promocional para todos os clientes
    * Permissão: ADMIN, COMPANY
