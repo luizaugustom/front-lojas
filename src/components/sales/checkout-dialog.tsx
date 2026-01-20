@@ -99,10 +99,9 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const creditToApply = useStoreCredit && storeCreditCustomerId && storeCreditBalance > 0
     ? Math.min(storeCreditBalance, baseTotal) // Não pode passar o valor total
     : 0;
+  const roundToCents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
   const total = roundToCents(baseTotal - creditToApply); // Total com desconto de crédito
   const isCompany = user?.role === 'empresa';
-
-  const roundToCents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
   const formatAmountInput = (value: number) => {
     const rounded = roundToCents(Number.isFinite(value) ? value : 0);
     return rounded > 0 ? rounded.toFixed(2).replace('.', ',') : '';
