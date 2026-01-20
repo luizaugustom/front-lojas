@@ -711,20 +711,6 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     // Filtrar métodos com valor zero antes de validar
     const validPaymentDetails = paymentDetails.filter(p => Number(p.amount) >= 0.01);
     
-    // Calcular crédito a ser usado ANTES da validação de pagamentos
-    let creditToUse = 0;
-    if (useStoreCredit && storeCreditCustomerId && storeCreditBalance > 0) {
-      const totalPaid = validPaymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
-      const remainingAfterPayments = total - totalPaid;
-      creditToUse = Math.min(storeCreditBalance, Math.max(0, remainingAfterPayments));
-    }
-    
-    // Se não há métodos de pagamento e o crédito não cobre tudo, exigir método de pagamento
-    if (validPaymentDetails.length === 0 && creditToUse < total) {
-      toast.error('Adicione pelo menos um método de pagamento ou use crédito em loja suficiente para cobrir o valor da venda!');
-      return;
-    }
-    
     // Atualizar paymentDetails para remover métodos zerados
     if (validPaymentDetails.length !== paymentDetails.length) {
       setPaymentDetails(validPaymentDetails);
@@ -761,6 +747,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       creditToUse = Math.min(storeCreditBalance, Math.max(0, remainingAfterPayments));
     }
     
+    // Se não há métodos de pagamento e o crédito não cobre tudo, exigir método de pagamento
+    if (validPaymentDetails.length === 0 && creditToUse < total) {
+      toast.error('Adicione pelo menos um método de pagamento ou use crédito em loja suficiente para cobrir o valor da venda!');
+      return;
+    }
+    
     // Total pago incluindo crédito
     const totalPaid = validPaymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
     const totalPaidWithCredit = totalPaid + creditToUse;
@@ -770,12 +762,6 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     // Se o crédito cobrir todo o valor, não é necessário ter métodos de pagamento
     if (remainingAmount > 0.01) {
       toast.error(`Valor total dos pagamentos (${formatCurrency(totalPaid)}${creditToUse > 0.01 ? ` + crédito ${formatCurrency(creditToUse)}` : ''} = ${formatCurrency(totalPaidWithCredit)}) deve ser pelo menos igual ao total da venda (${formatCurrency(total)})!`);
-      return;
-    }
-
-    // Se não há métodos de pagamento e o crédito não cobre tudo, exigir método de pagamento
-    if (validPaymentDetails.length === 0 && creditToUse < total) {
-      toast.error('Adicione pelo menos um método de pagamento ou use crédito em loja suficiente para cobrir o valor da venda!');
       return;
     }
 
