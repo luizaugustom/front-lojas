@@ -94,7 +94,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const { items, discount, getTotal, getSubtotal, clearCart } = useCartStore();
   const { user, isAuthenticated, api } = useAuth();
 
-  const total = getTotal();
+  const baseTotal = getTotal();
+  // Calcular crédito disponível para aplicar como desconto
+  const creditToApply = useStoreCredit && storeCreditCustomerId && storeCreditBalance > 0
+    ? Math.min(storeCreditBalance, baseTotal) // Não pode passar o valor total
+    : 0;
+  const total = roundToCents(baseTotal - creditToApply); // Total com desconto de crédito
   const isCompany = user?.role === 'empresa';
 
   const roundToCents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -721,9 +726,9 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
         return; // Retornar para que o usuário possa revisar
       }
 
-      // Validar se o valor pago (incluindo crédito) é suficiente
+      // Validar se o valor pago é suficiente (o crédito já foi aplicado como desconto no total)
       if (remainingAmount > 0.01) {
-        toast.error(`Valor total dos pagamentos (${formatCurrency(totalPaid)}${creditToUse > 0.01 ? ` + crédito ${formatCurrency(creditToUse)}` : ''} = ${formatCurrency(totalPaidWithCredit)}) deve ser pelo menos igual ao total da venda (${formatCurrency(total)})!`);
+        toast.error(`Valor total dos pagamentos (${formatCurrency(totalPaid)}) deve ser pelo menos igual ao total da venda (${formatCurrency(total)}${creditToUse > 0.01 ? ` - crédito ${formatCurrency(creditToUse)}` : ''})!`);
         return;
       }
     }
@@ -753,7 +758,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
           };
         }),
         discount: discount > 0 ? roundToCents(discount) : undefined,
-        paymentMethods: (creditToUse >= total - 0.01 ? [] : paymentDetails.filter(p => Number(p.amount) >= 0.01)).map((payment) => {
+        paymentMethods: (creditToUse >= baseTotal - 0.01 ? [] : paymentDetails.filter(p => Number(p.amount) >= 0.01)).map((payment) => {
           // Garantir que o valor seja sempre >= 0.01
           const amount = Math.max(Number(payment.amount) || 0, 0.01);
           
@@ -862,7 +867,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
             additionalInfo: '',
           });
           
-          toast.success(`Crédito de ${formatCurrency(creditUsed)} aplicado na venda`);
+          toast.success(`Crédito de ${formatCurrency(creditUsed)} aplicado como desconto na venda`);
         } catch (error: any) {
           console.error('[Checkout] Erro ao usar crédito:', error);
           toast.error(error?.response?.data?.message || 'Erro ao usar crédito. A venda continuará sem crédito.');
@@ -1036,7 +1041,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                 </div>
                 {useStoreCredit && (
                   <p className="text-xs text-muted-foreground">
-                    O crédito será aplicado automaticamente no valor restante após os outros pagamentos.
+                    O crédito será aplicado como desconto no total da venda (máximo até o valor total).
                   </p>
                 )}
               </div>
