@@ -95,12 +95,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const { user, isAuthenticated, api } = useAuth();
 
   const baseTotal = getTotal();
+  const roundToCents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
   // Calcular crédito disponível para aplicar como desconto
   const creditToApply = useStoreCredit && storeCreditCustomerId && storeCreditBalance > 0
     ? Math.min(storeCreditBalance, baseTotal) // Não pode passar o valor total
     : 0;
-  const roundToCents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
-  const total = roundToCents(baseTotal - creditToApply); // Total com desconto de crédito
+  const total = roundToCents(Math.max(0, baseTotal - creditToApply)); // Total com desconto de crédito (não pode ser negativo)
   const isCompany = user?.role === 'empresa';
   const formatAmountInput = (value: number) => {
     const rounded = roundToCents(Number.isFinite(value) ? value : 0);
@@ -679,20 +679,16 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       }
     }
 
-    // Calcular crédito disponível ANTES de validar métodos de pagamento
+    // O crédito já foi aplicado como desconto no total (calculado acima como creditToApply)
+    // Agora só validar métodos de pagamento contra o total já com desconto
     const totalPaid = paymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
-    let creditToUse = 0;
-    if (useStoreCredit && storeCreditCustomerId && storeCreditBalance > 0) {
-      const remainingAfterPayments = total - totalPaid;
-      creditToUse = Math.min(storeCreditBalance, Math.max(0, remainingAfterPayments));
-    }
+    const remainingAmount = total - totalPaid;
     
-    // Total pago incluindo crédito
-    const totalPaidWithCredit = totalPaid + creditToUse;
-    const remainingAmount = total - totalPaidWithCredit;
+    // O crédito a usar é o que foi aplicado como desconto
+    const creditToUse = creditToApply;
 
     // Se crédito cobre tudo, não exigir métodos de pagamento
-    if (creditToUse >= total - 0.01) {
+    if (creditToUse >= baseTotal - 0.01) {
       // Permitir venda apenas com crédito - não precisa validar métodos de pagamento
     } else {
       // Filtrar métodos com valor zero antes de validar
@@ -727,7 +723,10 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
 
       // Validar se o valor pago é suficiente (o crédito já foi aplicado como desconto no total)
       if (remainingAmount > 0.01) {
-        toast.error(`Valor total dos pagamentos (${formatCurrency(totalPaid)}) deve ser pelo menos igual ao total da venda (${formatCurrency(total)}${creditToUse > 0.01 ? ` - crédito ${formatCurrency(creditToUse)}` : ''})!`);
+        const errorMsg = creditToUse > 0.01
+          ? `Valor total dos pagamentos (${formatCurrency(totalPaid)}) deve ser pelo menos igual ao total da venda (${formatCurrency(total)} = ${formatCurrency(baseTotal)} - crédito ${formatCurrency(creditToUse)})!`
+          : `Valor total dos pagamentos (${formatCurrency(totalPaid)}) deve ser pelo menos igual ao total da venda (${formatCurrency(total)})!`;
+        toast.error(errorMsg);
         return;
       }
     }
@@ -1307,6 +1306,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
               <div className="flex justify-between text-green-600 dark:text-green-400">
                 <span>Desconto:</span>
                 <span>-{formatCurrency(discount)}</span>
+              </div>
+            )}
+            {creditToApply > 0 && (
+              <div className="flex justify-between text-green-600 dark:text-green-400">
+                <span>Crédito em Loja:</span>
+                <span>-{formatCurrency(creditToApply)}</span>
               </div>
             )}
             <div className="flex justify-between border-t pt-2">
