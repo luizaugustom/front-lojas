@@ -85,6 +85,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const [loadingStoreCredit, setLoadingStoreCredit] = useState(false);
   const [useStoreCredit, setUseStoreCredit] = useState(false);
   const [storeCreditAmount, setStoreCreditAmount] = useState<number>(0);
+  const [showStoreCreditVoucherConfirmation, setShowStoreCreditVoucherConfirmation] = useState(false);
+  const [pendingCreditVoucherData, setPendingCreditVoucherData] = useState<{
+    creditUsed: number;
+    remainingBalance: number;
+    customerId: string;
+  } | null>(null);
   const { items, discount, getTotal, getSubtotal, clearCart } = useCartStore();
   const { user, isAuthenticated, api } = useAuth();
 
@@ -585,12 +591,34 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       setPrinting(false);
       setShowStoreCreditVoucherConfirmation(false);
       setPendingCreditVoucherData(null);
+      
+      // Após imprimir comprovante de crédito, verificar se há conteúdo de impressão pendente
+      if (billetsPdf) {
+        setShowBilletPrintConfirmation(true);
+      } else if (pendingPrintContent) {
+        setCachedPrintContent(pendingPrintContent);
+        setShowPrintConfirmation(true);
+        setPendingPrintContent(null);
+      } else {
+        handlePrintComplete();
+      }
     }
   };
 
   const handleStoreCreditVoucherCancel = () => {
     setShowStoreCreditVoucherConfirmation(false);
     setPendingCreditVoucherData(null);
+    
+    // Após fechar modal de crédito, verificar se há conteúdo de impressão pendente
+    if (billetsPdf) {
+      setShowBilletPrintConfirmation(true);
+    } else if (pendingPrintContent) {
+      setCachedPrintContent(pendingPrintContent);
+      setShowPrintConfirmation(true);
+      setPendingPrintContent(null);
+    } else {
+      handlePrintComplete();
+    }
   };
 
   const handlePrintComplete = () => {
@@ -854,16 +882,6 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       // Não usar skipPrint para que o backend gere o conteúdo de impressão
       const response = await saleApi.create(saleData);
       
-      // Se houver saldo restante de crédito, mostrar modal de confirmação
-      if (creditUsed > 0 && remainingCreditBalance > 0.01 && storeCreditCustomerId) {
-        setPendingCreditVoucherData({
-          creditUsed,
-          remainingBalance: remainingCreditBalance,
-          customerId: storeCreditCustomerId,
-        });
-        setShowStoreCreditVoucherConfirmation(true);
-      }
-      
       // Extrair ID da venda e conteúdo de impressão da resposta
       const saleData_resp = response.data?.data || response.data;
       const saleId = saleData_resp?.id;
@@ -882,6 +900,35 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       
       setCreatedSaleId(saleId);
 
+      // Se houver saldo restante de crédito, mostrar modal de confirmação PRIMEIRO
+      if (creditUsed > 0 && remainingCreditBalance > 0.01 && storeCreditCustomerId) {
+        // Armazenar dados de impressão para depois do modal de crédito
+        if (billetsPdfBase64) {
+          setBilletsPdf(billetsPdfBase64);
+          if (printContent) {
+            setPendingPrintContent({
+              content: printContent,
+              type: printType,
+            });
+          }
+        } else if (printContent) {
+          setPendingPrintContent({
+            content: printContent,
+            type: printType,
+          });
+        }
+        
+        // Mostrar modal de crédito primeiro
+        setPendingCreditVoucherData({
+          creditUsed,
+          remainingBalance: remainingCreditBalance,
+          customerId: storeCreditCustomerId,
+        });
+        setShowStoreCreditVoucherConfirmation(true);
+        return; // Retornar para não mostrar outros modais ainda
+      }
+
+      // Se não houver crédito restante, seguir fluxo normal
       // Se houver boletos PDF, mostrar modal de confirmação primeiro
       if (billetsPdfBase64) {
         setBilletsPdf(billetsPdfBase64);
