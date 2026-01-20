@@ -27,6 +27,7 @@ import { CreditCardInstallmentModal } from './credit-card-installment-modal';
 import { PrintConfirmationDialog } from './print-confirmation-dialog';
 import { CustomerCopyConfirmationDialog } from './customer-copy-confirmation-dialog';
 import { BilletPrintConfirmationDialog } from './billet-print-confirmation-dialog';
+import { StoreCreditVoucherConfirmationDialog } from './store-credit-voucher-confirmation-dialog';
 import { InstallmentBilletViewer } from '@/components/installments/installment-billet-viewer';
 import { useAuth } from '@/hooks/useAuth';
 import { printContent as printContentService } from '@/lib/print-service';
@@ -84,6 +85,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const [loadingStoreCredit, setLoadingStoreCredit] = useState(false);
   const [useStoreCredit, setUseStoreCredit] = useState(false);
   const [storeCreditAmount, setStoreCreditAmount] = useState<number>(0);
+  const [showStoreCreditVoucherConfirmation, setShowStoreCreditVoucherConfirmation] = useState(false);
+  const [pendingCreditVoucherData, setPendingCreditVoucherData] = useState<{
+    creditUsed: number;
+    remainingBalance: number;
+    customerId: string;
+  } | null>(null);
   const { items, discount, getTotal, getSubtotal, clearCart } = useCartStore();
   const { user, isAuthenticated, api } = useAuth();
 
@@ -530,6 +537,47 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     handlePrintComplete();
   };
 
+  const handleStoreCreditVoucherConfirm = async () => {
+    if (!pendingCreditVoucherData) return;
+    
+    setPrinting(true);
+    try {
+      const voucherData = await api.printRemainingBalanceVoucher({
+        customerId: pendingCreditVoucherData.customerId,
+        amountUsed: pendingCreditVoucherData.creditUsed,
+      });
+      
+      // Se for desktop e tiver conteúdo, imprimir localmente
+      if (voucherData.content && typeof window !== 'undefined' && (window as any).electronAPI?.printers) {
+        const printResult = await printContentService(voucherData.content);
+        
+        if (printResult.success) {
+          toast.success('Comprovante de saldo restante impresso com sucesso!');
+        } else {
+          throw new Error(printResult.error || 'Erro ao imprimir');
+        }
+      } else {
+        // No web, enviar para impressão no servidor
+        toast.success('Comprovante de saldo restante enviado para impressão!');
+      }
+      
+      setShowStoreCreditVoucherConfirmation(false);
+      setPendingCreditVoucherData(null);
+    } catch (voucherError: any) {
+      console.error('[Checkout] Erro ao imprimir comprovante de saldo restante:', voucherError);
+      toast.error('Erro ao imprimir comprovante. Você pode imprimi-lo depois.');
+      setShowStoreCreditVoucherConfirmation(false);
+      setPendingCreditVoucherData(null);
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  const handleStoreCreditVoucherCancel = () => {
+    setShowStoreCreditVoucherConfirmation(false);
+    setPendingCreditVoucherData(null);
+  };
+
   const handleBilletPrintConfirm = () => {
     setShowBilletPrintConfirmation(false);
     setShowBillets(true);
@@ -569,9 +617,11 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     setShowPrintConfirmation(false);
     setShowCustomerCopyConfirmation(false);
     setShowBilletPrintConfirmation(false);
+    setShowStoreCreditVoucherConfirmation(false);
     setCreatedSaleId(null);
     setCustomerCopyContent(null);
     setPendingPrintContent(null);
+    setPendingCreditVoucherData(null);
     onClose();
   };
 
@@ -647,23 +697,29 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       return;
     }
 
-    // Usar validPaymentDetails para cálculos (que é igual a paymentDetails se não houve filtragem)
-    const totalPaid = validPaymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
-    
-    // Calcular crédito a ser usado ANTES da validação
+    // Calcular crédito a ser usado ANTES da validação de pagamentos
     let creditToUse = 0;
     if (useStoreCredit && storeCreditCustomerId && storeCreditBalance > 0) {
+      const totalPaid = validPaymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
       const remainingAfterPayments = total - totalPaid;
       creditToUse = Math.min(storeCreditBalance, Math.max(0, remainingAfterPayments));
     }
     
     // Total pago incluindo crédito
+    const totalPaid = validPaymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
     const totalPaidWithCredit = totalPaid + creditToUse;
     const remainingAmount = total - totalPaidWithCredit;
 
-    // Validar se o valor pago (incluindo crédito) é suficiente (pode ser maior devido ao troco)
+    // Validar se o valor pago (incluindo crédito) é suficiente
+    // Se o crédito cobrir todo o valor, não é necessário ter métodos de pagamento
     if (remainingAmount > 0.01) {
       toast.error(`Valor total dos pagamentos (${formatCurrency(totalPaid)}${creditToUse > 0.01 ? ` + crédito ${formatCurrency(creditToUse)}` : ''} = ${formatCurrency(totalPaidWithCredit)}) deve ser pelo menos igual ao total da venda (${formatCurrency(total)})!`);
+      return;
+    }
+
+    // Se não há métodos de pagamento e o crédito não cobre tudo, exigir método de pagamento
+    if (validPaymentDetails.length === 0 && creditToUse < total) {
+      toast.error('Adicione pelo menos um método de pagamento ou use crédito em loja suficiente para cobrir o valor da venda!');
       return;
     }
 
@@ -815,38 +871,14 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       // Não usar skipPrint para que o backend gere o conteúdo de impressão
       const response = await saleApi.create(saleData);
       
-      // Se houver saldo restante de crédito, perguntar se quer imprimir comprovante
+      // Se houver saldo restante de crédito, mostrar modal de confirmação
       if (creditUsed > 0 && remainingCreditBalance > 0.01 && storeCreditCustomerId) {
-        const shouldPrintVoucher = window.confirm(
-          `Crédito de ${formatCurrency(creditUsed)} foi utilizado na venda.\n\n` +
-          `Saldo restante: ${formatCurrency(remainingCreditBalance)}\n\n` +
-          `Deseja imprimir um comprovante com o saldo restante?`
-        );
-        
-        if (shouldPrintVoucher) {
-          try {
-            const voucherData = await api.printRemainingBalanceVoucher({
-              customerId: storeCreditCustomerId,
-              amountUsed: creditUsed,
-            });
-            
-            // Se for desktop e tiver conteúdo, imprimir localmente
-            if (voucherData.content && typeof window !== 'undefined' && (window as any).electronAPI?.printers) {
-              const printResult = await printContentService(voucherData.content);
-              
-              if (printResult.success) {
-                toast.success('Comprovante de saldo restante impresso com sucesso!');
-              } else {
-                throw new Error(printResult.error || 'Erro ao imprimir');
-              }
-            } else {
-              toast.success('Comprovante de saldo restante enviado para impressão!');
-            }
-          } catch (voucherError: any) {
-            console.error('[Checkout] Erro ao imprimir comprovante de saldo restante:', voucherError);
-            toast.error('Erro ao imprimir comprovante. Você pode imprimi-lo depois.');
-          }
-        }
+        setPendingCreditVoucherData({
+          creditUsed,
+          remainingBalance: remainingCreditBalance,
+          customerId: storeCreditCustomerId,
+        });
+        setShowStoreCreditVoucherConfirmation(true);
       }
       
       // Extrair ID da venda e conteúdo de impressão da resposta
@@ -1316,6 +1348,18 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       onCancel={handleBilletPrintCancel}
       loading={loading}
     />
+
+    {/* Dialog de Confirmação de Comprovante de Crédito */}
+    {pendingCreditVoucherData && (
+      <StoreCreditVoucherConfirmationDialog
+        open={showStoreCreditVoucherConfirmation}
+        onConfirm={handleStoreCreditVoucherConfirm}
+        onCancel={handleStoreCreditVoucherCancel}
+        loading={printing}
+        creditUsed={pendingCreditVoucherData.creditUsed}
+        remainingBalance={pendingCreditVoucherData.remainingBalance}
+      />
+    )}
 
     {/* Dialog de Confirmação de Impressão */}
     <PrintConfirmationDialog
