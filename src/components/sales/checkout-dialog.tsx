@@ -568,6 +568,17 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       toast.error('Erro ao imprimir comprovante. Você pode imprimi-lo depois.');
       setShowStoreCreditVoucherConfirmation(false);
       setPendingCreditVoucherData(null);
+      
+      // Continuar com o fluxo normal de impressão após imprimir o comprovante
+      handleContinueAfterCreditVoucher();
+    } catch (voucherError: any) {
+      console.error('[Checkout] Erro ao imprimir comprovante de saldo restante:', voucherError);
+      toast.error('Erro ao imprimir comprovante. Você pode imprimi-lo depois.');
+      setShowStoreCreditVoucherConfirmation(false);
+      setPendingCreditVoucherData(null);
+      
+      // Continuar com o fluxo normal mesmo se houver erro
+      handleContinueAfterCreditVoucher();
     } finally {
       setPrinting(false);
     }
@@ -576,6 +587,52 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const handleStoreCreditVoucherCancel = () => {
     setShowStoreCreditVoucherConfirmation(false);
     setPendingCreditVoucherData(null);
+    // Continuar com o fluxo normal de impressão após fechar o modal
+    if (createdSaleId) {
+      // Buscar dados da venda novamente para continuar o fluxo
+      handleContinueAfterCreditVoucher();
+    }
+  };
+
+  const handleContinueAfterCreditVoucher = async () => {
+    if (!createdSaleId) return;
+    
+    try {
+      const response = await saleApi.getPrintContent(createdSaleId);
+      const responseData = response.data?.data || response.data;
+      const printContent = responseData?.printContent;
+      const printType = responseData?.printType || 'nfce';
+      const billetsPdfBase64 = responseData?.billetsPdf;
+
+      // Se houver boletos PDF, mostrar modal de confirmação primeiro
+      if (billetsPdfBase64) {
+        setBilletsPdf(billetsPdfBase64);
+        
+        // Se também houver printContent, armazenar para depois dos boletos
+        if (printContent) {
+          setPendingPrintContent({
+            content: printContent,
+            type: printType,
+          });
+        }
+        
+        // Mostrar modal de confirmação de boletos
+        setShowBilletPrintConfirmation(true);
+      } else if (printContent) {
+        // Se não houver boletos mas houver printContent, mostrar modal de confirmação de NFCe/cupom
+        setCachedPrintContent({
+          content: printContent,
+          type: printType,
+        });
+        setShowPrintConfirmation(true);
+      } else {
+        // Sem conteúdo de impressão - apenas finalizar
+        handlePrintComplete();
+      }
+    } catch (error) {
+      console.error('[Checkout] Erro ao buscar conteúdo de impressão:', error);
+      handlePrintComplete();
+    }
   };
 
   const handleBilletPrintConfirm = () => {
@@ -643,11 +700,6 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       }
     }
     
-    if (paymentDetails.length === 0) {
-      toast.error('Adicione pelo menos um método de pagamento!');
-      return;
-    }
-
     // Validações específicas para venda a prazo
     const hasInstallment = hasInstallmentPayment();
     if (hasInstallment) {
@@ -664,8 +716,17 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     // Filtrar métodos com valor zero antes de validar
     const validPaymentDetails = paymentDetails.filter(p => Number(p.amount) >= 0.01);
     
-    if (validPaymentDetails.length === 0) {
-      toast.error('Adicione pelo menos um método de pagamento com valor maior que zero!');
+    // Calcular crédito a ser usado ANTES da validação de pagamentos
+    let creditToUse = 0;
+    if (useStoreCredit && storeCreditCustomerId && storeCreditBalance > 0) {
+      const totalPaid = validPaymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
+      const remainingAfterPayments = total - totalPaid;
+      creditToUse = Math.min(storeCreditBalance, Math.max(0, remainingAfterPayments));
+    }
+    
+    // Se não há métodos de pagamento e o crédito não cobre tudo, exigir método de pagamento
+    if (validPaymentDetails.length === 0 && creditToUse < total) {
+      toast.error('Adicione pelo menos um método de pagamento ou use crédito em loja suficiente para cobrir o valor da venda!');
       return;
     }
     
