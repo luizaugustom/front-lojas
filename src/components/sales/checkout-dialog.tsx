@@ -85,12 +85,6 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const [loadingStoreCredit, setLoadingStoreCredit] = useState(false);
   const [useStoreCredit, setUseStoreCredit] = useState(false);
   const [storeCreditAmount, setStoreCreditAmount] = useState<number>(0);
-  const [showStoreCreditVoucherConfirmation, setShowStoreCreditVoucherConfirmation] = useState(false);
-  const [pendingCreditVoucherData, setPendingCreditVoucherData] = useState<{
-    creditUsed: number;
-    remainingBalance: number;
-    customerId: string;
-  } | null>(null);
   const { items, discount, getTotal, getSubtotal, clearCart } = useCartStore();
   const { user, isAuthenticated, api } = useAuth();
 
@@ -537,99 +531,6 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     handlePrintComplete();
   };
 
-  const handleStoreCreditVoucherConfirm = async () => {
-    if (!pendingCreditVoucherData) return;
-    
-    setPrinting(true);
-    try {
-      const voucherData = await api.printRemainingBalanceVoucher({
-        customerId: pendingCreditVoucherData.customerId,
-        amountUsed: pendingCreditVoucherData.creditUsed,
-      });
-      
-      // Se for desktop e tiver conteúdo, imprimir localmente
-      if (voucherData.content && typeof window !== 'undefined' && (window as any).electronAPI?.printers) {
-        const printResult = await printContentService(voucherData.content);
-        
-        if (printResult.success) {
-          toast.success('Comprovante de saldo restante impresso com sucesso!');
-        } else {
-          throw new Error(printResult.error || 'Erro ao imprimir');
-        }
-      } else {
-        // No web, enviar para impressão no servidor
-        toast.success('Comprovante de saldo restante enviado para impressão!');
-      }
-      
-      setShowStoreCreditVoucherConfirmation(false);
-      setPendingCreditVoucherData(null);
-      
-      // Continuar com o fluxo normal de impressão após imprimir o comprovante
-      handleContinueAfterCreditVoucher();
-    } catch (voucherError: any) {
-      console.error('[Checkout] Erro ao imprimir comprovante de saldo restante:', voucherError);
-      toast.error('Erro ao imprimir comprovante. Você pode imprimi-lo depois.');
-      setShowStoreCreditVoucherConfirmation(false);
-      setPendingCreditVoucherData(null);
-      
-      // Continuar com o fluxo normal mesmo se houver erro
-      handleContinueAfterCreditVoucher();
-    } finally {
-      setPrinting(false);
-    }
-  };
-
-  const handleStoreCreditVoucherCancel = () => {
-    setShowStoreCreditVoucherConfirmation(false);
-    setPendingCreditVoucherData(null);
-    // Continuar com o fluxo normal de impressão após fechar o modal
-    if (createdSaleId) {
-      // Buscar dados da venda novamente para continuar o fluxo
-      handleContinueAfterCreditVoucher();
-    }
-  };
-
-  const handleContinueAfterCreditVoucher = async () => {
-    if (!createdSaleId) return;
-    
-    try {
-      const response = await saleApi.getPrintContent(createdSaleId);
-      const responseData = response.data?.data || response.data;
-      const printContent = responseData?.printContent;
-      const printType = responseData?.printType || 'nfce';
-      const billetsPdfBase64 = responseData?.billetsPdf;
-
-      // Se houver boletos PDF, mostrar modal de confirmação primeiro
-      if (billetsPdfBase64) {
-        setBilletsPdf(billetsPdfBase64);
-        
-        // Se também houver printContent, armazenar para depois dos boletos
-        if (printContent) {
-          setPendingPrintContent({
-            content: printContent,
-            type: printType,
-          });
-        }
-        
-        // Mostrar modal de confirmação de boletos
-        setShowBilletPrintConfirmation(true);
-      } else if (printContent) {
-        // Se não houver boletos mas houver printContent, mostrar modal de confirmação de NFCe/cupom
-        setCachedPrintContent({
-          content: printContent,
-          type: printType,
-        });
-        setShowPrintConfirmation(true);
-      } else {
-        // Sem conteúdo de impressão - apenas finalizar
-        handlePrintComplete();
-      }
-    } catch (error) {
-      console.error('[Checkout] Erro ao buscar conteúdo de impressão:', error);
-      handlePrintComplete();
-    }
-  };
-
   const handleBilletPrintConfirm = () => {
     setShowBilletPrintConfirmation(false);
     setShowBillets(true);
@@ -657,6 +558,39 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     } else {
       handlePrintComplete();
     }
+  };
+
+  const handleStoreCreditVoucherConfirm = async () => {
+    if (!pendingCreditVoucherData) return;
+    
+    setPrinting(true);
+    try {
+      const voucherData = await api.printRemainingBalanceVoucher({
+        customerId: pendingCreditVoucherData.customerId,
+        amountUsed: pendingCreditVoucherData.creditUsed,
+      });
+      
+      // No web, o backend já imprime automaticamente se houver impressora configurada
+      // O endpoint retorna success e content, mas a impressão já foi feita no servidor
+      if (voucherData.success) {
+        toast.success('Comprovante de saldo restante enviado para impressão!');
+      } else {
+        throw new Error(voucherData.error || 'Erro ao imprimir comprovante');
+      }
+    } catch (voucherError: any) {
+      console.error('[Checkout] Erro ao imprimir comprovante de saldo restante:', voucherError);
+      const errorMessage = voucherError?.response?.data?.message || voucherError?.message || 'Erro ao imprimir comprovante. Você pode imprimi-lo depois.';
+      toast.error(errorMessage);
+    } finally {
+      setPrinting(false);
+      setShowStoreCreditVoucherConfirmation(false);
+      setPendingCreditVoucherData(null);
+    }
+  };
+
+  const handleStoreCreditVoucherCancel = () => {
+    setShowStoreCreditVoucherConfirmation(false);
+    setPendingCreditVoucherData(null);
   };
 
   const handlePrintComplete = () => {
@@ -695,6 +629,11 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       }
     }
     
+    if (paymentDetails.length === 0) {
+      toast.error('Adicione pelo menos um método de pagamento!');
+      return;
+    }
+
     // Validações específicas para venda a prazo
     const hasInstallment = hasInstallmentPayment();
     if (hasInstallment) {
@@ -708,60 +647,62 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       }
     }
 
-    // Filtrar métodos com valor zero antes de validar
-    const validPaymentDetails = paymentDetails.filter(p => Number(p.amount) >= 0.01);
+    // Calcular crédito disponível ANTES de validar métodos de pagamento
+    const totalPaid = paymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
+    let creditToUse = 0;
+    if (useStoreCredit && storeCreditCustomerId && storeCreditBalance > 0) {
+      const remainingAfterPayments = total - totalPaid;
+      creditToUse = Math.min(storeCreditBalance, Math.max(0, remainingAfterPayments));
+    }
     
-    // Atualizar paymentDetails para remover métodos zerados
-    if (validPaymentDetails.length !== paymentDetails.length) {
-      setPaymentDetails(validPaymentDetails);
-      // Limpar valores de input dos métodos removidos
-      const newInputValues: Record<number, string> = {};
-      validPaymentDetails.forEach((_, idx) => {
-        const originalIdx = paymentDetails.findIndex(p => 
-          p.method === validPaymentDetails[idx].method && 
-          Math.abs(p.amount - validPaymentDetails[idx].amount) < 0.01
-        );
-        if (originalIdx >= 0 && paymentInputValues[originalIdx] !== undefined) {
-          newInputValues[idx] = paymentInputValues[originalIdx];
-        }
-      });
-      setPaymentInputValues(newInputValues);
-      toast('Métodos de pagamento com valor zero foram removidos automaticamente.', {
-        icon: 'ℹ️',
-        duration: 3000,
-      });
-      return; // Retornar para que o usuário possa revisar
+    // Total pago incluindo crédito
+    const totalPaidWithCredit = totalPaid + creditToUse;
+    const remainingAmount = total - totalPaidWithCredit;
+
+    // Se crédito cobre tudo, não exigir métodos de pagamento
+    if (creditToUse >= total - 0.01) {
+      // Permitir venda apenas com crédito - não precisa validar métodos de pagamento
+    } else {
+      // Filtrar métodos com valor zero antes de validar
+      const validPaymentDetails = paymentDetails.filter(p => Number(p.amount) >= 0.01);
+      
+      if (validPaymentDetails.length === 0) {
+        toast.error('Adicione pelo menos um método de pagamento ou use crédito em loja suficiente para cobrir a venda!');
+        return;
+      }
+      
+      // Atualizar paymentDetails para remover métodos zerados
+      if (validPaymentDetails.length !== paymentDetails.length) {
+        setPaymentDetails(validPaymentDetails);
+        // Limpar valores de input dos métodos removidos
+        const newInputValues: Record<number, string> = {};
+        validPaymentDetails.forEach((_, idx) => {
+          const originalIdx = paymentDetails.findIndex(p => 
+            p.method === validPaymentDetails[idx].method && 
+            Math.abs(p.amount - validPaymentDetails[idx].amount) < 0.01
+          );
+          if (originalIdx >= 0 && paymentInputValues[originalIdx] !== undefined) {
+            newInputValues[idx] = paymentInputValues[originalIdx];
+          }
+        });
+        setPaymentInputValues(newInputValues);
+        toast('Métodos de pagamento com valor zero foram removidos automaticamente.', {
+          icon: 'ℹ️',
+          duration: 3000,
+        });
+        return; // Retornar para que o usuário possa revisar
+      }
+
+      // Validar se o valor pago (incluindo crédito) é suficiente
+      if (remainingAmount > 0.01) {
+        toast.error(`Valor total dos pagamentos (${formatCurrency(totalPaid)}${creditToUse > 0.01 ? ` + crédito ${formatCurrency(creditToUse)}` : ''} = ${formatCurrency(totalPaidWithCredit)}) deve ser pelo menos igual ao total da venda (${formatCurrency(total)})!`);
+        return;
+      }
     }
 
     // Validar se empresa selecionou vendedor
     if (isCompany && !selectedSellerId) {
       toast.error('Selecione um vendedor para realizar a venda!');
-      return;
-    }
-
-    // Calcular crédito a ser usado ANTES da validação de pagamentos
-    let creditToUse = 0;
-    if (useStoreCredit && storeCreditCustomerId && storeCreditBalance > 0) {
-      const totalPaid = validPaymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
-      const remainingAfterPayments = total - totalPaid;
-      creditToUse = Math.min(storeCreditBalance, Math.max(0, remainingAfterPayments));
-    }
-    
-    // Se não há métodos de pagamento e o crédito não cobre tudo, exigir método de pagamento
-    if (validPaymentDetails.length === 0 && creditToUse < total) {
-      toast.error('Adicione pelo menos um método de pagamento ou use crédito em loja suficiente para cobrir o valor da venda!');
-      return;
-    }
-    
-    // Total pago incluindo crédito
-    const totalPaid = validPaymentDetails.reduce((sum, payment) => sum + Number(payment.amount), 0);
-    const totalPaidWithCredit = totalPaid + creditToUse;
-    const remainingAmount = total - totalPaidWithCredit;
-
-    // Validar se o valor pago (incluindo crédito) é suficiente
-    // Se o crédito cobrir todo o valor, não é necessário ter métodos de pagamento
-    if (remainingAmount > 0.01) {
-      toast.error(`Valor total dos pagamentos (${formatCurrency(totalPaid)}${creditToUse > 0.01 ? ` + crédito ${formatCurrency(creditToUse)}` : ''} = ${formatCurrency(totalPaidWithCredit)}) deve ser pelo menos igual ao total da venda (${formatCurrency(total)})!`);
       return;
     }
 
@@ -784,7 +725,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
           };
         }),
         discount: discount > 0 ? roundToCents(discount) : undefined,
-        paymentMethods: validPaymentDetails.map((payment) => {
+        paymentMethods: (creditToUse >= total - 0.01 ? [] : paymentDetails.filter(p => Number(p.amount) >= 0.01)).map((payment) => {
           // Garantir que o valor seja sempre >= 0.01
           const amount = Math.max(Number(payment.amount) || 0, 0.01);
           
@@ -1391,18 +1332,6 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       loading={loading}
     />
 
-    {/* Dialog de Confirmação de Comprovante de Crédito */}
-    {pendingCreditVoucherData && (
-      <StoreCreditVoucherConfirmationDialog
-        open={showStoreCreditVoucherConfirmation}
-        onConfirm={handleStoreCreditVoucherConfirm}
-        onCancel={handleStoreCreditVoucherCancel}
-        loading={printing}
-        creditUsed={pendingCreditVoucherData.creditUsed}
-        remainingBalance={pendingCreditVoucherData.remainingBalance}
-      />
-    )}
-
     {/* Dialog de Confirmação de Impressão */}
     <PrintConfirmationDialog
       open={showPrintConfirmation}
@@ -1425,6 +1354,18 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
         onClose={handleBilletsClose}
         saleId={createdSaleId}
         billetsPdfBase64={billetsPdf || undefined}
+      />
+    )}
+
+    {/* Dialog de Confirmação de Comprovante de Crédito */}
+    {pendingCreditVoucherData && (
+      <StoreCreditVoucherConfirmationDialog
+        open={showStoreCreditVoucherConfirmation}
+        onConfirm={handleStoreCreditVoucherConfirm}
+        onCancel={handleStoreCreditVoucherCancel}
+        loading={printing}
+        creditUsed={pendingCreditVoucherData.creditUsed}
+        remainingBalance={pendingCreditVoucherData.remainingBalance}
       />
     )}
   </>

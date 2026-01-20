@@ -9,7 +9,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { FileText } from 'lucide-react';
+import { Receipt } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils-clean';
 
 interface StoreCreditVoucherConfirmationDialogProps {
   open: boolean;
@@ -34,20 +35,24 @@ export function StoreCreditVoucherConfirmationDialog({
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <FileText className="h-6 w-6 text-primary" />
+              <Receipt className="h-6 w-6 text-primary" />
             </div>
             <DialogTitle className="text-xl">
               Imprimir Comprovante de Saldo Restante?
             </DialogTitle>
           </div>
           <DialogDescription className="text-base mt-2">
-            Crédito de <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(creditUsed)}</strong> foi utilizado na venda.
-            <br />
-            <br />
-            Saldo restante: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(remainingBalance)}</strong>
-            <br />
-            <br />
-            Deseja imprimir um comprovante com o saldo restante?
+            <div className="space-y-2">
+              <p>
+                Crédito utilizado: <span className="font-semibold">{formatCurrency(creditUsed)}</span>
+              </p>
+              <p>
+                Saldo restante: <span className="font-semibold text-primary">{formatCurrency(remainingBalance)}</span>
+              </p>
+              <p className="mt-4">
+                Deseja imprimir um comprovante com o saldo restante de crédito em loja?
+              </p>
+            </div>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">
@@ -63,7 +68,7 @@ export function StoreCreditVoucherConfirmationDialog({
             disabled={loading}
             className="gap-2"
           >
-            <FileText className="h-4 w-4" />
+            <Receipt className="h-4 w-4" />
             {loading ? 'Imprimindo...' : 'Sim, Imprimir'}
           </Button>
         </DialogFooter>
