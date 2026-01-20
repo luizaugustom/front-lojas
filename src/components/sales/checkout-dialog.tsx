@@ -563,11 +563,6 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       
       setShowStoreCreditVoucherConfirmation(false);
       setPendingCreditVoucherData(null);
-    } catch (voucherError: any) {
-      console.error('[Checkout] Erro ao imprimir comprovante de saldo restante:', voucherError);
-      toast.error('Erro ao imprimir comprovante. Você pode imprimi-lo depois.');
-      setShowStoreCreditVoucherConfirmation(false);
-      setPendingCreditVoucherData(null);
       
       // Continuar com o fluxo normal de impressão após imprimir o comprovante
       handleContinueAfterCreditVoucher();
