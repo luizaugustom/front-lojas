@@ -472,7 +472,7 @@ export function CustomerDebtPaymentDialog({
                             onChange={(event) => updateAmount(inst.id, event.target.value)}
                             disabled={!isSelected}
                             inputMode="decimal"
-                            className="appearance-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            className="appearance-none"
                             onFocus={(event) => {
                               if (event.target.value === '0') {
                                 updateAmount(inst.id, '');

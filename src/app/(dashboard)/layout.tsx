@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -13,6 +13,7 @@ import { getAuthToken, getUser } from '@/lib/auth';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, user } = useAuth();
   const { company } = useCompany();
   const { sidebarCollapsed } = useUIStore();
@@ -47,7 +48,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isAuthenticated, isInitializing, router]);
 
-  // Atualizar título da página com nome da empresa
+  // Atualizar título da página com nome da empresa (pathname nas deps para reaplicar a cada navegação, evitando que o metadata do layout raiz sobrescreva)
   useEffect(() => {
     if (isAuthenticated && user && company?.name) {
       document.title = `Sistema ${company.name}`;
@@ -55,7 +56,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // Se ainda não carregou a empresa, manter título padrão temporariamente
       document.title = 'Sistema Montshop - Gestão Lojas';
     }
-  }, [isAuthenticated, user, company?.name]);
+  }, [isAuthenticated, user, company?.name, pathname]);
 
   // Verificar se deve mostrar o modal de conversão do plano TRIAL
   useEffect(() => {

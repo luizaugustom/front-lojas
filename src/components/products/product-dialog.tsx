@@ -705,13 +705,10 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                 min="0"
                 placeholder="0.00"
                 {...register('price', { 
-                  valueAsNumber: true,
-                  onBlur: (e) => {
-                    // Se o campo estiver vazio ao sair, definir como 0
-                    if (e.target.value === '') {
-                      e.target.value = '0';
-                    }
-                  }
+                  setValueAs: (v) =>
+                    v === '' || v === undefined
+                      ? undefined
+                      : (isNaN(Number(v)) ? undefined : Number(v)),
                 })}
                 onFocus={(e) => {
                   // Se o valor for 0, limpar o campo ao focar
@@ -720,7 +717,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   }
                 }}
                 disabled={loading}
-                className="text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="text-foreground"
               />
               {errors.price && (
                 <p className="text-sm text-destructive">{errors.price.message}</p>
@@ -736,13 +733,10 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                 min="0"
                 placeholder="0.00"
                 {...register('costPrice', { 
-                  valueAsNumber: true,
-                  onBlur: (e) => {
-                    // Se o campo estiver vazio ao sair, limpar
-                    if (e.target.value === '') {
-                      setValue('costPrice', undefined);
-                    }
-                  }
+                  setValueAs: (v) =>
+                    v === '' || v === undefined
+                      ? undefined
+                      : (isNaN(Number(v)) ? undefined : Number(v)),
                 })}
                 onFocus={(e) => {
                   // Se o valor for 0, limpar o campo ao focar
@@ -751,7 +745,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   }
                 }}
                 disabled={loading}
-                className="text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="text-foreground"
               />
               {errors.costPrice && (
                 <p className="text-sm text-destructive">{errors.costPrice.message}</p>
@@ -766,13 +760,10 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                 min="0"
                 placeholder="0"
                 {...register('stockQuantity', { 
-                  valueAsNumber: true,
-                  onBlur: (e) => {
-                    // Se o campo estiver vazio ao sair, definir como 0
-                    if (e.target.value === '') {
-                      e.target.value = '0';
-                    }
-                  }
+                  setValueAs: (v) =>
+                    v === '' || v === undefined
+                      ? undefined
+                      : (isNaN(Number(v)) ? undefined : Number(v)),
                 })}
                 onFocus={(e) => {
                   // Se o valor for 0, limpar o campo ao focar
@@ -781,7 +772,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   }
                 }}
                 disabled={loading}
-                className="text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="text-foreground"
               />
               {errors.stockQuantity && (
                 <p className="text-sm text-destructive">{errors.stockQuantity.message}</p>

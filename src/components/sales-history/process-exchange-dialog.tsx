@@ -550,7 +550,7 @@ export function ProcessExchangeDialog({
                             max={maxAvailable}
                             inputMode="numeric"
                             pattern="[0-9]*"
-                            className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            className=""
                             value={selectedQuantity === 0 ? '' : selectedQuantity}
                             onChange={(event) =>
                               handleChangeReturnedQuantity(
@@ -784,7 +784,7 @@ export function ProcessExchangeDialog({
                             step="0.01"
                             inputMode="decimal"
                             pattern="[0-9]*[.,]?[0-9]*"
-                            className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            className=""
                             value={entry.amount === 0 ? '' : entry.amount}
                             onChange={(event) =>
                               handleUpdatePayment(
@@ -886,7 +886,7 @@ export function ProcessExchangeDialog({
                             step="0.01"
                             inputMode="decimal"
                             pattern="[0-9]*[.,]?[0-9]*"
-                            className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            className=""
                             value={entry.amount === 0 ? '' : entry.amount}
                             onChange={(event) =>
                               handleUpdatePayment(

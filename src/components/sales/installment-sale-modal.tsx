@@ -388,6 +388,10 @@ export function InstallmentSaleModal({
 
     // Validar limite de parcelas
     const maxInstallments = companyConfig?.maxInstallments ?? 12;
+    if (maxInstallments === 0) {
+      toast.error('Vendas a prazo estão desabilitadas para esta empresa (limite de parcelas = 0)');
+      return;
+    }
     if (installments < 1 || installments > maxInstallments) {
       toast.error(`Número de parcelas deve estar entre 1 e ${maxInstallments}`);
       return;
@@ -594,7 +598,7 @@ export function InstallmentSaleModal({
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: Math.max(1, Math.min(companyConfig?.maxInstallments ?? 12, 24)) }, (_, i) => i + 1).map((num) => (
+                      {Array.from({ length: Math.max(1, Math.min(Math.max(0, companyConfig?.maxInstallments ?? 12), 24)) }, (_, i) => i + 1).map((num) => (
                         <SelectItem key={num} value={num.toString()}>
                           {num}x
                         </SelectItem>

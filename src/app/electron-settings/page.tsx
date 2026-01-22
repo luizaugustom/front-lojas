@@ -11,7 +11,11 @@ import { toast } from 'react-hot-toast';
 
 export default function ElectronSettingsPage() {
   const router = useRouter();
-  const [config, setConfig] = useState({
+  const [config, setConfig] = useState<{
+    url: string;
+    timeout?: number;
+    retryAttempts?: number;
+  }>({
     url: '',
     timeout: 30000,
     retryAttempts: 3,
@@ -43,7 +47,11 @@ export default function ElectronSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const result = await setApiConfig(config);
+      const result = await setApiConfig({
+        ...config,
+        timeout: config.timeout ?? 30000,
+        retryAttempts: config.retryAttempts ?? 3,
+      });
       if (result.success) {
         toast.success('Configuração salva com sucesso');
       } else {
@@ -96,10 +104,12 @@ export default function ElectronSettingsPage() {
             <Input
               id="timeout"
               type="number"
-              value={config.timeout}
-              onChange={(e) =>
-                setConfig({ ...config, timeout: parseInt(e.target.value) || 30000 })
-              }
+              value={config.timeout ?? ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                const n = v === '' ? undefined : parseInt(v, 10);
+                setConfig({ ...config, timeout: v === '' ? undefined : (isNaN(n as number) ? undefined : n) });
+              }}
             />
             <p className="text-sm text-gray-500">
               Tempo máximo de espera para requisições (em milissegundos)
@@ -113,10 +123,12 @@ export default function ElectronSettingsPage() {
               type="number"
               min="0"
               max="5"
-              value={config.retryAttempts}
-              onChange={(e) =>
-                setConfig({ ...config, retryAttempts: parseInt(e.target.value) || 3 })
-              }
+              value={config.retryAttempts ?? ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                const n = v === '' ? undefined : parseInt(v, 10);
+                setConfig({ ...config, retryAttempts: v === '' ? undefined : (isNaN(n as number) ? undefined : n) });
+              }}
             />
             <p className="text-sm text-gray-500">
               Número de tentativas em caso de falha na requisição

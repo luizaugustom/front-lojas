@@ -2,19 +2,32 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, Upload, X, Image, MessageSquare, Store, ExternalLink, Percent, CreditCard } from 'lucide-react';
+import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, Upload, X, Image, MessageSquare, Store, ExternalLink, Percent, CreditCard, Plus, Edit2, Trash2, AlertCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import { handleApiError } from '@/lib/handleApiError';
-import { companyApi, adminApi } from '@/lib/api-endpoints';
+import { companyApi, adminApi, cardAcquirerRateApi } from '@/lib/api-endpoints';
 import { getImageUrl } from '@/lib/image-utils';
 import { useUIStore } from '@/store/ui-store';
+import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
+import { getAcquirerList } from '@/lib/acquirer-cnpj-list';
 
 const PUBLIC_SITE_URL = (process.env.NEXT_PUBLIC_PUBLIC_SITE_URL || 'https://montshop.vercel.app').replace(/\/+$/, '');
 
@@ -117,13 +130,42 @@ export default function SettingsPage() {
 
   // Estado das configurações de parcelamento
   const [installmentConfig, setInstallmentConfig] = useState<{
-    installmentInterestRates: Record<string, number>;
-    maxInstallments: number;
+    installmentInterestRates: Record<string, number | undefined>;
+    maxInstallments: number | undefined;
   }>({
     installmentInterestRates: {},
     maxInstallments: 12,
   });
   const [savingInstallmentConfig, setSavingInstallmentConfig] = useState(false);
+
+  // Estado das taxas de cartão
+  interface CardAcquirerRate {
+    id: string;
+    acquirerCnpj: string;
+    acquirerName: string;
+    debitRate: number;
+    creditRate: number;
+    installmentRates: Record<string, number>;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }
+  const [cardRates, setCardRates] = useState<CardAcquirerRate[]>([]);
+  const [loadingCardRates, setLoadingCardRates] = useState(false);
+  const [showCardRateDialog, setShowCardRateDialog] = useState(false);
+  const [editingCardRate, setEditingCardRate] = useState<CardAcquirerRate | null>(null);
+  const [cardRateFormData, setCardRateFormData] = useState({
+    acquirerCnpj: '',
+    acquirerName: '',
+    debitRate: 0,
+    creditRate: 0,
+    installmentRates: {} as Record<string, number>,
+    isActive: true,
+  });
+  const [savingCardRate, setSavingCardRate] = useState(false);
+  const [editingInstallments, setEditingInstallments] = useState(false);
+  const [newInstallmentCount, setNewInstallmentCount] = useState(2);
+  const [newInstallmentRate, setNewInstallmentRate] = useState(0);
 
 
   // Carregar dados da empresa (incluindo plano)
@@ -201,6 +243,7 @@ export default function SettingsPage() {
         loadCatalogPageConfig();
         loadFiscalConfig();
         loadInstallmentConfig();
+        loadCardRates();
       } else if (user.role === 'admin') {
         loadAdminFocusNfeConfig();
       }
@@ -779,22 +822,26 @@ export default function SettingsPage() {
   const handleSaveInstallmentConfig = async () => {
     // Validações
     for (const [parcela, taxa] of Object.entries(installmentConfig.installmentInterestRates)) {
-      if (taxa < 0 || taxa > 100) {
+      if (taxa != null && (taxa < 0 || taxa > 100)) {
         toast.error(`Taxa de juros da parcela ${parcela} deve estar entre 0% e 100%`);
         return;
       }
     }
 
-    if (installmentConfig.maxInstallments < 1 || installmentConfig.maxInstallments > 24) {
-      toast.error('Limite de parcelas deve estar entre 1 e 24');
+    const maxInstallmentsToSave = installmentConfig.maxInstallments ?? 12;
+    if (maxInstallmentsToSave < 0 || maxInstallmentsToSave > 24) {
+      toast.error('Limite de parcelas deve estar entre 0 e 24');
       return;
     }
 
     try {
       setSavingInstallmentConfig(true);
+      const ratesToSave = Object.fromEntries(
+        Object.entries(installmentConfig.installmentInterestRates).map(([k, v]) => [k, v ?? 0])
+      );
       await companyApi.updateMyCompany({
-        installmentInterestRates: installmentConfig.installmentInterestRates,
-        maxInstallments: installmentConfig.maxInstallments,
+        installmentInterestRates: ratesToSave,
+        maxInstallments: maxInstallmentsToSave,
       });
       toast.success('Configurações de parcelamento salvas com sucesso!');
       await loadInstallmentConfig();
@@ -807,7 +854,7 @@ export default function SettingsPage() {
   };
 
   // Atualizar taxa de juros de uma parcela específica
-  const updateInstallmentRate = (parcela: number, taxa: number) => {
+  const updateInstallmentRate = (parcela: number, taxa: number | undefined) => {
     setInstallmentConfig({
       ...installmentConfig,
       installmentInterestRates: {
@@ -815,6 +862,130 @@ export default function SettingsPage() {
         [parcela.toString()]: taxa,
       },
     });
+  };
+
+  // Funções para gerenciar taxas de cartão
+  const loadCardRates = async () => {
+    try {
+      setLoadingCardRates(true);
+      const response = await cardAcquirerRateApi.list();
+      setCardRates(response.data.data || response.data || []);
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setLoadingCardRates(false);
+    }
+  };
+
+  const handleOpenCardRateDialog = (rate?: CardAcquirerRate) => {
+    if (rate) {
+      setEditingCardRate(rate);
+      setCardRateFormData({
+        acquirerCnpj: rate.acquirerCnpj,
+        acquirerName: rate.acquirerName,
+        debitRate: rate.debitRate,
+        creditRate: rate.creditRate,
+        installmentRates: rate.installmentRates || {},
+        isActive: rate.isActive,
+      });
+    } else {
+      setEditingCardRate(null);
+      setCardRateFormData({
+        acquirerCnpj: '',
+        acquirerName: '',
+        debitRate: 0,
+        creditRate: 0,
+        installmentRates: {},
+        isActive: true,
+      });
+    }
+    setEditingInstallments(false);
+    setShowCardRateDialog(true);
+  };
+
+  const handleCloseCardRateDialog = () => {
+    setShowCardRateDialog(false);
+    setEditingCardRate(null);
+    setCardRateFormData({
+      acquirerCnpj: '',
+      acquirerName: '',
+      debitRate: 0,
+      creditRate: 0,
+      installmentRates: {},
+      isActive: true,
+    });
+  };
+
+  const handleAcquirerChange = (cnpj: string) => {
+    setCardRateFormData({ ...cardRateFormData, acquirerCnpj: cnpj });
+    const acquirer = getAcquirerList().find(a => a.cnpj === cnpj);
+    if (acquirer) {
+      setCardRateFormData({ ...cardRateFormData, acquirerCnpj: cnpj, acquirerName: acquirer.name });
+    }
+  };
+
+  const handleSaveCardRate = async () => {
+    if (!cardRateFormData.acquirerCnpj || !cardRateFormData.acquirerName) {
+      toast.error('CNPJ e nome da credenciadora são obrigatórios');
+      return;
+    }
+
+    try {
+      setSavingCardRate(true);
+      if (editingCardRate) {
+        await cardAcquirerRateApi.update(editingCardRate.id, cardRateFormData);
+        toast.success('Taxa atualizada com sucesso');
+      } else {
+        await cardAcquirerRateApi.create(cardRateFormData);
+        toast.success('Taxa criada com sucesso');
+      }
+      handleCloseCardRateDialog();
+      loadCardRates();
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setSavingCardRate(false);
+    }
+  };
+
+  const handleDeleteCardRate = async (id: string) => {
+    if (!confirm('Tem certeza que deseja remover esta taxa?')) {
+      return;
+    }
+
+    try {
+      await cardAcquirerRateApi.delete(id);
+      toast.success('Taxa removida com sucesso');
+      loadCardRates();
+    } catch (error) {
+      handleApiError(error);
+    }
+  };
+
+  const handleAddInstallmentRate = () => {
+    if (newInstallmentCount < 2 || newInstallmentCount > 24) {
+      toast.error('Número de parcelas deve estar entre 2 e 24');
+      return;
+    }
+    if (newInstallmentRate < 0 || newInstallmentRate > 100) {
+      toast.error('Taxa deve estar entre 0% e 100%');
+      return;
+    }
+    setCardRateFormData({
+      ...cardRateFormData,
+      installmentRates: {
+        ...cardRateFormData.installmentRates,
+        [newInstallmentCount.toString()]: newInstallmentRate,
+      },
+    });
+    setNewInstallmentCount(2);
+    setNewInstallmentRate(0);
+  };
+
+  const handleRemoveInstallmentRate = (count: string) => {
+    const newRates = { ...cardRateFormData.installmentRates };
+    delete newRates[count];
+    setCardRateFormData({ ...cardRateFormData, installmentRates: newRates });
   };
 
   // Desativar/ativar catálogo ao clicar no toggle
@@ -888,8 +1059,10 @@ export default function SettingsPage() {
             <a href="#dados-fiscais"><Button variant="outline" size="sm">Dados Fiscais</Button></a>
             <a href="#certificado-digital"><Button variant="outline" size="sm">Certificado Digital</Button></a>
             <a href="#catalogo-titulo"><Button variant="outline" size="sm">Catálogo</Button></a>
+            <a href="#mensagem-cobranca"><Button variant="outline" size="sm">Mensagem de Cobrança</Button></a>
+            <a href="#parcelamento"><Button variant="outline" size="sm">Configurações de Parcelamento</Button></a>
+            <a href="#taxas-cartao"><Button variant="outline" size="sm">Taxas de Cartão</Button></a>
             <a href="#notificacoes-fim"><Button variant="outline" size="sm">Notificações</Button></a>
-            <Link href="/settings/card-rates"><Button variant="outline" size="sm">Taxas de Cartão</Button></Link>
           </div>
         </nav>
       )}
@@ -1184,7 +1357,7 @@ export default function SettingsPage() {
 
         {/* Mensagens Automáticas - Apenas para Empresas */}
         {user?.role === 'empresa' && (
-          <Card>
+          <Card id="mensagem-cobranca" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5" />
@@ -1860,23 +2033,26 @@ export default function SettingsPage() {
                   <Input
                     id="maxInstallments"
                     type="number"
-                    min="1"
+                    min="0"
                     max="24"
-                    value={installmentConfig.maxInstallments}
-                    onChange={(e) =>
+                    value={installmentConfig.maxInstallments ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const n = v === '' ? undefined : parseInt(v, 10);
                       setInstallmentConfig({
                         ...installmentConfig,
-                        maxInstallments: parseInt(e.target.value) || 12,
-                      })
-                    }
+                        maxInstallments: v === '' ? undefined : (isNaN(n as number) ? undefined : n),
+                      });
+                    }}
                     placeholder="12"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Número máximo de parcelas permitidas para vendas a prazo. Padrão: 12 parcelas.
+                    Número máximo de parcelas permitidas para vendas a prazo. Use 0 para desabilitar vendas a prazo. Padrão: 12 parcelas.
                   </p>
                 </div>
 
                 {/* Tabela de Juros por Parcela */}
+                {(installmentConfig.maxInstallments ?? 12) > 0 && (
                 <div className="space-y-2">
                   <Label>Taxas de Juros por Parcela (%)</Label>
                   <div className="border rounded-lg overflow-hidden">
@@ -1888,7 +2064,7 @@ export default function SettingsPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {Array.from({ length: installmentConfig.maxInstallments }, (_, i) => i + 1).map((parcela) => (
+                        {Array.from({ length: installmentConfig.maxInstallments ?? 12 }, (_, i) => i + 1).map((parcela) => (
                           <TableRow key={parcela}>
                             <TableCell className="font-medium">{parcela}x</TableCell>
                             <TableCell>
@@ -1898,10 +2074,11 @@ export default function SettingsPage() {
                                   min="0"
                                   max="100"
                                   step="0.01"
-                                  value={installmentConfig.installmentInterestRates[parcela.toString()] ?? 0}
+                                  value={installmentConfig.installmentInterestRates[parcela.toString()] ?? ''}
                                   onChange={(e) => {
-                                    const taxa = parseFloat(e.target.value) || 0;
-                                    updateInstallmentRate(parcela, taxa);
+                                    const v = e.target.value;
+                                    const n = parseFloat(v);
+                                    updateInstallmentRate(parcela, v === '' ? undefined : (isNaN(n) ? undefined : n));
                                   }}
                                   placeholder="0.00"
                                   className="w-32"
@@ -1918,6 +2095,7 @@ export default function SettingsPage() {
                     Configure a taxa de juros para cada parcela individualmente. Ex: Parcela 1 com 0%, Parcela 2 com 2.5%, etc.
                   </p>
                 </div>
+                )}
               </div>
 
               <Button
@@ -2122,6 +2300,291 @@ export default function SettingsPage() {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Taxas de Cartão - Apenas para Empresas */}
+        {user?.role === 'empresa' && (
+          <Card id="taxas-cartao" className="scroll-mt-24">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Taxas de Máquina de Cartão
+              </CardTitle>
+              <CardDescription>
+                Configure as taxas por credenciadora para cálculo do lucro líquido
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {loadingCardRates ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">Carregando...</p>
+                </div>
+              ) : cardRates.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <CreditCard className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-4">Nenhuma taxa configurada</p>
+                  <Button onClick={() => handleOpenCardRateDialog()}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Primeira Taxa
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-end">
+                    <Button onClick={() => handleOpenCardRateDialog()}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nova Taxa
+                    </Button>
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Credenciadora</TableHead>
+                        <TableHead>CNPJ</TableHead>
+                        <TableHead>Débito</TableHead>
+                        <TableHead>Crédito à Vista</TableHead>
+                        <TableHead>Parcelado</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cardRates.map((rate) => (
+                        <TableRow key={rate.id}>
+                          <TableCell className="font-medium">{rate.acquirerName}</TableCell>
+                          <TableCell className="font-mono text-xs">{rate.acquirerCnpj}</TableCell>
+                          <TableCell>{rate.debitRate.toFixed(2)}%</TableCell>
+                          <TableCell>{rate.creditRate.toFixed(2)}%</TableCell>
+                          <TableCell>
+                            {Object.keys(rate.installmentRates || {}).length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {Object.entries(rate.installmentRates || {})
+                                  .sort(([a], [b]) => Number(a) - Number(b))
+                                  .slice(0, 3)
+                                  .map(([count, rate]) => (
+                                    <Badge key={count} variant="outline">
+                                      {count}x: {rate.toFixed(2)}%
+                                    </Badge>
+                                  ))}
+                                {Object.keys(rate.installmentRates || {}).length > 3 && (
+                                  <Badge variant="outline">
+                                    +{Object.keys(rate.installmentRates || {}).length - 3}
+                                  </Badge>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={rate.isActive ? 'default' : 'secondary'}>
+                              {rate.isActive ? 'Ativa' : 'Inativa'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenCardRateDialog(rate)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteCardRate(rate.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </>
+              )}
+
+              <Dialog open={showCardRateDialog} onOpenChange={setShowCardRateDialog}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingCardRate ? 'Editar Taxa' : 'Nova Taxa de Credenciadora'}
+                    </DialogTitle>
+                    <DialogDescription>
+                      Configure as taxas para débito, crédito à vista e parcelado
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="acquirerCnpj">CNPJ da Credenciadora *</Label>
+                        <AcquirerCnpjSelect
+                          value={cardRateFormData.acquirerCnpj}
+                          onChange={handleAcquirerChange}
+                          disabled={!!editingCardRate}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="acquirerName">Nome da Credenciadora *</Label>
+                        <Input
+                          id="acquirerName"
+                          value={cardRateFormData.acquirerName}
+                          onChange={(e) => setCardRateFormData({ ...cardRateFormData, acquirerName: e.target.value })}
+                          placeholder="Ex: Cielo, Stone, etc."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="debitRate">Taxa Débito (%) *</Label>
+                        <Input
+                          id="debitRate"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          value={cardRateFormData.debitRate}
+                          onChange={(e) =>
+                            setCardRateFormData({ ...cardRateFormData, debitRate: Number(e.target.value) })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="creditRate">Taxa Crédito à Vista (%) *</Label>
+                        <Input
+                          id="creditRate"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          value={cardRateFormData.creditRate}
+                          onChange={(e) =>
+                            setCardRateFormData({ ...cardRateFormData, creditRate: Number(e.target.value) })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Taxas por Número de Parcelas</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingInstallments(!editingInstallments)}
+                        >
+                          {editingInstallments ? 'Ocultar' : 'Gerenciar'}
+                        </Button>
+                      </div>
+
+                      {editingInstallments && (
+                        <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                          <div className="grid grid-cols-3 gap-2">
+                            <Input
+                              type="number"
+                              placeholder="Parcelas (2-24)"
+                              min="2"
+                              max="24"
+                              value={newInstallmentCount}
+                              onChange={(e) => setNewInstallmentCount(Number(e.target.value))}
+                            />
+                            <Input
+                              type="number"
+                              placeholder="Taxa (%)"
+                              step="0.01"
+                              min="0"
+                              max="100"
+                              value={newInstallmentRate}
+                              onChange={(e) => setNewInstallmentRate(Number(e.target.value))}
+                            />
+                            <Button type="button" onClick={handleAddInstallmentRate}>
+                              Adicionar
+                            </Button>
+                          </div>
+
+                          {Object.keys(cardRateFormData.installmentRates).length > 0 && (
+                            <div className="space-y-2">
+                              <Label className="text-sm">Taxas Configuradas:</Label>
+                              <div className="flex flex-wrap gap-2">
+                                {Object.entries(cardRateFormData.installmentRates)
+                                  .sort(([a], [b]) => Number(a) - Number(b))
+                                  .map(([count, rate]) => (
+                                    <Badge
+                                      key={count}
+                                      variant="outline"
+                                      className="flex items-center gap-1"
+                                    >
+                                      {count}x: {rate.toFixed(2)}%
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveInstallmentRate(count)}
+                                        className="ml-1 hover:text-destructive"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    </Badge>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {!editingInstallments && Object.keys(cardRateFormData.installmentRates).length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(cardRateFormData.installmentRates)
+                            .sort(([a], [b]) => Number(a) - Number(b))
+                            .slice(0, 5)
+                            .map(([count, rate]) => (
+                              <Badge key={count} variant="outline">
+                                {count}x: {rate.toFixed(2)}%
+                              </Badge>
+                            ))}
+                          {Object.keys(cardRateFormData.installmentRates).length > 5 && (
+                            <Badge variant="outline">
+                              +{Object.keys(cardRateFormData.installmentRates).length - 5}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="isActive"
+                        checked={cardRateFormData.isActive}
+                        onCheckedChange={(checked) => setCardRateFormData({ ...cardRateFormData, isActive: checked })}
+                      />
+                      <Label htmlFor="isActive">Taxa ativa</Label>
+                    </div>
+
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        As taxas são aplicadas automaticamente no cálculo do lucro líquido. Para crédito
+                        parcelado, a taxa será aplicada de acordo com o número de parcelas configurado.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+
+                  <DialogFooter>
+                    <Button variant="outline" onClick={handleCloseCardRateDialog} disabled={savingCardRate}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleSaveCardRate} disabled={savingCardRate}>
+                      {savingCardRate ? 'Salvando...' : editingCardRate ? 'Atualizar' : 'Criar'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         )}

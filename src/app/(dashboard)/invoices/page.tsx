@@ -30,8 +30,8 @@ interface FiscalDoc {
 
 interface NFeItem {
   description: string;
-  quantity: number;
-  unitPrice: number;
+  quantity: number | null;
+  unitPrice: number | null;
   ncm: string;
   cfop: string;
   unitOfMeasure: string;
@@ -184,7 +184,7 @@ export default function InvoicesPage() {
   };
 
   const calculateTotal = () => {
-    return items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    return items.reduce((sum, item) => sum + ((item.quantity ?? 0) * (item.unitPrice ?? 0)), 0);
   };
 
   const addProductsToItems = () => {
@@ -319,11 +319,11 @@ export default function InvoicesPage() {
           toast.error(`Item ${i + 1}: Informe a descrição do produto/serviço`);
           return;
         }
-        if (item.quantity <= 0) {
+        if ((item.quantity ?? 0) <= 0) {
           toast.error(`Item ${i + 1}: A quantidade deve ser maior que zero`);
           return;
         }
-        if (item.unitPrice <= 0) {
+        if ((item.unitPrice ?? 0) <= 0) {
           toast.error(`Item ${i + 1}: O valor unitário deve ser maior que zero`);
           return;
         }
@@ -380,8 +380,8 @@ export default function InvoicesPage() {
           
           return {
             description: item.description.trim(),
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
+            quantity: item.quantity ?? 0,
+            unitPrice: item.unitPrice ?? 0,
             ncm: ncmCleaned || undefined,
             cfop: cfopCleaned,
             unitOfMeasure: item.unitOfMeasure.trim(),
@@ -856,8 +856,12 @@ export default function InvoicesPage() {
                             type="number"
                             min="1"
                             step="0.01"
-                            value={item.quantity}
-                            onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                            value={item.quantity ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              const n = parseFloat(v);
+                              updateItem(index, 'quantity', v === '' ? null : (isNaN(n) ? null : n));
+                            }}
                           />
                         </div>
                         <div className="space-y-2">
@@ -866,8 +870,12 @@ export default function InvoicesPage() {
                             type="number"
                             min="0"
                             step="0.01"
-                            value={item.unitPrice}
-                            onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                            value={item.unitPrice ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              const n = parseFloat(v);
+                              updateItem(index, 'unitPrice', v === '' ? null : (isNaN(n) ? null : n));
+                            }}
                           />
                         </div>
                         <div className="space-y-2">
@@ -904,7 +912,7 @@ export default function InvoicesPage() {
                       </div>
 
                       <div className="bg-muted p-2 rounded text-sm">
-                        <strong>Subtotal:</strong> {formatCurrency(item.quantity * item.unitPrice)}
+                        <strong>Subtotal:</strong> {formatCurrency((item.quantity ?? 0) * (item.unitPrice ?? 0))}
                       </div>
                     </div>
                   ))}

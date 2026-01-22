@@ -68,6 +68,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const [printing, setPrinting] = useState(false);
   const [hasValidFiscalConfig, setHasValidFiscalConfig] = useState<boolean | null>(null);
   const [loadingFiscalConfig, setLoadingFiscalConfig] = useState(false);
+  const [companyConfig, setCompanyConfig] = useState<{ maxInstallments?: number }>({ maxInstallments: 12 });
   // Cache do conteúdo de impressão para reimpressão
   const [cachedPrintContent, setCachedPrintContent] = useState<{ content: string | { storeCopy: string; customerCopy: string; isInstallmentSale: boolean }; type: string } | null>(null);
   const [customerCopyContent, setCustomerCopyContent] = useState<string | null>(null);
@@ -108,11 +109,27 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   };
 
 
+  // Carregar configuração da empresa
+  const loadCompanyConfig = async () => {
+    if (!isCompany) return;
+    
+    try {
+      const response = await companyApi.myCompany();
+      setCompanyConfig({
+        maxInstallments: response.data?.maxInstallments ?? 12,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar configuração da empresa:', error);
+      setCompanyConfig({ maxInstallments: 12 });
+    }
+  };
+
   // Carregar vendedores quando o modal abrir e o usuário for empresa
   useEffect(() => {
     if (open && isCompany) {
       loadSellers();
       checkFiscalConfig();
+      loadCompanyConfig();
     }
   }, [open, isCompany]);
 
@@ -1167,11 +1184,19 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                       <SelectValue placeholder="Selecione o método" />
                     </SelectTrigger>
                     <SelectContent>
-                      {paymentMethods.map((method) => (
-                        <SelectItem key={method.value} value={method.value}>
-                          {method.label}
-                        </SelectItem>
-                      ))}
+                      {paymentMethods.map((method) => {
+                        // Desabilitar "A prazo" se maxInstallments for 0
+                        const isDisabled = method.value === 'installment' && (companyConfig.maxInstallments ?? 12) === 0;
+                        return (
+                          <SelectItem 
+                            key={method.value} 
+                            value={method.value}
+                            disabled={isDisabled}
+                          >
+                            {method.label}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1200,10 +1225,10 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                       updatePaymentMethod(index, 'amount', numericValue);
                     }}
                     onBlur={() => {
-                      // Ao perder o foco, garantir que o valor esteja formatado corretamente
+                      // Ao perder o foco, formatar o valor se houver; manter vazio se o usuário apagou
                       const currentValue = paymentInputValues[index] || '';
                       const numericValue = currentValue === '' || currentValue === ',' ? 0 : parseFloat(currentValue.replace(',', '.')) || 0;
-                      setPaymentInputValues({ ...paymentInputValues, [index]: formatAmountInput(numericValue) });
+                      setPaymentInputValues({ ...paymentInputValues, [index]: currentValue === '' || currentValue === ',' ? '' : formatAmountInput(numericValue) });
                       updatePaymentMethod(index, 'amount', numericValue);
                     }}
                     disabled={loading}

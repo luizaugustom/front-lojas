@@ -280,7 +280,7 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
                 max={remainingAmount}
                 placeholder="0,00"
                 style={{ paddingLeft: '2.75rem' }}
-                className="pr-3 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="pr-3"
                 {...(installment && open ? register('amount', {
                   required: 'Valor é obrigatório',
                   min: { value: 0.01, message: 'Valor mínimo é R$ 0,01' },
