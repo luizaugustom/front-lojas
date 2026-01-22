@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, Upload, X, Image, MessageSquare, Store, ExternalLink, Percent, CreditCard } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,8 +116,11 @@ export default function SettingsPage() {
   });
 
   // Estado das configurações de parcelamento
-  const [installmentConfig, setInstallmentConfig] = useState({
-    installmentInterestRate: 0,
+  const [installmentConfig, setInstallmentConfig] = useState<{
+    installmentInterestRates: Record<string, number>;
+    maxInstallments: number;
+  }>({
+    installmentInterestRates: {},
     maxInstallments: 12,
   });
   const [savingInstallmentConfig, setSavingInstallmentConfig] = useState(false);
@@ -756,8 +760,14 @@ export default function SettingsPage() {
     try {
       const response = await authApi.get('/company/my-company');
       const data = response.data;
+      // Inicializar taxas para todas as 24 parcelas se não existir
+      const rates = data?.installmentInterestRates || {};
+      const defaultRates: Record<string, number> = {};
+      for (let i = 1; i <= 24; i++) {
+        defaultRates[i.toString()] = rates[i.toString()] ?? 0;
+      }
       setInstallmentConfig({
-        installmentInterestRate: data?.installmentInterestRate ?? 0,
+        installmentInterestRates: defaultRates,
         maxInstallments: data?.maxInstallments ?? 12,
       });
     } catch (error) {
@@ -768,20 +778,22 @@ export default function SettingsPage() {
   // Salvar configurações de parcelamento
   const handleSaveInstallmentConfig = async () => {
     // Validações
-    if (installmentConfig.installmentInterestRate < 0 || installmentConfig.installmentInterestRate > 100) {
-      toast.error('Taxa de juros deve estar entre 0% e 100%');
-      return;
+    for (const [parcela, taxa] of Object.entries(installmentConfig.installmentInterestRates)) {
+      if (taxa < 0 || taxa > 100) {
+        toast.error(`Taxa de juros da parcela ${parcela} deve estar entre 0% e 100%`);
+        return;
+      }
     }
 
-    if (installmentConfig.maxInstallments < 1) {
-      toast.error('Limite de parcelas deve ser no mínimo 1');
+    if (installmentConfig.maxInstallments < 1 || installmentConfig.maxInstallments > 24) {
+      toast.error('Limite de parcelas deve estar entre 1 e 24');
       return;
     }
 
     try {
       setSavingInstallmentConfig(true);
       await companyApi.updateMyCompany({
-        installmentInterestRate: installmentConfig.installmentInterestRate,
+        installmentInterestRates: installmentConfig.installmentInterestRates,
         maxInstallments: installmentConfig.maxInstallments,
       });
       toast.success('Configurações de parcelamento salvas com sucesso!');
@@ -792,6 +804,17 @@ export default function SettingsPage() {
     } finally {
       setSavingInstallmentConfig(false);
     }
+  };
+
+  // Atualizar taxa de juros de uma parcela específica
+  const updateInstallmentRate = (parcela: number, taxa: number) => {
+    setInstallmentConfig({
+      ...installmentConfig,
+      installmentInterestRates: {
+        ...installmentConfig.installmentInterestRates,
+        [parcela.toString()]: taxa,
+      },
+    });
   };
 
   // Desativar/ativar catálogo ao clicar no toggle
@@ -1829,35 +1852,6 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                {/* Taxa de Juros */}
-                <div className="space-y-2">
-                  <Label htmlFor="installmentInterestRate">
-                    Taxa de Juros por Parcela (%)
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="installmentInterestRate"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={installmentConfig.installmentInterestRate}
-                      onChange={(e) =>
-                        setInstallmentConfig({
-                          ...installmentConfig,
-                          installmentInterestRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="0.00"
-                      className="flex-1"
-                    />
-                    <Percent className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Taxa de juros aplicada em cada parcela. Ex: 2.5% significa que cada parcela terá 2.5% de juros sobre o valor da parcela.
-                  </p>
-                </div>
-
                 {/* Limite de Parcelas */}
                 <div className="space-y-2">
                   <Label htmlFor="maxInstallments">
@@ -1867,6 +1861,7 @@ export default function SettingsPage() {
                     id="maxInstallments"
                     type="number"
                     min="1"
+                    max="24"
                     value={installmentConfig.maxInstallments}
                     onChange={(e) =>
                       setInstallmentConfig({
@@ -1878,6 +1873,49 @@ export default function SettingsPage() {
                   />
                   <p className="text-xs text-muted-foreground">
                     Número máximo de parcelas permitidas para vendas a prazo. Padrão: 12 parcelas.
+                  </p>
+                </div>
+
+                {/* Tabela de Juros por Parcela */}
+                <div className="space-y-2">
+                  <Label>Taxas de Juros por Parcela (%)</Label>
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-24">Parcela</TableHead>
+                          <TableHead>Taxa de Juros (%)</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Array.from({ length: installmentConfig.maxInstallments }, (_, i) => i + 1).map((parcela) => (
+                          <TableRow key={parcela}>
+                            <TableCell className="font-medium">{parcela}x</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="0.01"
+                                  value={installmentConfig.installmentInterestRates[parcela.toString()] ?? 0}
+                                  onChange={(e) => {
+                                    const taxa = parseFloat(e.target.value) || 0;
+                                    updateInstallmentRate(parcela, taxa);
+                                  }}
+                                  placeholder="0.00"
+                                  className="w-32"
+                                />
+                                <Percent className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Configure a taxa de juros para cada parcela individualmente. Ex: Parcela 1 com 0%, Parcela 2 com 2.5%, etc.
                   </p>
                 </div>
               </div>
@@ -1906,8 +1944,9 @@ export default function SettingsPage() {
                   ℹ️ Sobre os Juros em Parcelas
                 </p>
                 <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
-                  <li>• Os juros são aplicados em cada parcela da venda a prazo</li>
-                  <li>• O valor total da venda será atualizado automaticamente para incluir os juros</li>
+                  <li>• Configure taxas de juros diferentes para cada parcela</li>
+                  <li>• Parcelas podem ter 0% de juros (sem juros)</li>
+                  <li>• O valor total da venda será calculado automaticamente com base nas taxas de cada parcela</li>
                   <li>• Os juros aumentam o lucro líquido da empresa</li>
                   <li>• O limite de parcelas será validado ao criar vendas a prazo</li>
                 </ul>

@@ -62,8 +62,8 @@ export function InstallmentSaleModal({
   const [minSearchLength] = useState(3); // Mínimo de 3 caracteres para buscar
   const [lastSearchTerm, setLastSearchTerm] = useState(''); // Controle de busca duplicada
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Controle de carregamento inicial
-  const [companyConfig, setCompanyConfig] = useState<{ installmentInterestRate?: number; maxInstallments?: number }>({
-    installmentInterestRate: 0,
+  const [companyConfig, setCompanyConfig] = useState<{ installmentInterestRates?: Record<string, number>; maxInstallments?: number }>({
+    installmentInterestRates: {},
     maxInstallments: 12,
   });
 
@@ -81,15 +81,16 @@ export function InstallmentSaleModal({
   const loadCompanyConfig = async () => {
     try {
       const response = await api.get('/company/my-company');
+      const rates = response.data?.installmentInterestRates || {};
       setCompanyConfig({
-        installmentInterestRate: response.data?.installmentInterestRate ?? 0,
+        installmentInterestRates: rates,
         maxInstallments: response.data?.maxInstallments ?? 12,
       });
     } catch (error) {
       console.error('Erro ao carregar configurações da empresa:', error);
       // Usar valores padrão em caso de erro
       setCompanyConfig({
-        installmentInterestRate: 0,
+        installmentInterestRates: {},
         maxInstallments: 12,
       });
     }
@@ -352,22 +353,27 @@ export function InstallmentSaleModal({
     }
   };
 
-  const calculateInstallmentValue = () => {
-    const interestRate = companyConfig?.installmentInterestRate ?? 0;
-    if (interestRate > 0) {
-      // Valor da parcela com juros: (valorTotal / numParcelas) * (1 + taxaJuros/100)
-      return (totalAmount / installments) * (1 + interestRate / 100);
-    }
-    return totalAmount / installments;
+  const calculateInstallmentValue = (parcelaNumber: number = 1) => {
+    const interestRates = companyConfig?.installmentInterestRates || {};
+    const interestRate = interestRates[parcelaNumber.toString()] ?? 0;
+    const baseAmount = totalAmount / installments;
+    const installmentAmountRaw = baseAmount * (1 + interestRate / 100);
+    // Arredondar para 2 casas decimais
+    return Math.round(installmentAmountRaw * 100) / 100;
   };
 
   const calculateTotalWithInterest = () => {
-    const interestRate = companyConfig?.installmentInterestRate ?? 0;
-    if (interestRate > 0) {
-      const installmentValueWithInterest = calculateInstallmentValue();
-      return installmentValueWithInterest * installments;
+    const interestRates = companyConfig?.installmentInterestRates || {};
+    let total = 0;
+    for (let i = 1; i <= installments; i++) {
+      const interestRate = interestRates[i.toString()] ?? 0;
+      const baseAmount = totalAmount / installments;
+      const installmentAmountRaw = baseAmount * (1 + interestRate / 100);
+      // Arredondar cada parcela para 2 casas decimais
+      total += Math.round(installmentAmountRaw * 100) / 100;
     }
-    return totalAmount;
+    // Arredondar o total final para 2 casas decimais
+    return Math.round(total * 100) / 100;
   };
 
   const calculateTotalInterest = () => {
@@ -399,7 +405,7 @@ export function InstallmentSaleModal({
 
     const installmentData: InstallmentData = {
       installments,
-      installmentValue: calculateInstallmentValue(),
+      installmentValue: calculateInstallmentValue(1), // Valor da primeira parcela (usado como referência)
       firstDueDate: firstDueDate!,
       description: data.description,
     };
@@ -638,18 +644,23 @@ export function InstallmentSaleModal({
                     <span className="text-muted-foreground">Valor Original:</span>
                     <p className="font-medium">{formatCurrency(totalAmount)}</p>
                   </div>
-                  {companyConfig.installmentInterestRate && companyConfig.installmentInterestRate > 0 && (
-                    <>
-                      <div>
-                        <span className="text-muted-foreground">Juros ({companyConfig.installmentInterestRate}%):</span>
-                        <p className="font-medium text-green-600 dark:text-green-400">+{formatCurrency(calculateTotalInterest())}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Total com Juros:</span>
-                        <p className="font-medium text-primary">{formatCurrency(calculateTotalWithInterest())}</p>
-                      </div>
-                    </>
-                  )}
+                  {(() => {
+                    const interestRates = companyConfig?.installmentInterestRates || {};
+                    const hasAnyInterest = Object.values(interestRates).some(rate => rate > 0);
+                    const totalInterest = calculateTotalInterest();
+                    return hasAnyInterest && totalInterest > 0 ? (
+                      <>
+                        <div>
+                          <span className="text-muted-foreground">Total de Juros:</span>
+                          <p className="font-medium text-green-600 dark:text-green-400">+{formatCurrency(totalInterest)}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Total com Juros:</span>
+                          <p className="font-medium text-primary">{formatCurrency(calculateTotalWithInterest())}</p>
+                        </div>
+                      </>
+                    ) : null;
+                  })()}
                   <div>
                     <span className="text-muted-foreground">Parcelas:</span>
                     <p className="font-medium">{installments}x de {formatCurrency(calculateInstallmentValue())}</p>

@@ -99,6 +99,9 @@ export interface Company {
   // Feature Permissions
   catalogPageAllowed?: boolean;
   autoMessageAllowed?: boolean;
+  // Installment Configuration
+  installmentInterestRates?: Record<string, number>; // Taxas de juros por parcela: { "1": 0, "2": 2.5, "3": 3.0, ... }
+  maxInstallments?: number; // Limite máximo de parcelas
 }
 
 // Admin Types
