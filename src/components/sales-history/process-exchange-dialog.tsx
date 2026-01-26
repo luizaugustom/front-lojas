@@ -16,6 +16,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDebounce } from '@/hooks/useDebounce';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency } from '@/lib/utils';
+import { printContent as printContentService } from '@/lib/print-service';
+import { StoreCreditPrintConfirmationDialog } from './store-credit-print-confirmation-dialog';
 import type {
   Exchange,
   PaymentMethod,
@@ -85,6 +87,9 @@ export function ProcessExchangeDialog({
   const [issueStoreCredit, setIssueStoreCredit] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCreditPrintConfirmation, setShowCreditPrintConfirmation] = useState(false);
+  const [pendingCreditExchange, setPendingCreditExchange] = useState<{ id: string; amount: number; exchange: Exchange } | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const debouncedSearch = useDebounce(searchTerm, 350);
 
@@ -215,6 +220,9 @@ export function ProcessExchangeDialog({
       setRefunds([]);
       setIssueStoreCredit(false);
       setSearchTerm('');
+      setShowCreditPrintConfirmation(false);
+      setPendingCreditExchange(null);
+      setIsPrinting(false);
     }
   }, [open, sale?.id]);
 
@@ -455,29 +463,80 @@ export function ProcessExchangeDialog({
       toast.success('Troca processada com sucesso!');
       
       // Se gerou crédito em loja, oferecer impressão do comprovante
-      if (exchange.storeCreditAmount > 0 && (exchange as any).storeCreditVoucherData) {
-        const shouldPrint = window.confirm(
-          `Crédito em loja de ${formatCurrency(exchange.storeCreditAmount)} gerado com sucesso!\n\nDeseja imprimir o comprovante agora?`
-        );
-        
-        if (shouldPrint) {
-          try {
-            await api.post(`/sale/exchange/${exchange.id}/print-credit-voucher`);
-            toast.success('Comprovante enviado para impressão!');
-          } catch (printError) {
-            console.error('Erro ao imprimir comprovante:', printError);
-            toast.error('Erro ao imprimir comprovante. Você pode imprimi-lo depois.');
-          }
-        }
+      if (exchange.storeCreditAmount > 0) {
+        // Armazenar dados da troca e mostrar modal de confirmação
+        setPendingCreditExchange({
+          id: exchange.id,
+          amount: exchange.storeCreditAmount,
+          exchange,
+        });
+        setShowCreditPrintConfirmation(true);
+        setIsSubmitting(false);
+      } else {
+        // Se não gerou crédito, fechar normalmente
+        setIsSubmitting(false);
+        onSuccess?.(exchange);
+        onClose();
       }
-      
-      onSuccess?.(exchange);
-      onClose();
     } catch (error) {
       handleApiError(error);
-    } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCreditPrintConfirm = async () => {
+    if (!pendingCreditExchange) return;
+    
+    setIsPrinting(true);
+    try {
+      const printResponse = await api.post(`/sale/exchange/${pendingCreditExchange.id}/print-credit-voucher`);
+      const printData = printResponse.data?.data || printResponse.data;
+      
+      // Se o backend retornou conteúdo, imprimir localmente (web)
+      if (printData?.content && typeof printData.content === 'string') {
+        console.log('[ProcessExchange] Imprimindo comprovante localmente...');
+        const printResult = await printContentService(printData.content);
+        
+        if (printResult.success) {
+          toast.success('Comprovante impresso com sucesso!');
+        } else {
+          // Se falhar localmente, o backend já tentou imprimir no servidor
+          toast.success('Comprovante enviado para impressão!');
+        }
+      } else {
+        // Se não retornou conteúdo, o backend já imprimiu no servidor
+        toast.success('Comprovante enviado para impressão!');
+      }
+    } catch (printError: any) {
+      console.error('Erro ao imprimir comprovante:', printError);
+      const errorMessage = printError?.response?.data?.message || printError?.message || 'Erro ao imprimir comprovante. Você pode imprimi-lo depois.';
+      toast.error(errorMessage);
+    } finally {
+      setIsPrinting(false);
+      setShowCreditPrintConfirmation(false);
+      
+      // Fechar o diálogo de troca após imprimir
+      const exchangeToReturn = pendingCreditExchange?.exchange;
+      setPendingCreditExchange(null);
+      
+      if (exchangeToReturn) {
+        onSuccess?.(exchangeToReturn);
+      }
+      onClose();
+    }
+  };
+
+  const handleCreditPrintCancel = () => {
+    setShowCreditPrintConfirmation(false);
+    
+    // Fechar o diálogo de troca normalmente
+    const exchangeToReturn = pendingCreditExchange?.exchange;
+    setPendingCreditExchange(null);
+    
+    if (exchangeToReturn) {
+      onSuccess?.(exchangeToReturn);
+    }
+    onClose();
   };
 
   return (
@@ -972,6 +1031,14 @@ export function ProcessExchangeDialog({
           </div>
         </DialogFooter>
       </DialogContent>
+
+      <StoreCreditPrintConfirmationDialog
+        open={showCreditPrintConfirmation}
+        onConfirm={handleCreditPrintConfirm}
+        onCancel={handleCreditPrintCancel}
+        loading={isPrinting}
+        creditAmount={pendingCreditExchange?.amount || 0}
+      />
     </Dialog>
   );
 }

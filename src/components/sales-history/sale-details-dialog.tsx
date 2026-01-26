@@ -309,8 +309,24 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
                                 className="h-6 px-2 text-xs"
                                 onClick={async () => {
                                   try {
-                                    await api.post(`/sale/exchange/${exchange.id}/print-credit-voucher`);
-                                    toast.success('Comprovante enviado para impressão!');
+                                    const printResponse = await api.post(`/sale/exchange/${exchange.id}/print-credit-voucher`);
+                                    const printData = printResponse.data?.data || printResponse.data;
+                                    
+                                    // Se o backend retornou conteúdo, imprimir localmente (web)
+                                    if (printData?.content && typeof printData.content === 'string') {
+                                      console.log('[SaleDetails] Imprimindo comprovante localmente...');
+                                      const printResult = await printContent(printData.content);
+                                      
+                                      if (printResult.success) {
+                                        toast.success('Comprovante impresso com sucesso!');
+                                      } else {
+                                        // Se falhar localmente, o backend já tentou imprimir no servidor
+                                        toast.success('Comprovante enviado para impressão!');
+                                      }
+                                    } else {
+                                      // Se não retornou conteúdo, o backend já imprimiu no servidor
+                                      toast.success('Comprovante enviado para impressão!');
+                                    }
                                   } catch (error) {
                                     handleApiError(error);
                                   }

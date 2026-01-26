@@ -10,25 +10,23 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Receipt } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils-clean';
+import { formatCurrency } from '@/lib/utils';
 
-interface StoreCreditVoucherConfirmationDialogProps {
+interface StoreCreditPrintConfirmationDialogProps {
   open: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   loading?: boolean;
-  creditUsed: number;
-  remainingBalance: number;
+  creditAmount: number;
 }
 
-export function StoreCreditVoucherConfirmationDialog({
+export function StoreCreditPrintConfirmationDialog({
   open,
   onConfirm,
   onCancel,
   loading = false,
-  creditUsed,
-  remainingBalance,
-}: StoreCreditVoucherConfirmationDialogProps) {
+  creditAmount,
+}: StoreCreditPrintConfirmationDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onCancel}>
       <DialogContent className="max-w-md">
@@ -38,19 +36,19 @@ export function StoreCreditVoucherConfirmationDialog({
               <Receipt className="h-6 w-6 text-primary" />
             </div>
             <DialogTitle className="text-xl">
-              Imprimir Comprovante de Saldo Restante?
+              Imprimir Comprovante de Crédito?
             </DialogTitle>
           </div>
           <DialogDescription className="text-base mt-2">
             <div className="space-y-2">
               <p>
-                Crédito utilizado: <span className="font-semibold">{formatCurrency(creditUsed)}</span>
-              </p>
-              <p>
-                Saldo restante: <span className="font-semibold text-primary">{formatCurrency(remainingBalance)}</span>
+                Crédito em loja de <span className="font-semibold text-primary">{formatCurrency(creditAmount)}</span> gerado com sucesso!
               </p>
               <p className="mt-4">
-                Deseja imprimir um comprovante com o saldo restante de crédito em loja?
+                Deseja imprimir o comprovante agora?
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                O comprovante será enviado para a impressora térmica configurada.
               </p>
             </div>
           </DialogDescription>
@@ -69,13 +67,11 @@ export function StoreCreditVoucherConfirmationDialog({
             className="gap-2"
           >
             <Receipt className="h-4 w-4" />
-            {loading ? 'Imprimindo...' : 'Sim, Imprimir'}
+            {loading ? 'Imprimindo...' : 'Imprimir'}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
-
 
