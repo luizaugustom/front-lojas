@@ -597,9 +597,19 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
         amountUsed: pendingCreditVoucherData.creditUsed,
       });
       
-      // No web, o backend já imprime automaticamente se houver impressora configurada
-      // O endpoint retorna success e content, mas a impressão já foi feita no servidor
-      if (voucherData.success) {
+      // Se o backend retornou conteúdo, imprimir localmente (web)
+      if (voucherData.content && typeof voucherData.content === 'string') {
+        console.log('[Checkout] Imprimindo comprovante de crédito localmente...');
+        const printResult = await printContentService(voucherData.content);
+        
+        if (printResult.success) {
+          toast.success('Comprovante de saldo restante impresso com sucesso!');
+        } else {
+          // Se falhar localmente, o backend já tentou imprimir no servidor
+          toast.success('Comprovante de saldo restante enviado para impressão!');
+        }
+      } else if (voucherData.success) {
+        // Se não retornou conteúdo, o backend já imprimiu no servidor
         toast.success('Comprovante de saldo restante enviado para impressão!');
       } else {
         throw new Error(voucherData.error || 'Erro ao imprimir comprovante');
