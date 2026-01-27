@@ -75,14 +75,14 @@ export function InstallmentProductsDialog({
                           <span className="font-medium">
                             {item.product?.name || 'Produto'}
                           </span>
-                          {item.product?.sku && (
+                          {item.product?.barcode && (
                             <span className="text-xs text-muted-foreground">
-                              SKU: {item.product.sku}
+                              Código de barras: {item.product.barcode}
                             </span>
                           )}
-                          {item.product?.description && (
+                          {item.product?.category && (
                             <span className="text-xs text-muted-foreground mt-1">
-                              {item.product.description}
+                              Categoria: {item.product.category}
                             </span>
                           )}
                         </div>

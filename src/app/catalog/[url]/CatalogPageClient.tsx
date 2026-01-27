@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Phone, MapPin, Package, Search, ChevronDown, MessageCircle, X, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { Phone, Package, Search, ChevronDown, MessageCircle, X, Plus, Minus, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import { getImageUrl } from '@/lib/image-utils';
 import { getRandomVerse } from '@/lib/verses';
@@ -282,12 +282,6 @@ export default function CatalogPageClient() {
                 <h1 className="text-3xl font-bold text-white">
                   {company.name}
                 </h1>
-                {company.address && (
-                  <div className="flex items-center gap-2 mt-2 text-white opacity-90">
-                    <MapPin className="h-4 w-4" />
-                    <span className="text-sm">{company.address}</span>
-                  </div>
-                )}
               </div>
             </div>
 

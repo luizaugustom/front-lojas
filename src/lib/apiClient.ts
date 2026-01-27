@@ -506,9 +506,25 @@ instance.interceptors.response.use(
         originalRequest.headers = originalRequest.headers ?? {};
         (originalRequest.headers as Record<string, string>)['Authorization'] = `Bearer ${newToken}`;
         return instance(originalRequest);
-      } catch (refreshErr) {
+      } catch (refreshErr: any) {
         // Falha no refresh: limpar token, notificar logout e propagar
         clearAccessToken();
+        
+        // Verificar se foi causado por logout automático (token inválido/revogado)
+        const isAutoLogout = refreshErr?.response?.status === 401 && 
+          (refreshErr?.response?.data?.message?.toLowerCase().includes('invalid') ||
+           refreshErr?.response?.data?.message?.toLowerCase().includes('revoked') ||
+           refreshErr?.response?.data?.message?.toLowerCase().includes('expired'));
+        
+        if (isAutoLogout) {
+          // Disparar evento de logout automático que pode ser capturado pelo AuthContext
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth:auto-logout', {
+              detail: { reason: 'login-em-outro-dispositivo' }
+            }));
+          }
+        }
+        
         logoutListeners.forEach((l) => l());
         processRefreshQueue(null);
         return Promise.reject(refreshErr);
@@ -529,22 +545,48 @@ instance.interceptors.response.use(
 );
 
 // APIs de autenticação
+export interface DeviceInfo {
+  deviceId?: string;
+  deviceName?: string;
+}
+
+export interface ActiveSession {
+  id: string;
+  deviceId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  deviceName: string;
+  createdAt: string;
+  expiresAt: string;
+  isCurrent: boolean;
+}
+
 /**
  * POST /auth/login
  * Realizar login no sistema
  * Autenticação: Não requerida
- * Body: { login: string, password: string }
+ * Body: { login: string, password: string, deviceId?: string, deviceName?: string }
  * Resposta: { access_token: string, user: { id, login, role, companyId, name } }
  */
-export async function authLogin(login: string, password: string): Promise<{ access_token: string; user: User }> {
+export async function authLogin(
+  login: string, 
+  password: string, 
+  deviceInfo?: DeviceInfo
+): Promise<{ access_token: string; user: User }> {
   logger.log('[authLogin] Tentando login:', { 
     login, 
     url: `${API_BASE_URL}/auth/login`,
     baseURL: API_BASE_URL,
-    withCredentials: true
+    withCredentials: true,
+    deviceInfo
   });
   try {
-    const res = await instance.post('/auth/login', { login, password });
+    const res = await instance.post('/auth/login', { 
+      login, 
+      password,
+      deviceId: deviceInfo?.deviceId,
+      deviceName: deviceInfo?.deviceName,
+    });
     logger.log('[authLogin] Sucesso:', res.data);
     
     // Normalizar role da API para o frontend
@@ -610,6 +652,39 @@ export async function authRefresh(): Promise<{ access_token: string; user: User 
   }
   
   return data;
+}
+
+/**
+ * GET /auth/sessions
+ * Listar sessões ativas do usuário
+ * Autenticação: Requerida
+ * Resposta: Array de ActiveSession
+ */
+export async function getActiveSessions(): Promise<ActiveSession[]> {
+  const res = await instance.get('/auth/sessions');
+  return res.data;
+}
+
+/**
+ * POST /auth/sessions/:sessionId/revoke
+ * Invalidar uma sessão específica
+ * Autenticação: Requerida
+ * Resposta: { message: string }
+ */
+export async function revokeSession(sessionId: string): Promise<{ message: string }> {
+  const res = await instance.post(`/auth/sessions/${sessionId}/revoke`);
+  return res.data;
+}
+
+/**
+ * POST /auth/sessions/revoke-others
+ * Invalidar todas as outras sessões (exceto a atual)
+ * Autenticação: Requerida
+ * Resposta: { message: string, revokedCount: number }
+ */
+export async function revokeOtherSessions(): Promise<{ message: string; revokedCount: number }> {
+  const res = await instance.post('/auth/sessions/revoke-others');
+  return res.data;
 }
 
 export const api = instance; // Exporta a instância para uso nos componentes

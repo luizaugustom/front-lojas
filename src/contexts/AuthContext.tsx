@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import type { User } from '@/types';
 import {
   authLogin,
@@ -10,6 +11,7 @@ import {
   setAccessToken,
   onAuthRefreshed,
   onAuthLoggedOut,
+  type DeviceInfo,
 } from '@/lib/apiClient';
 import { api } from '@/lib/api'; // ← API com todos os métodos incluindo notificações
 import { removeAuthToken, setUser as setUserStorage, getUser as getUserStorage, setAuthToken as setAuthTokenStorage, getAuthToken as getAuthTokenStorage } from '@/lib/auth';
@@ -91,6 +93,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })();
 
+    // Listener para logout automático (login em outro dispositivo)
+    const handleAutoLogout = (event: CustomEvent) => {
+      if (event.detail?.reason === 'login-em-outro-dispositivo') {
+        console.log('[AuthContext] Logout automático detectado: login em outro dispositivo');
+        // Limpar estado local
+        setAccessToken(null);
+        setToken(null);
+        setUser(null);
+        removeAuthToken();
+        
+        // Mostrar notificação
+        toast.error('Você foi desconectado porque fez login em outro dispositivo');
+      }
+    };
+
     // Listeners de refresh/logout disparados pelos interceptors
     const offRef = onAuthRefreshed(({ user, accessToken }) => {
       setUser(user);
@@ -109,21 +126,94 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       removeAuthToken();
     });
 
+    // Adicionar listener para logout automático
+    if (typeof window !== 'undefined') {
+      window.addEventListener('auth:auto-logout', handleAutoLogout as EventListener);
+    }
+
     return () => {
       mounted = false;
       offRef();
       offOut();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('auth:auto-logout', handleAutoLogout as EventListener);
+      }
+    };
+  }, []);
+
+  const getDeviceInfo = useCallback((): DeviceInfo => {
+    // Gerar ou recuperar deviceId único para este navegador
+    const DEVICE_ID_KEY = 'montshop_device_id';
+    let deviceId = typeof window !== 'undefined' ? localStorage.getItem(DEVICE_ID_KEY) : null;
+    
+    if (!deviceId) {
+      // Gerar um ID único baseado em informações do navegador
+      const fingerprint = [
+        navigator.userAgent,
+        navigator.language,
+        screen.width + 'x' + screen.height,
+        new Date().getTimezoneOffset().toString(),
+        navigator.hardwareConcurrency?.toString() || '',
+      ].join('|');
+      
+      // Hash simples
+      let hash = 0;
+      for (let i = 0; i < fingerprint.length; i++) {
+        const char = fingerprint.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      
+      deviceId = `web_${Math.abs(hash).toString(36)}${Date.now().toString(36)}`;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(DEVICE_ID_KEY, deviceId);
+      }
+    }
+
+    // Gerar nome descritivo do dispositivo
+    const ua = navigator.userAgent.toLowerCase();
+    let browser = 'Navegador';
+    if (ua.includes('chrome') && !ua.includes('edg')) {
+      browser = 'Chrome';
+    } else if (ua.includes('firefox')) {
+      browser = 'Firefox';
+    } else if (ua.includes('safari') && !ua.includes('chrome')) {
+      browser = 'Safari';
+    } else if (ua.includes('edg')) {
+      browser = 'Edge';
+    }
+
+    let os = '';
+    if (ua.includes('windows')) {
+      os = 'Windows';
+    } else if (ua.includes('mac os x') || ua.includes('macintosh')) {
+      os = 'macOS';
+    } else if (ua.includes('linux')) {
+      os = 'Linux';
+    } else if (ua.includes('android')) {
+      os = 'Android';
+    } else if (ua.includes('iphone') || ua.includes('ipad')) {
+      os = 'iOS';
+    }
+
+    const deviceName = os ? `${browser} no ${os}` : browser;
+
+    return {
+      deviceId,
+      deviceName,
     };
   }, []);
 
   const login = useCallback(async (login: string, password: string) => {
     console.log('[AuthContext.login] Iniciando login...', { login, password: '***' });
     try {
-      const data = await authLogin(login, password);
+      const deviceInfo = getDeviceInfo();
+      const data = await authLogin(login, password, deviceInfo);
       console.log('[AuthContext.login] Login bem-sucedido, setando token:', {
         hasToken: !!data.access_token,
         tokenPreview: data.access_token ? `${data.access_token.substring(0, 20)}...` : null,
-        user: data.user
+        user: data.user,
+        deviceInfo,
       });
       setAccessToken(data.access_token);
       setToken(data.access_token);
@@ -133,16 +223,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserStorage(data.user);
       console.log('[AuthContext.login] Token e user setados no contexto e localStorage');
       
-      // Detecção automática de dispositivos removida na versão web
-      // Isso não faz sentido na web, pois requer interação do usuário para selecionar dispositivos
-      // Dispositivos devem ser configurados manualmente através da página de configurações se necessário
-      
       return data.user;
     } catch (error) {
       console.error('[AuthContext.login] Erro no login:', error);
       throw error;
     }
-  }, []);
+  }, [getDeviceInfo]);
 
   const logout = useCallback(async () => {
     console.log('[AuthContext.logout] Iniciando logout...');
