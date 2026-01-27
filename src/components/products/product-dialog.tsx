@@ -88,6 +88,15 @@ function comparePhotoUrls(url1: string, url2: string): boolean {
   return normalized1 === normalized2 || url1 === url2 || url1.includes(normalized2) || url2.includes(normalized1);
 }
 
+// Função para validar e normalizar unitOfMeasure
+function normalizeUnitOfMeasure(value: string | undefined): 'kg' | 'g' | 'ml' | 'l' | 'm' | 'cm' | 'un' {
+  const validUnits: Array<'kg' | 'g' | 'ml' | 'l' | 'm' | 'cm' | 'un'> = ['kg', 'g', 'ml', 'l', 'm', 'cm', 'un'];
+  if (value && validUnits.includes(value as any)) {
+    return value as 'kg' | 'g' | 'ml' | 'l' | 'm' | 'cm' | 'un';
+  }
+  return 'un';
+}
+
 // Função utilitária para garantir conversão correta de dados
 function sanitizeProductData(data: any) {
   const sanitized: any = {
@@ -216,7 +225,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         stockQuantity: product.stockQuantity,
         category: product.category,
         expirationDate: product.expirationDate,
-        unitOfMeasure: product.unitOfMeasure || 'un',
+        unitOfMeasure: normalizeUnitOfMeasure(product.unitOfMeasure),
         ncm: product.ncm || '',
         cfop: product.cfop || '',
         costPrice: product.costPrice ? Number(product.costPrice) : undefined,

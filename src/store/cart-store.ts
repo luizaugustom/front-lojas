@@ -13,6 +13,14 @@ interface CartState {
   getSubtotal: () => number;
 }
 
+// Função auxiliar para obter o preço efetivo do produto (promocional ou normal)
+const getEffectivePrice = (product: Product): number => {
+  if (product.isOnPromotion && product.promotionPrice !== undefined) {
+    return product.promotionPrice;
+  }
+  return Number(product.price);
+};
+
 export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   discount: 0,
@@ -33,6 +41,8 @@ export const useCartStore = create<CartState>((set, get) => ({
     const items = get().items;
     const existingItem = items.find((item) => item.product.id === product.id);
     
+    const effectivePrice = getEffectivePrice(product);
+    
     if (existingItem) {
       set({
         items: items.map((item) =>
@@ -40,7 +50,8 @@ export const useCartStore = create<CartState>((set, get) => ({
             ? {
                 ...item,
                 quantity: item.quantity + quantity,
-                subtotal: (item.quantity + quantity) * Number(product.price),
+                unitPrice: effectivePrice,
+                subtotal: (item.quantity + quantity) * effectivePrice,
               }
             : item
         ),
@@ -50,9 +61,11 @@ export const useCartStore = create<CartState>((set, get) => ({
         items: [
           ...items,
           {
+            productId: product.id,
             product,
             quantity,
-            subtotal: quantity * Number(product.price),
+            unitPrice: effectivePrice,
+            subtotal: quantity * effectivePrice,
           },
         ],
       });
@@ -77,7 +90,8 @@ export const useCartStore = create<CartState>((set, get) => ({
           ? {
               ...item,
               quantity,
-              subtotal: quantity * Number(item.product.price),
+              unitPrice: getEffectivePrice(item.product),
+              subtotal: quantity * getEffectivePrice(item.product),
             }
           : item
       ),

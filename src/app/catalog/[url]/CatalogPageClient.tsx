@@ -16,6 +16,11 @@ interface Product {
   size: string | null;
   category: string | null;
   unitOfMeasure?: string;
+  originalPrice?: string;
+  promotionPrice?: string;
+  promotionDiscount?: number;
+  isOnPromotion?: boolean;
+  promotionName?: string;
 }
 
 interface CatalogData {
@@ -29,6 +34,7 @@ interface CatalogData {
     address: string;
   };
   products: Product[];
+  promotedProducts?: Product[];
 }
 
 export default function CatalogPageClient() {
@@ -233,7 +239,10 @@ export default function CatalogPageClient() {
       `Olá! Tenho interesse nos seguintes produtos da ${company.name}:`,
       '',
       ...cart.map(item => {
-        const unit = Number.parseFloat(item.product.price || '0');
+        // Usar preço promocional se disponível
+        const unit = item.product.isOnPromotion && item.product.promotionPrice
+          ? Number.parseFloat(item.product.promotionPrice)
+          : Number.parseFloat(item.product.price || '0');
         const subtotal = unit * item.quantity;
         return `• ${item.product.name} (${item.quantity} x ${formatBRL(unit)}) = ${formatBRL(subtotal)}`;
       }),
@@ -342,6 +351,86 @@ export default function CatalogPageClient() {
 
       {/* Produtos */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        {/* Seção de Promoções */}
+        {data.promotedProducts && data.promotedProducts.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-bold mb-4 pb-2 border-b-2" style={{ color: '#000000', borderColor: company.brandColor || '#000000' }}>
+              🔥 Promoções
+            </h2>
+            <div className="overflow-x-auto pb-2">
+              <div className="flex gap-3" style={{ minWidth: 'max-content' }}>
+                {data.promotedProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all flex-shrink-0"
+                    style={{ width: '140px' }}
+                  >
+                    {/* Imagem do produto */}
+                    {product.photos && product.photos.length > 0 ? (
+                      <div 
+                        className="relative h-20 bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setEnlargedImage(getImageUrl(product.photos[0]))}
+                      >
+                        <Image
+                          src={getImageUrl(product.photos[0])}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-20 bg-gray-200 flex items-center justify-center">
+                        <Package className="h-6 w-6 text-gray-400" />
+                      </div>
+                    )}
+
+                    {/* Informações do produto */}
+                    <div className="p-2">
+                      <h3 className="font-semibold text-[10px] leading-tight mb-1 line-clamp-2" style={{ color: '#000000' }}>
+                        {product.name}
+                      </h3>
+                      <div className="mt-1">
+                        {product.isOnPromotion && product.promotionPrice ? (
+                          <>
+                            <p className="text-xs font-bold text-red-600">
+                              R$ {parseFloat(product.promotionPrice).toFixed(2).replace('.', ',')}
+                            </p>
+                            <p className="text-[9px] text-gray-500 line-through">
+                              R$ {parseFloat(product.originalPrice || product.price).toFixed(2).replace('.', ',')}
+                            </p>
+                            {product.promotionDiscount && (
+                              <p className="text-[9px] text-red-600 font-semibold mt-0.5">
+                                -{product.promotionDiscount.toFixed(0)}% OFF
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-xs font-bold" style={{ color: company.brandColor || '#3b82f6' }}>
+                            R$ {parseFloat(product.price).toFixed(2).replace('.', ',')}
+                          </p>
+                        )}
+                        {product.stockQuantity > 0 ? (
+                          <p className="text-[9px] text-green-600 mt-0.5">Em estoque</p>
+                        ) : (
+                          <p className="text-[9px] text-red-600 mt-0.5">Indisp</p>
+                        )}
+                        <button
+                          onClick={() => addToCart(product)}
+                          className="mt-1 w-full inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold text-white hover:opacity-90 transition"
+                          style={{ backgroundColor: company.brandColor || '#3b82f6' }}
+                          aria-label="Adicionar ao carrinho"
+                        >
+                          <Plus className="h-3 w-3" /> Adicionar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {Object.keys(productsByCategory).length === 0 ? (
           <div className="text-center py-12">
             <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -385,9 +474,25 @@ export default function CatalogPageClient() {
                         {product.name}
                       </h3>
                       <div className="mt-1">
-                        <p className="text-sm font-bold" style={{ color: company.brandColor || '#3b82f6' }}>
-                          R$ {parseFloat(product.price).toFixed(2).replace('.', ',')} <span className="text-[9px] font-normal">/ {(product.unitOfMeasure || 'un')}</span>
-                        </p>
+                        {product.isOnPromotion && product.promotionPrice ? (
+                          <>
+                            <p className="text-sm font-bold text-red-600">
+                              R$ {parseFloat(product.promotionPrice).toFixed(2).replace('.', ',')} <span className="text-[9px] font-normal">/ {(product.unitOfMeasure || 'un')}</span>
+                            </p>
+                            <p className="text-[9px] text-gray-500 line-through">
+                              R$ {parseFloat(product.originalPrice || product.price).toFixed(2).replace('.', ',')}
+                            </p>
+                            {product.promotionDiscount && (
+                              <p className="text-[9px] text-red-600 font-semibold">
+                                -{product.promotionDiscount.toFixed(0)}% OFF
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-sm font-bold" style={{ color: company.brandColor || '#3b82f6' }}>
+                            R$ {parseFloat(product.price).toFixed(2).replace('.', ',')} <span className="text-[9px] font-normal">/ {(product.unitOfMeasure || 'un')}</span>
+                          </p>
+                        )}
                         {product.stockQuantity > 0 ? (
                           <p className="text-[9px] text-green-600">Em estoque</p>
                         ) : (

@@ -1,6 +1,32 @@
 // User Types
 export type UserRole = 'admin' | 'empresa' | 'vendedor';
 
+export interface User {
+  id: string;
+  name: string;
+  email?: string;
+  login?: string;
+  role: UserRole;
+  companyId?: string | null;
+  plan?: PlanType;
+  dataPeriod?: DataPeriodFilter | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Plan Types
+export enum PlanType {
+  PRO = 'PRO',
+  TRIAL_7_DAYS = 'TRIAL_7_DAYS',
+}
+
+// Auth Types
+export interface LoginDto {
+  login: string;
+  password: string;
+}
+
+// Data Period Filter Types
 export type DataPeriodFilter =
   | 'ALL'
   | 'THIS_YEAR'
@@ -9,61 +35,6 @@ export type DataPeriodFilter =
   | 'LAST_1_MONTH'
   | 'LAST_15_DAYS'
   | 'THIS_WEEK';
-
-// Plan Types
-export enum PlanType {
-  PRO = 'PRO',
-  TRIAL_7_DAYS = 'TRIAL_7_DAYS',
-}
-
-export interface PlanLimits {
-  maxProducts: number | null;
-  maxSellers: number | null;
-  maxBillsToPay: number | null;
-}
-
-export interface PlanUsageStats {
-  plan: PlanType;
-  limits: PlanLimits;
-  usage: {
-    products: {
-      current: number;
-      max: number | null;
-      percentage: number;
-      available: number | null;
-    };
-    sellers: {
-      current: number;
-      max: number | null;
-      percentage: number;
-      available: number | null;
-    };
-    billsToPay: {
-      current: number;
-      max: number | null;
-      percentage: number;
-      available: number | null;
-    };
-  };
-}
-
-export interface PlanWarnings {
-  nearLimit: boolean;
-  warnings: string[];
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email?: string;
-  login?: string;
-  role: UserRole;
-  companyId?: string | null;
-  plan?: PlanType; // Plano da empresa (apenas para role 'empresa')
-  dataPeriod?: DataPeriodFilter | null;
-  createdAt?: string;
-  updatedAt?: string;
-}
 
 // Company Types
 export interface Company {
@@ -100,19 +71,45 @@ export interface Company {
   catalogPageAllowed?: boolean;
   autoMessageAllowed?: boolean;
   // Installment Configuration
-  installmentInterestRates?: Record<string, number>; // Taxas de juros por parcela: { "1": 0, "2": 2.5, "3": 3.0, ... }
-  maxInstallments?: number; // Limite máximo de parcelas
+  installmentInterestRates?: Record<string, number>;
+  maxInstallments?: number;
 }
 
-// Admin Types
-export interface Admin {
-  id: string;
-  login: string;
+export interface CreateCompanyDto {
   name: string;
+  login: string;
+  password?: string;
+  cnpj: string;
   email: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  phone?: string;
+  stateRegistration?: string;
+  municipalRegistration?: string;
+  plan?: PlanType;
+  logoUrl?: string;
+  brandColor?: string;
+  zipCode?: string;
+  state?: string;
+  city?: string;
+  district?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  beneficiaryName?: string;
+  beneficiaryCpfCnpj?: string;
+  bankCode?: string;
+  bankName?: string;
+  agency?: string;
+  accountNumber?: string;
+  accountType?: 'corrente' | 'poupança' | 'pagamento';
+  maxProducts?: number | null;
+  maxCustomers?: number | null;
+  maxSellers?: number | null;
+  photoUploadEnabled?: boolean;
+  maxPhotosPerProduct?: number | null;
+  nfceEmissionEnabled?: boolean;
+  nfeEmissionEnabled?: boolean;
+  catalogPageAllowed?: boolean;
+  autoMessageAllowed?: boolean;
 }
 
 // Product Types
@@ -134,9 +131,15 @@ export interface Product {
   companyId: string;
   createdAt: string;
   updatedAt: string;
+  // Promotion fields
+  promotionPrice?: number;
+  promotionDiscount?: number;
+  isOnPromotion?: boolean;
+  promotionName?: string;
+  originalPrice?: number;
 }
 
-// Sale Types
+// Payment Types
 export type PaymentMethod = 'cash' | 'credit_card' | 'debit_card' | 'pix' | 'installment' | 'store_credit' | 'loss';
 
 export interface PaymentMethodDetail {
@@ -146,14 +149,21 @@ export interface PaymentMethodDetail {
   installments?: number;
   firstDueDate?: Date;
   description?: string;
-  // Grupo Card (NT 2025.001) - Obrigatório para pagamentos com cartão
-  cardIntegrationType?: string; // '1' = Integrado, '2' = Não integrado
-  acquirerCnpj?: string; // CNPJ da credenciadora (14 dígitos)
-  cardBrand?: string; // '01' = Visa, '02' = Mastercard, '03' = Amex, '04' = Elo, '05' = Hipercard, '99' = Outras
-  cardOperationType?: string; // '01' = Crédito à vista, '02' = Crédito parcelado, '03' = Débito
-  installmentCount?: number; // Número de parcelas (obrigatório quando cardOperationType = '02')
+  cardIntegrationType?: string;
+  acquirerCnpj?: string;
+  cardBrand?: string;
+  cardOperationType?: string;
+  installmentCount?: number;
 }
 
+export interface InstallmentData {
+  installments: number;
+  installmentValue: number;
+  firstDueDate: Date;
+  description?: string;
+}
+
+// Sale Types
 export interface SaleItem {
   id: string;
   productId: string;
@@ -176,7 +186,7 @@ export interface Sale {
   clientName?: string;
   customerId?: string;
   sellerId: string;
-  seller?: User;
+  seller?: any; // User type
   companyId: string;
   cashClosureId?: string;
   createdAt: string;
@@ -184,6 +194,24 @@ export interface Sale {
   exchanges?: Exchange[];
 }
 
+export interface CreateSaleDto {
+  items: Array<{
+    productId: string;
+    quantity: number;
+  }>;
+  paymentMethods: Array<{
+    method: PaymentMethod;
+    amount: number;
+    additionalInfo?: string;
+  }>;
+  clientName?: string;
+  clientCpfCnpj?: string;
+  sellerId?: string;
+  installmentData?: InstallmentData;
+  discount?: number;
+}
+
+// Exchange Types
 export type ExchangePaymentType = 'PAYMENT' | 'REFUND';
 export type ExchangeStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
 
@@ -284,7 +312,6 @@ export interface Seller {
   companyId: string;
   createdAt: string;
   updatedAt: string;
-  // Campos adicionais para estatísticas
   totalSales?: number;
   totalRevenue?: number;
   averageSaleValue?: number;
@@ -307,12 +334,12 @@ export interface SellerStats {
   }[];
 }
 
-export interface SellerSalesResponse {
-  data: Sale[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+export interface UpdateSellerProfileDto {
+  name?: string;
+  cpf?: string;
+  birthDate?: string;
+  email?: string;
+  phone?: string;
 }
 
 // Customer Types
@@ -329,8 +356,8 @@ export interface CustomerAddress {
 export interface Customer {
   id: string;
   name: string;
-  email?: string;
   phone?: string;
+  email?: string;
   cpfCnpj?: string;
   storeCreditBalance?: number;
   address?: CustomerAddress;
@@ -339,6 +366,43 @@ export interface Customer {
   updatedAt: string;
 }
 
+export interface CreateCustomerDto {
+  name: string;
+  email?: string;
+  phone?: string;
+  cpfCnpj?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+}
+
+// Bill Types
+export interface BillToPay {
+  id: string;
+  title?: string;
+  description?: string;
+  amount: number;
+  dueDate: string;
+  isPaid: boolean;
+  paidAt?: string;
+  barcode?: string;
+  companyId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBillDto {
+  title: string;
+  amount: number;
+  dueDate: string;
+  barcode?: string;
+  paymentInfo?: string;
+}
+
+// Store Credit Types
 export interface StoreCreditBalance {
   customerId: string;
   customerName: string;
@@ -368,42 +432,45 @@ export interface StoreCreditTransactionsResponse {
   };
 }
 
-// Bill to Pay Types
-export interface BillToPay {
-  id: string;
-  title?: string; // Backend retorna 'title'
-  description?: string; // Algumas respostas podem usar 'description'
-  amount: number;
-  dueDate: string;
-  isPaid: boolean;
-  paidAt?: string;
-  barcode?: string;
-  companyId: string;
-  createdAt: string;
-  updatedAt: string;
+// Plan Usage Types
+export interface PlanLimits {
+  maxProducts: number | null;
+  maxSellers: number | null;
+  maxBillsToPay: number | null;
 }
 
-// Cash Closure Types
-export interface CashClosure {
-  id: string;
-  openedAt: string;
-  closedAt?: string;
-  openingBalance?: number; // Campo principal
-  openingAmount?: number;  // Campo alternativo da API
-  closingBalance?: number;
-  totalSales?: number;
-  totalCash?: number;
-  totalCard?: number;
-  totalPix?: number;
-  sellerId: string;
-  seller?: User;
-  companyId: string;
-  createdAt: string;
-  updatedAt: string;
+export interface PlanWarnings {
+  nearLimit: boolean;
+  warnings: string[];
+}
+
+export interface PlanUsageStats {
+  plan: PlanType;
+  limits: PlanLimits;
+  usage: {
+    products: {
+      current: number;
+      max: number | null;
+      percentage: number;
+      available: number | null;
+    };
+    sellers: {
+      current: number;
+      max: number | null;
+      percentage: number;
+      available: number | null;
+    };
+    billsToPay: {
+      current: number;
+      max: number | null;
+      percentage: number;
+      available: number | null;
+    };
+  };
 }
 
 // Report Types
-export type ReportType = 'sales' | 'products' | 'invoices' | 'complete';
+export type ReportType = 'sales' | 'products' | 'invoices' | 'complete' | 'cancelled_sales';
 export type ReportFormat = 'json' | 'xml' | 'excel';
 
 export interface GenerateReportDto {
@@ -424,48 +491,9 @@ export interface ReportHistory {
   filename: string;
 }
 
-// Dashboard Metrics
-export interface DashboardMetrics {
-  totalSales: number;
-  totalRevenue: number;
-  totalProducts: number;
-  totalCustomers: number;
-  lowStockProducts: number;
-  upcomingBills: number;
-  salesByPeriod: {
-    date: string;
-    total: number;
-  }[];
-  topProducts: {
-    product: Product;
-    quantity: number;
-    revenue: number;
-  }[];
-}
-
-// API Response Types
-export interface ApiResponse<T> {
-  data: T;
-  message?: string;
-  success: boolean;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-// Form DTOs
-export interface LoginDto {
-  login: string;
-  password: string;
-}
-
+// DTO Types
 export interface CreateProductDto {
-  id?: string; // UUID opcional para garantir compatibilidade
+  id?: string;
   name: string;
   barcode: string;
   price: number;
@@ -474,48 +502,11 @@ export interface CreateProductDto {
   description?: string;
   photos?: string[];
   expirationDate?: string;
-  unitOfMeasure?: string;
+  unitOfMeasure?: 'kg' | 'g' | 'ml' | 'l' | 'm' | 'cm' | 'un';
   ncm?: string;
   cfop?: string;
   costPrice?: number;
   minStockQuantity?: number;
-}
-
-export interface InstallmentData {
-  installments: number;
-  installmentValue: number;
-  firstDueDate: Date;
-  description?: string;
-}
-
-export interface CreateSaleDto {
-  items: {
-    productId: string;
-    quantity: number;
-  }[];
-  paymentMethods: {
-    method: PaymentMethod;
-    amount: number;
-    additionalInfo?: string;
-  }[];
-  clientName?: string;
-  clientCpfCnpj?: string;
-  sellerId?: string; // ID do vendedor quando vendido por empresa
-  discount?: number; // Valor do desconto aplicado na venda
-}
-
-export interface CreateCustomerDto {
-  name: string;
-  email?: string;
-  phone?: string;
-  cpfCnpj?: string;
-  // Campos de endereço individuais
-  street?: string;
-  number?: string;
-  complement?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
 }
 
 export interface CreateSellerDto {
@@ -538,90 +529,32 @@ export interface UpdateSellerDto {
   phone?: string;
   commissionRate?: number;
   hasIndividualCash?: boolean;
-  activityId?: string; // UUID para rastreamento de atividades
-}
-
-export interface UpdateSellerProfileDto {
-  name?: string;
-  cpf?: string;
-  birthDate?: string;
-  email?: string;
-  phone?: string;
-}
-
-export interface CreateBillDto {
-  title: string; // API usa "title" ao invés de "description"
-  amount: number;
-  dueDate: string;
-  barcode?: string;
-  paymentInfo?: string;
-}
-
-export interface CreateCompanyDto {
-  // Campos obrigatórios
-  name: string;
-  login: string;
-  password?: string;
-  cnpj: string;
-  email: string;
-  
-  // Campos opcionais - dados básicos
-  phone?: string;
-  stateRegistration?: string;
-  municipalRegistration?: string;
-  plan?: PlanType;
-  
-  // Campos opcionais - visual
-  logoUrl?: string;
-  brandColor?: string;
-  
-  // Campos opcionais - endereço
-  zipCode?: string;
-  state?: string;
-  city?: string;
-  district?: string;
-  street?: string;
-  number?: string;
-  complement?: string;
-  
-  // Campos opcionais - dados bancários
-  beneficiaryName?: string;
-  beneficiaryCpfCnpj?: string;
-  bankCode?: string;
-  bankName?: string;
-  agency?: string;
-  accountNumber?: string;
-  accountType?: 'corrente' | 'poupança' | 'pagamento';
-  
-  // Campos opcionais - limites do plano
-  maxProducts?: number | null;
-  maxCustomers?: number | null;
-  maxSellers?: number | null;
-  photoUploadEnabled?: boolean;
-  maxPhotosPerProduct?: number | null;
-  nfceEmissionEnabled?: boolean;
-  nfeEmissionEnabled?: boolean;
-  // Campos opcionais - permissões de funcionalidades
-  catalogPageAllowed?: boolean;
-  autoMessageAllowed?: boolean;
-}
-
-export interface CreateAdminDto {
-  login: string;
-  password: string;
-  name: string;
-  email: string;
+  activityId?: string;
 }
 
 // Cart Types
 export interface CartItem {
+  productId: string;
   product: Product;
   quantity: number;
+  unitPrice: number;
   subtotal: number;
 }
 
-export interface Cart {
-  items: CartItem[];
-  total: number;
-  discount: number;
+// Promotion Types
+export interface Promotion {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  discountPercentage?: number;
+  promotionalPrice?: number;
+  isActive: boolean;
+  products: Array<{
+    id: string;
+    name: string;
+    originalPrice: number;
+  }>;
+  createdAt: string;
+  updatedAt: string;
 }

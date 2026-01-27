@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Edit, Trash2, Package, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Edit, Trash2, Package, AlertCircle, AlertTriangle, Tag } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
   Table,
@@ -22,6 +22,7 @@ import { ensureValidUUID as ensureUUID } from '@/lib/utils-clean';
 import { getImageUrl } from '@/lib/image-utils';
 import { ProductImage } from './product-image';
 import { PaginationControls } from '@/components/ui/pagination-controls';
+import { PromotionDialog } from '@/components/promotions/promotion-dialog';
 import type { Product } from '@/types';
 
 interface ProductsTableProps {
@@ -37,6 +38,8 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
   const { api } = useAuth();
   const [deleting, setDeleting] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<{ images: string[], index: number } | null>(null);
+  const [promotionDialogOpen, setPromotionDialogOpen] = useState(false);
+  const [selectedProductForPromotion, setSelectedProductForPromotion] = useState<Product | null>(null);
   const [confirmationModal, setConfirmationModal] = useState<{
     open: boolean;
     product: Product | null;
@@ -207,6 +210,19 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
                         <Button
                           variant="ghost"
                           size="icon-sm"
+                          onClick={() => {
+                            setSelectedProductForPromotion(product);
+                            setPromotionDialogOpen(true);
+                          }}
+                          aria-label={`Adicionar ${product.name} à promoção`}
+                          className="focus:ring-2 focus:ring-primary focus:ring-offset-2 text-purple-600 hover:text-purple-700"
+                          title="Adicionar à promoção"
+                        >
+                          <Tag className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           onClick={() => onEdit(product)}
                           aria-label={`Editar produto ${product.name}`}
                           className="focus:ring-2 focus:ring-primary focus:ring-offset-2"
@@ -276,6 +292,21 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
           alt="Imagem do produto"
         />
       )}
+
+      {/* Dialog de Promoção */}
+      <PromotionDialog
+        open={promotionDialogOpen}
+        onClose={() => {
+          setPromotionDialogOpen(false);
+          setSelectedProductForPromotion(null);
+        }}
+        onSuccess={() => {
+          onRefetch();
+          setPromotionDialogOpen(false);
+          setSelectedProductForPromotion(null);
+        }}
+        selectedProducts={selectedProductForPromotion ? [selectedProductForPromotion] : []}
+      />
     </Card>
   );
 }
