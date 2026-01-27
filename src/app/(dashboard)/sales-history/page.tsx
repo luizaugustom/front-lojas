@@ -222,7 +222,8 @@ export default function SalesHistoryPage() {
   const bills = billsData?.bills || [];
   const totalBills = bills.reduce((sum: number, bill: any) => sum + Number(bill.amount || 0), 0);
   const totalLosses = Number(lossesData?.totalCost || 0);
-  const netProfit = isCompany ? stats.totalRevenue - stats.totalCostOfGoods - totalBills - totalLosses : null;
+  const totalInstallmentInterest = Number(statsData?.totalInstallmentInterest || 0);
+  const netProfit = isCompany ? stats.totalRevenue - stats.totalCostOfGoods - totalBills - totalLosses - totalInstallmentInterest : null;
 
   // Debug: log stats data
   if (statsData) {
@@ -234,7 +235,8 @@ export default function SalesHistoryPage() {
       cogs: stats.totalCostOfGoods,
       bills: totalBills,
       losses: totalLosses,
-      netProfit: stats.totalRevenue - stats.totalCostOfGoods - totalBills - totalLosses,
+      installmentInterest: totalInstallmentInterest,
+      netProfit: stats.totalRevenue - stats.totalCostOfGoods - totalBills - totalLosses - totalInstallmentInterest,
     });
   }
 
@@ -612,7 +614,7 @@ export default function SalesHistoryPage() {
               <div className={`text-xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {formatCurrency(netProfit)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Receita - COGS - Contas - Perdas</p>
+              <p className="text-xs text-muted-foreground mt-1">Receita - COGS - Contas - Perdas - Juros</p>
             </CardContent>
           </Card>
         )}
