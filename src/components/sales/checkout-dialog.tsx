@@ -812,7 +812,6 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
             // Verificar quais campos estão faltando para dar mensagem mais específica
             const missingFields: string[] = [];
             if (!payment.acquirerCnpj || payment.acquirerCnpj.replace(/\D/g, '').length !== 14) missingFields.push('CNPJ da Credenciadora');
-            if (!payment.cardBrand) missingFields.push('Bandeira do Cartão');
             if (!payment.cardOperationType) missingFields.push('Tipo de Operação');
             
             if (missingFields.length > 0) {
@@ -841,7 +840,8 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
             
             paymentMethod.cardIntegrationType = cardIntegrationType;
             paymentMethod.acquirerCnpj = cnpjCleaned;
-            paymentMethod.cardBrand = payment.cardBrand;
+            // Usar bandeira informada ou padrão '99' (Outras) se não informada
+            paymentMethod.cardBrand = payment.cardBrand || '99';
             paymentMethod.cardOperationType = payment.cardOperationType;
             // Adicionar installmentCount se for crédito parcelado
             if (payment.cardOperationType === '02' && payment.installmentCount) {
@@ -1151,6 +1151,10 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                           updatePaymentMethod(index, 'cardIntegrationType', '2');
                           const defaultCardOperationType = value === 'credit_card' ? '01' : '03';
                           updatePaymentMethod(index, 'cardOperationType', defaultCardOperationType);
+                          // Definir bandeira padrão '99' (Outras) se não estiver definida
+                          if (!paymentDetails[index].cardBrand) {
+                            updatePaymentMethod(index, 'cardBrand', '99');
+                          }
                         } else {
                           // Limpar campos do grupo Card quando método não for cartão
                           updatePaymentMethod(index, 'cardIntegrationType', undefined);
@@ -1264,14 +1268,14 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     <Label className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-                      Dados do Cartão (NT 2025.001 - Obrigatório)
+                      Dados do Cartão (NT 2025.001)
                     </Label>
                   </div>
                   
                     <div className="space-y-3">
                       <CardBrandSelect
                         id={`cardBrand-${index}`}
-                        value={(payment.cardBrand as '01' | '02' | '03' | '04' | '05' | '99') || ''}
+                        value={(payment.cardBrand as '01' | '02' | '03' | '04' | '05' | '99') || '99'}
                         onChange={(value) => updatePaymentMethod(index, 'cardBrand', value)}
                         disabled={loading}
                       />

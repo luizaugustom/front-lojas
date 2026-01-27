@@ -27,9 +27,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Loader2, Square, CheckSquare } from 'lucide-react';
+import { Loader2, Square, CheckSquare, Eye } from 'lucide-react';
 import { PaymentReceiptConfirmDialog } from './payment-receipt-confirm-dialog';
 import { BulkPaymentReceipt } from './bulk-payment-receipt';
+import { InstallmentProductsDialog } from './installment-products-dialog';
 
 interface CustomerDebtPaymentDialogProps {
   open: boolean;
@@ -54,6 +55,7 @@ interface CustomerDebtSummary {
     dueDate: string;
     installmentNumber: number;
     totalInstallments: number;
+    saleId?: string;
   }>;
 }
 
@@ -105,6 +107,7 @@ export function CustomerDebtPaymentDialog({
   const [showReceiptConfirm, setShowReceiptConfirm] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [paymentData, setPaymentData] = useState<any>(null);
+  const [selectedInstallmentId, setSelectedInstallmentId] = useState<string | null>(null);
 
   const companyInfo = useMemo(() => {
     if (!company) return null;
@@ -147,6 +150,7 @@ export function CustomerDebtPaymentDialog({
       setShowReceiptConfirm(false);
       setShowReceipt(false);
       setPaymentData(null);
+      setSelectedInstallmentId(null);
     }
   }, [open]);
 
@@ -425,6 +429,7 @@ export function CustomerDebtPaymentDialog({
                     <TableHead>Vencimento</TableHead>
                     <TableHead>Restante</TableHead>
                     <TableHead>Valor a pagar</TableHead>
+                    <TableHead className="w-20">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -503,6 +508,18 @@ export function CustomerDebtPaymentDialog({
                               }
                             }}
                           />
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedInstallmentId(inst.id)}
+                            className="h-8 w-8 p-0"
+                            title="Ver detalhes dos produtos"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );
@@ -590,6 +607,15 @@ export function CustomerDebtPaymentDialog({
           companyInfo={companyInfo ?? undefined}
           installmentsData={data?.installments}
           onPrintComplete={handlePrintComplete}
+        />
+      )}
+
+      {/* Modal de detalhes dos produtos */}
+      {selectedInstallmentId && (
+        <InstallmentProductsDialog
+          open={!!selectedInstallmentId}
+          onClose={() => setSelectedInstallmentId(null)}
+          installmentId={selectedInstallmentId}
         />
       )}
     </Dialog>

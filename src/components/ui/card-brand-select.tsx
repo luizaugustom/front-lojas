@@ -76,7 +76,7 @@ export function CardBrandSelect({
   return (
     <div className={cn('space-y-2', className)}>
       <Label htmlFor={id} className="text-xs">
-        Bandeira *
+        Bandeira (padrão: Outras)
       </Label>
       
       {/* Botões rápidos para bandeiras mais comuns */}

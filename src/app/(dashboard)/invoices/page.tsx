@@ -18,6 +18,7 @@ import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDateTime, downloadFile } from '@/lib/utils';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
+import { isValidCPF, isValidCNPJ, isValidCPFOrCNPJ } from '@/lib/validations';
 
 interface FiscalDoc {
   id: string;
@@ -110,6 +111,10 @@ export default function InvoicesPage() {
   // Estados para consulta de status
   const [checkingStatus, setCheckingStatus] = useState<string | null>(null);
 
+  // Estado para verificação de configuração fiscal
+  const [hasValidFiscalConfig, setHasValidFiscalConfig] = useState<boolean | null>(null);
+  const [checkingFiscalConfig, setCheckingFiscalConfig] = useState(false);
+
   const { queryKeyPart } = useDateRange();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['fiscal-outbound', queryKeyPart, search],
@@ -139,6 +144,25 @@ export default function InvoicesPage() {
       window.location.href = '/dashboard';
     }
   }, [user]);
+
+  // Verificar configuração fiscal quando componente carrega ou quando abre diálogo de emissão
+  useEffect(() => {
+    if (user?.role === 'empresa' && emitOpen) {
+      const checkFiscalConfig = async () => {
+        try {
+          setCheckingFiscalConfig(true);
+          const response = await api.get('/company/my-company/fiscal-config/valid');
+          setHasValidFiscalConfig(response.data === true);
+        } catch (error) {
+          console.error('Erro ao verificar configuração fiscal:', error);
+          setHasValidFiscalConfig(false);
+        } finally {
+          setCheckingFiscalConfig(false);
+        }
+      };
+      checkFiscalConfig();
+    }
+  }, [user, emitOpen, api]);
 
   // Tenta normalizar possíveis formatos de resposta
   const raw = data as any;
@@ -273,19 +297,31 @@ export default function InvoicesPage() {
     }
     
     if (emissionMode === 'manual') {
-      // Validar CPF/CNPJ (remover formatação e verificar tamanho)
+      // Validar CPF/CNPJ (remover formatação e verificar formato e dígitos verificadores)
       const documentCleaned = recipientDocument.replace(/\D/g, '');
       if (!documentCleaned || documentCleaned.length < 11) {
         toast.error('Informe um CPF/CNPJ válido do destinatário');
         return;
       }
-      if (recipientType === 'cpf' && documentCleaned.length !== 11) {
-        toast.error('CPF deve ter 11 dígitos');
-        return;
+      if (recipientType === 'cpf') {
+        if (documentCleaned.length !== 11) {
+          toast.error('CPF deve ter 11 dígitos');
+          return;
+        }
+        if (!isValidCPF(recipientDocument)) {
+          toast.error('CPF inválido. Verifique os dígitos verificadores');
+          return;
+        }
       }
-      if (recipientType === 'cnpj' && documentCleaned.length !== 14) {
-        toast.error('CNPJ deve ter 14 dígitos');
-        return;
+      if (recipientType === 'cnpj') {
+        if (documentCleaned.length !== 14) {
+          toast.error('CNPJ deve ter 14 dígitos');
+          return;
+        }
+        if (!isValidCNPJ(recipientDocument)) {
+          toast.error('CNPJ inválido. Verifique os dígitos verificadores');
+          return;
+        }
       }
       
       if (!recipientName.trim()) {
@@ -315,16 +351,25 @@ export default function InvoicesPage() {
       // Validar itens
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        if (!item.description.trim()) {
+        if (!item.description || !item.description.trim()) {
           toast.error(`Item ${i + 1}: Informe a descrição do produto/serviço`);
           return;
         }
-        if ((item.quantity ?? 0) <= 0) {
+        if (item.description.trim().length > 120) {
+          toast.error(`Item ${i + 1}: A descrição deve ter no máximo 120 caracteres`);
+          return;
+        }
+        if (!item.quantity || item.quantity <= 0) {
           toast.error(`Item ${i + 1}: A quantidade deve ser maior que zero`);
           return;
         }
-        if ((item.unitPrice ?? 0) <= 0) {
+        if (!item.unitPrice || item.unitPrice <= 0) {
           toast.error(`Item ${i + 1}: O valor unitário deve ser maior que zero`);
+          return;
+        }
+        // Validar unidade de medida
+        if (!item.unitOfMeasure || !item.unitOfMeasure.trim()) {
+          toast.error(`Item ${i + 1}: A unidade de medida é obrigatória`);
           return;
         }
         // Validar CFOP (obrigatório e deve ter 4 dígitos numéricos)
@@ -401,7 +446,6 @@ export default function InvoicesPage() {
           // Verificar quais campos estão faltando para dar mensagem mais específica
           const missingFields: string[] = [];
           if (!acquirerCnpj || acquirerCnpj.replace(/\D/g, '').length !== 14) missingFields.push('CNPJ da Credenciadora');
-          if (!cardBrand) missingFields.push('Bandeira do Cartão');
           if (!cardOperationType) missingFields.push('Tipo de Operação');
           
           if (missingFields.length > 0) {
@@ -424,7 +468,8 @@ export default function InvoicesPage() {
           
           payload.payment.cardIntegrationType = cardIntegrationType;
           payload.payment.acquirerCnpj = cnpjCleaned;
-          payload.payment.cardBrand = cardBrand;
+          // Usar bandeira informada ou padrão '99' (Outras) se não informada
+          payload.payment.cardBrand = cardBrand || '99';
           payload.payment.cardOperationType = cardOperationType;
         }
         
@@ -637,6 +682,25 @@ export default function InvoicesPage() {
               Escolha vincular a uma venda existente ou preencher os dados manualmente
             </DialogDescription>
           </DialogHeader>
+
+          {/* Aviso sobre configuração fiscal */}
+          {hasValidFiscalConfig === false && (
+            <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
+                    Configuração Fiscal Incompleta
+                  </h4>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                    A empresa não possui configuração fiscal completa para emissão de NF-e. 
+                    Configure os dados fiscais na seção de <strong>Configurações</strong> antes de emitir notas fiscais.
+                    Campos obrigatórios: CNPJ, Inscrição Estadual, Código IBGE, CEP, Estado, Cidade e API Key do Focus NFe.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <Tabs value={emissionMode} onValueChange={(v) => setEmissionMode(v as 'sale' | 'manual')}>
             <TabsList className="grid w-full grid-cols-2">
@@ -942,6 +1006,10 @@ export default function InvoicesPage() {
                       } else {
                         // Definir tipo de operação padrão baseado no método
                         setCardOperationType(value === '03' ? '01' : '03');
+                        // Definir bandeira padrão '99' (Outras) se não estiver definida
+                        if (!cardBrand) {
+                          setCardBrand('99');
+                        }
                       }
                     }}>
                       <SelectTrigger>
@@ -974,17 +1042,17 @@ export default function InvoicesPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         <Label className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-                          Dados do Cartão (NT 2025.001 - Obrigatório)
+                          Dados do Cartão (NT 2025.001)
                         </Label>
                       </div>
                       
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label htmlFor="cardBrand" className="text-xs">
-                            Bandeira *
+                            Bandeira (padrão: Outras)
                           </Label>
                           <Select
-                            value={cardBrand}
+                            value={cardBrand || '99'}
                             onValueChange={setCardBrand}
                           >
                             <SelectTrigger>
