@@ -613,6 +613,22 @@ export const fiscalApi = {
   generateNFe: (data: any) => api.post('/fiscal/nfe', data),
 
   /**
+   * POST /fiscal/nfe-devolucao
+   * Roles: COMPANY - Emitir NFe de devolução a partir de nota fiscal de entrada
+   * Body: { inboundDocumentId: string }
+   */
+  generateReturnNFe: (inboundDocumentId: string) =>
+    api.post('/fiscal/nfe-devolucao', { inboundDocumentId }),
+
+  /**
+   * POST /fiscal/parse-inbound-xml
+   * Roles: COMPANY - Parsear XML de NFe de entrada (somente leitura)
+   * Body: { xml: string }
+   * Retorna: { form, items, duplicatas }
+   */
+  parseInboundXml: (xml: string) => api.post('/fiscal/parse-inbound-xml', { xml }),
+
+  /**
    * POST /fiscal/upload-xml
    * Roles: COMPANY - Upload de arquivo XML de nota fiscal de entrada
    * Content-Type: multipart/form-data
