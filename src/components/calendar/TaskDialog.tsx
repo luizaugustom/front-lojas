@@ -53,7 +53,7 @@ export function TaskDialog({ open, onClose, onSave, task, sellers = [] }: TaskDi
         setDescription(task.description || '');
         setDueDate(new Date(task.dueDate));
         setType(task.type);
-        setAssignedToId(task.assignedToType === 'company' ? '' : task.assignedToId);
+        setAssignedToId(task.assignedToType === 'company' ? 'company' : task.assignedToId);
       } else {
         setTitle('');
         setDescription('');
@@ -83,8 +83,11 @@ export function TaskDialog({ open, onClose, onSave, task, sellers = [] }: TaskDi
         type,
       };
 
-      if (isCompany && assignedToId) {
-        data.assignedToId = assignedToId;
+      if (isCompany) {
+        // Se for 'company' ou vazio, não envia assignedToId (atribui à empresa)
+        if (assignedToId && assignedToId !== 'company') {
+          data.assignedToId = assignedToId;
+        }
       } else if (isSeller) {
         // Vendedor sempre cria para si mesmo
         data.assignedToId = user?.id;
@@ -168,15 +171,15 @@ export function TaskDialog({ open, onClose, onSave, task, sellers = [] }: TaskDi
             <div className="space-y-2">
               <Label htmlFor="task-assigned">Atribuir para</Label>
               <Select
-                value={assignedToId}
-                onValueChange={setAssignedToId}
+                value={assignedToId || 'company'}
+                onValueChange={(value) => setAssignedToId(value === 'company' ? '' : value)}
                 disabled={saving}
               >
                 <SelectTrigger id="task-assigned">
                   <SelectValue placeholder="Empresa (padrão)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Empresa</SelectItem>
+                  <SelectItem value="company">Empresa</SelectItem>
                   {sellers.map((seller) => (
                     <SelectItem key={seller.id} value={seller.id}>
                       {seller.name}

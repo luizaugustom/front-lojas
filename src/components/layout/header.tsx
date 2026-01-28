@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, Moon, Sun, LogOut, Megaphone, Calendar } from 'lucide-react';
+import { Menu, Moon, Sun, LogOut, Megaphone, CalendarRange } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -85,29 +85,32 @@ export function Header() {
 
   return (
     <header 
-      className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 sm:gap-4 border-b bg-background px-2 sm:px-4 lg:px-6"
+      className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 sm:gap-4 border-b bg-background"
       role="banner"
     >
-      {/* Botão de menu (apenas mobile) */}
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="lg:hidden focus:ring-2 focus:ring-primary focus:ring-offset-2" 
-        onClick={toggleSidebar}
-        aria-label="Abrir menu de navegação"
-      >
-        <Menu className="h-5 w-5" aria-hidden="true" />
-      </Button>
+      {/* Container dos botões do lado esquerdo com padding igual ao lado direito */}
+      <div className="flex items-center gap-2 sm:gap-4 px-2 sm:px-4 lg:px-6">
+        {/* Botão de menu (apenas mobile) */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="lg:hidden focus:ring-2 focus:ring-primary focus:ring-offset-2" 
+          onClick={toggleSidebar}
+          aria-label="Abrir menu de navegação"
+        >
+          <Menu className="h-5 w-5" aria-hidden="true" />
+        </Button>
 
-      {/* Espaço vazio no desktop para compensar o botão de menu no mobile */}
-      <div className="hidden lg:block w-10"></div>
+        {/* Espaço vazio no desktop para compensar o botão de menu no mobile */}
+        <div className="hidden lg:block w-10"></div>
 
-      {/* Botão de contatos (lado esquerdo) - empresa e vendedor */}
-      <ContactsButton />
-      {/* Botão de anotações (lado esquerdo) - empresa e vendedor */}
-      <NotesButton />
-      {/* Botão de agenda (lado esquerdo) - empresa e vendedor */}
-      <CalendarButton />
+        {/* Botão de contatos (lado esquerdo) - empresa e vendedor */}
+        <ContactsButton />
+        {/* Botão de anotações (lado esquerdo) - empresa e vendedor */}
+        <NotesButton />
+        {/* Botão de agenda (lado esquerdo) - empresa e vendedor */}
+        <CalendarButton />
+      </div>
 
       {/* Logomarca centralizada */}
       <div className="flex items-center justify-center flex-1 min-w-0">
@@ -136,7 +139,7 @@ export function Header() {
       </div>
 
       {/* Botões alinhados à direita */}
-      <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 lg:px-6">
         {/* Notificações */}
         <NotificationBell />
 
@@ -164,7 +167,7 @@ export function Header() {
           aria-label="Filtrar por período de datas"
           title="Filtrar dados por período"
         >
-          <Calendar className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+          <CalendarRange className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
         </Button>
 
         {/* Botão de tema */}

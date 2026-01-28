@@ -123,7 +123,11 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
         authorFilter: authorFilter === 'all' ? undefined : authorFilter,
       });
       const data = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
-      setContacts(data);
+      // Ordenar contatos alfabeticamente por nome
+      const sortedData = [...data].sort((a, b) => 
+        a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+      );
+      setContacts(sortedData);
     } catch (e: any) {
       toast.error(e?.response?.data?.message || 'Erro ao carregar contatos');
       setContacts([]);
@@ -330,12 +334,12 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
           <div className="px-4 sm:px-6 space-y-3 pb-2">
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
                 <Input
                   placeholder="Buscar por nome, telefone ou email..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-3"
                 />
               </div>
               <Select value={authorFilter} onValueChange={setAuthorFilter}>
@@ -485,7 +489,7 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
             )}
           </div>
 
-          <ScrollArea className="flex-1 min-h-[200px] max-h-[50vh] px-4 sm:px-6">
+          <ScrollArea className="flex-1 min-h-[200px] max-h-[60vh] px-4 sm:px-6">
             <div className="space-y-2 pb-4">
               {loading ? (
                 <div className="space-y-2">

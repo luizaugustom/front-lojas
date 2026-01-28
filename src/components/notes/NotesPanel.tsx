@@ -224,12 +224,12 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
           <div className="px-4 sm:px-6 space-y-3 pb-2">
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
                   placeholder="Buscar por título ou conteúdo..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
+                  className="pl-11"
                 />
               </div>
               <Select value={authorFilter} onValueChange={setAuthorFilter}>
@@ -414,8 +414,8 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Conteúdo</Label>
-                <div className="rounded-lg border bg-muted/30 p-4 min-h-[100px]">
-                  <p className="text-sm whitespace-pre-wrap">{viewingNote.content}</p>
+                <div className="rounded-lg border bg-muted/30 p-4 min-h-[100px] overflow-hidden">
+                  <p className="text-sm whitespace-pre-wrap break-words max-w-full">{viewingNote.content}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">

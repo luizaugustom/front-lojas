@@ -254,12 +254,12 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
           <div className="px-4 sm:px-6 space-y-3 pb-2">
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
                   placeholder="Buscar por título ou descrição..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-4"
                 />
               </div>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -296,7 +296,7 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
 
           <div className="flex flex-col lg:flex-row gap-4 px-4 sm:px-6 pb-4 flex-1 min-h-0">
             {/* Calendário */}
-            <div className="lg:w-1/2">
+            <div className="lg:w-1/2 w-full">
               <div className="flex items-center justify-between mb-2">
                 <Button
                   variant="outline"
@@ -318,22 +318,29 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
-                month={currentMonth}
-                onMonthChange={setCurrentMonth}
-                locale={ptBR}
-                className="rounded-md border"
-                modifiersClassNames={{
-                  selected: 'bg-primary text-primary-foreground',
-                  today: 'bg-accent text-accent-foreground',
-                }}
-                modifiers={{
-                  hasTasks: (date) => daysWithTasks.has(format(date, 'yyyy-MM-dd')),
-                }}
-              />
+              <div className="w-full">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  month={currentMonth}
+                  onMonthChange={setCurrentMonth}
+                  locale={ptBR}
+                  className="rounded-md border w-full"
+                  classNames={{
+                    nav_button_previous: 'hidden',
+                    nav_button_next: 'hidden',
+                    caption_label: 'hidden',
+                  }}
+                  modifiersClassNames={{
+                    selected: 'bg-primary text-primary-foreground',
+                    today: 'bg-accent text-accent-foreground',
+                  }}
+                  modifiers={{
+                    hasTasks: (date) => daysWithTasks.has(format(date, 'yyyy-MM-dd')),
+                  }}
+                />
+              </div>
             </div>
 
             {/* Lista de tarefas do dia */}
