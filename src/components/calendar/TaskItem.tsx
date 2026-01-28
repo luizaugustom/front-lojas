@@ -39,25 +39,25 @@ export function TaskItem({
   return (
     <div
       className={cn(
-        'rounded-lg border bg-card p-3 space-y-2 transition-colors w-full max-w-full',
+        'rounded-lg border bg-card p-3 space-y-2 transition-colors w-full max-w-full overflow-hidden',
         task.isCompleted && 'opacity-60',
         isOverdue && !task.isCompleted && 'border-destructive',
         isToday && !task.isCompleted && 'border-primary',
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-2 flex-1 min-w-0">
+      <div className="flex items-start justify-between gap-2 w-full min-w-0">
+        <div className="flex items-start gap-2 flex-1 min-w-0 overflow-hidden">
           <Checkbox
             checked={task.isCompleted}
             onCheckedChange={onToggleComplete}
-            className="mt-1"
+            className="mt-1 shrink-0"
             disabled={!canEdit}
           />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <div className="flex items-center gap-2 flex-wrap min-w-0 w-full">
               <p
                 className={cn(
-                  'font-medium text-sm truncate flex-1 min-w-0 max-w-full',
+                  'font-medium text-sm truncate flex-1 min-w-0',
                   task.isCompleted && 'line-through',
                 )}
                 title={task.title}
@@ -78,24 +78,24 @@ export function TaskItem({
             </div>
             {task.description && (
               <p 
-                className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words"
+                className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words overflow-hidden"
                 title={task.description}
               >
                 {task.description}
               </p>
             )}
-            <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-              <span>
+            <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground min-w-0 w-full overflow-hidden">
+              <span className="truncate">
                 {format(new Date(task.dueDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
               </span>
               {isOverdue && !task.isCompleted && (
-                <span className="text-destructive font-medium">Vencida</span>
+                <span className="text-destructive font-medium shrink-0">Vencida</span>
               )}
               {isToday && !task.isCompleted && (
-                <span className="text-primary font-medium">Hoje</span>
+                <span className="text-primary font-medium shrink-0">Hoje</span>
               )}
               {task.assignedToName && (
-                <span className="text-xs">
+                <span className="text-xs truncate min-w-0 flex-1">
                   {task.assignedToType === 'company' ? 'Empresa' : `Vendedor: ${task.assignedToName}`}
                 </span>
               )}
