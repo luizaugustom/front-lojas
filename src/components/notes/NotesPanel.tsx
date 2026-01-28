@@ -168,7 +168,7 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
         await notesApi.update(editingId, {
           title: formTitle.trim() || undefined,
           content: formContent.trim(),
-          ...(isCompany && (formMode === 'create' || editingAuthorType === 'company') && { visibleToSellers: formVisibleToSellers }),
+          ...(isCompany && editingAuthorType === 'company' && { visibleToSellers: formVisibleToSellers }),
         });
         toast.success('Anotação atualizada');
       }
