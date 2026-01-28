@@ -39,7 +39,7 @@ export function TaskItem({
   return (
     <div
       className={cn(
-        'rounded-lg border bg-card p-3 space-y-2 transition-colors',
+        'rounded-lg border bg-card p-3 space-y-2 transition-colors w-full max-w-full',
         task.isCompleted && 'opacity-60',
         isOverdue && !task.isCompleted && 'border-destructive',
         isToday && !task.isCompleted && 'border-primary',

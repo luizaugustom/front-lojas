@@ -296,7 +296,7 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
 
           <div className="flex flex-col lg:flex-row gap-4 px-4 sm:px-6 pb-4 flex-1 min-h-0">
             {/* Calendário */}
-            <div className="lg:w-[40%] w-full h-[92%]">
+            <div className="lg:w-[30%] w-full h-[92%]">
               <div className="flex items-center justify-between mb-2">
                 <Button
                   variant="outline"
@@ -344,14 +344,14 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
             </div>
 
             {/* Lista de tarefas do dia */}
-            <div className="lg:w-1/2 flex flex-col min-h-0">
+            <div className="lg:w-[70%] flex flex-col min-h-0">
               <div className="mb-2">
                 <h3 className="font-medium text-sm">
                   Tarefas de {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
                 </h3>
               </div>
               <ScrollArea className="flex-1 min-h-[200px]">
-                <div className="space-y-2">
+                <div className="space-y-2 w-full max-w-full">
                   {loading ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map((i) => (

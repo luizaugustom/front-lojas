@@ -210,7 +210,7 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-x-hidden">
           <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2 pr-10">
             <DialogTitle className="flex items-center gap-2">
               <StickyNote className="h-5 w-5" />
@@ -297,12 +297,12 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
             )}
           </div>
 
-          <ScrollArea className="flex-1 min-h-[200px] max-h-[50vh] px-4 sm:px-6">
-            <div className="space-y-2 pb-4 w-full max-w-full overflow-hidden">
+          <ScrollArea className="flex-1 min-h-[200px] max-h-[50vh] px-4 sm:px-6 overflow-x-hidden">
+            <div className="space-y-2 pb-4 w-full max-w-full min-w-0 box-border">
               {loading ? (
-                <div className="space-y-2">
+                <div className="space-y-2 w-full max-w-full min-w-0">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="rounded-lg border p-3 space-y-2">
+                    <div key={i} className="rounded-lg border p-3 space-y-2 w-full max-w-full min-w-0">
                       <Skeleton className="h-4 w-1/3" />
                       <Skeleton className="h-3 w-full" />
                       <Skeleton className="h-3 w-2/3" />
@@ -310,7 +310,7 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
                   ))}
                 </div>
               ) : notes.length === 0 ? (
-                <div className="text-center py-8 px-4">
+                <div className="text-center py-8 px-4 w-full max-w-full min-w-0">
                   <StickyNote className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                   <p className="text-sm text-muted-foreground">
                     {search || authorFilter !== 'all'
@@ -322,33 +322,36 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
                 notes.map((n) => (
                   <div
                     key={n.id}
-                    className="rounded-lg border bg-card p-3 space-y-1.5 hover:bg-accent/50 transition-colors cursor-pointer w-full max-w-full overflow-hidden"
+                    className="rounded-lg border bg-card p-3 space-y-1.5 hover:bg-accent/50 transition-colors cursor-pointer w-full max-w-full min-w-0 overflow-hidden"
+                    style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                     onClick={() => setViewingNote(n)}
                   >
-                    <div className="flex items-start justify-between gap-2 min-w-0">
+                    <div className="flex items-start justify-between gap-2 min-w-0 w-full">
                       <div className="min-w-0 flex-1 overflow-hidden">
-                        <p className="font-medium text-sm truncate">
+                        <p className="font-medium text-sm truncate w-full">
                           {n.title || '(sem título)'}
                         </p>
-                        <p className="text-xs text-muted-foreground line-clamp-2 break-words">{n.content}</p>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground min-w-0">
-                          <span className="flex items-center gap-1 min-w-0">
+                        <p className="text-xs text-muted-foreground line-clamp-2 break-words overflow-hidden w-full" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                          {n.content}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground min-w-0 w-full">
+                          <span className="flex items-center gap-1 min-w-0 max-w-full">
                             {n.authorType === 'company' ? (
                               <Building2 className="h-3 w-3 shrink-0" />
                             ) : (
                               <User className="h-3 w-3 shrink-0" />
                             )}
-                            <span className="truncate">{authorLabel(n)}</span>
+                            <span className="truncate block">{authorLabel(n)}</span>
                           </span>
-                          <span className="flex items-center gap-1 min-w-0">
+                          <span className="flex items-center gap-1 min-w-0 max-w-full">
                             {n.visibleToSellers === false ? (
                               <Lock className="h-3 w-3 shrink-0" />
                             ) : (
                               <Users className="h-3 w-3 shrink-0" />
                             )}
-                            <span className="truncate">{visibilityLabel(n)}</span>
+                            <span className="truncate block">{visibilityLabel(n)}</span>
                           </span>
-                          <span className="truncate">
+                          <span className="truncate block">
                             {format(new Date(n.updatedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                           </span>
                         </div>
@@ -358,7 +361,7 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 shrink-0"
                             onClick={() => handleEdit(n)}
                             aria-label="Editar"
                           >
@@ -367,7 +370,7 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
                             onClick={() => setDeleteTarget({ id: n.id, title: n.title })}
                             aria-label="Excluir"
                           >
