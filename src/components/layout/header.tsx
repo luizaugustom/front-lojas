@@ -85,7 +85,7 @@ export function Header() {
 
   return (
     <header 
-      className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 sm:gap-4 border-b bg-background"
+      className="sticky top-0 z-30 grid grid-cols-3 h-16 items-center gap-2 sm:gap-4 border-b bg-background"
       role="banner"
     >
       {/* Container dos botões do lado esquerdo com padding igual ao lado direito */}
@@ -113,13 +113,13 @@ export function Header() {
       </div>
 
       {/* Logomarca centralizada */}
-      <div className="flex items-center justify-center flex-1 min-w-0">
+      <div className="flex items-center justify-center min-w-0 h-full">
         {companyLogoUrl && companyLogoUrl.trim() !== '' && companyLogoUrl !== 'null' && companyLogoUrl !== 'undefined' ? (
-          <div className="relative flex items-center justify-center h-14 w-full max-w-[250px]">
+          <div className="relative flex items-center justify-center h-full w-full max-w-[250px] px-2">
             <img
               src={getImageUrl(companyLogoUrl)}
               alt="Logomarca da empresa"
-              className="h-full w-full object-contain max-h-full"
+              className="max-h-full max-w-full w-auto h-auto object-contain"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 logger.error('🔍 [Header] Erro ao carregar imagem:', {
@@ -139,7 +139,7 @@ export function Header() {
       </div>
 
       {/* Botões alinhados à direita */}
-      <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 lg:px-6">
+      <div className="flex items-center justify-end gap-1 sm:gap-2 px-2 sm:px-4 lg:px-6">
         {/* Notificações */}
         <NotificationBell />
 

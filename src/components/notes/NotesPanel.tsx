@@ -224,12 +224,12 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
           <div className="px-4 sm:px-6 space-y-3 pb-2">
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
                 <Input
                   placeholder="Buscar por título ou conteúdo..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-11"
+                  className="pl-10 relative z-0"
                 />
               </div>
               <Select value={authorFilter} onValueChange={setAuthorFilter}>
@@ -298,7 +298,7 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
           </div>
 
           <ScrollArea className="flex-1 min-h-[200px] max-h-[50vh] px-4 sm:px-6">
-            <div className="space-y-2 pb-4">
+            <div className="space-y-2 pb-4 w-full max-w-full overflow-hidden">
               {loading ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
@@ -322,33 +322,33 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
                 notes.map((n) => (
                   <div
                     key={n.id}
-                    className="rounded-lg border bg-card p-3 space-y-1.5 hover:bg-accent/50 transition-colors cursor-pointer"
+                    className="rounded-lg border bg-card p-3 space-y-1.5 hover:bg-accent/50 transition-colors cursor-pointer w-full max-w-full overflow-hidden"
                     onClick={() => setViewingNote(n)}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                      <div className="min-w-0 flex-1 overflow-hidden">
                         <p className="font-medium text-sm truncate">
                           {n.title || '(sem título)'}
                         </p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{n.content}</p>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
+                        <p className="text-xs text-muted-foreground line-clamp-2 break-words">{n.content}</p>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground min-w-0">
+                          <span className="flex items-center gap-1 min-w-0">
                             {n.authorType === 'company' ? (
-                              <Building2 className="h-3 w-3" />
+                              <Building2 className="h-3 w-3 shrink-0" />
                             ) : (
-                              <User className="h-3 w-3" />
+                              <User className="h-3 w-3 shrink-0" />
                             )}
-                            {authorLabel(n)}
+                            <span className="truncate">{authorLabel(n)}</span>
                           </span>
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1 min-w-0">
                             {n.visibleToSellers === false ? (
-                              <Lock className="h-3 w-3" />
+                              <Lock className="h-3 w-3 shrink-0" />
                             ) : (
-                              <Users className="h-3 w-3" />
+                              <Users className="h-3 w-3 shrink-0" />
                             )}
-                            {visibilityLabel(n)}
+                            <span className="truncate">{visibilityLabel(n)}</span>
                           </span>
-                          <span>
+                          <span className="truncate">
                             {format(new Date(n.updatedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                           </span>
                         </div>

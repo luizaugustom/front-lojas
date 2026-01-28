@@ -54,29 +54,33 @@ export function TaskItem({
             disabled={!canEdit}
           />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
               <p
                 className={cn(
-                  'font-medium text-sm',
+                  'font-medium text-sm truncate flex-1 min-w-0 max-w-full',
                   task.isCompleted && 'line-through',
                 )}
+                title={task.title}
               >
                 {task.title}
               </p>
               <Badge
-                className={cn('text-xs', typeColors[task.type])}
+                className={cn('text-xs shrink-0', typeColors[task.type])}
                 variant="secondary"
               >
                 {task.type === 'PERSONAL' ? 'Pessoal' : 'Trabalho'}
               </Badge>
               {isCompanyCreated && (
-                <span title="Criada pela empresa">
+                <span title="Criada pela empresa" className="shrink-0">
                   <Lock className="h-3 w-3 text-muted-foreground" />
                 </span>
               )}
             </div>
             {task.description && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+              <p 
+                className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words"
+                title={task.description}
+              >
                 {task.description}
               </p>
             )}

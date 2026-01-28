@@ -320,8 +320,8 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
-          <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2 pr-10">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2 pr-10 shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Contact className="h-5 w-5" />
               Contatos
@@ -331,10 +331,10 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="px-4 sm:px-6 space-y-3 pb-2">
+          <div className="px-4 sm:px-6 space-y-3 pb-2 shrink-0">
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
                   placeholder="Buscar por nome, telefone ou email..."
                   value={search}
@@ -489,138 +489,140 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
             )}
           </div>
 
-          <ScrollArea className="flex-1 min-h-[200px] max-h-[60vh] px-4 sm:px-6">
-            <div className="space-y-2 pb-4">
-              {loading ? (
-                <div className="space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="rounded-lg border p-3 space-y-2">
-                      <Skeleton className="h-4 w-1/3" />
-                      <Skeleton className="h-3 w-full" />
-                      <Skeleton className="h-3 w-2/3" />
-                    </div>
-                  ))}
-                </div>
-              ) : contacts.length === 0 ? (
-                <div className="text-center py-8 px-4">
-                  <Contact className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    {search || authorFilter !== 'all'
-                      ? 'Nenhum contato encontrado com os filtros atuais.'
-                      : 'Nenhum contato ainda. Clique em "Novo contato" para criar o primeiro!'}
-                  </p>
-                </div>
-              ) : (
-                contacts.map((c) => (
-                  <div
-                    key={c.id}
-                    className="rounded-lg border bg-card p-3 space-y-2 hover:bg-accent/50 transition-colors cursor-pointer"
-                    onClick={() => setViewingContact(c)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="shrink-0">
-                        {c.photoUrl ? (
-                          <img
-                            src={getImageUrl(c.photoUrl)}
-                            alt={c.name}
-                            className="w-12 h-12 rounded-full object-cover border-2 border-border"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center border-2 border-border">
-                            <Contact className="h-6 w-6 text-muted-foreground" />
+          <div className="flex-1 min-h-0 overflow-hidden border-t">
+            <ScrollArea className="h-full px-4 sm:px-6">
+              <div className="space-y-2 py-4">
+                {loading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="rounded-lg border p-3 space-y-2">
+                        <Skeleton className="h-4 w-1/3" />
+                        <Skeleton className="h-3 w-full" />
+                        <Skeleton className="h-3 w-2/3" />
+                      </div>
+                    ))}
+                  </div>
+                ) : contacts.length === 0 ? (
+                  <div className="text-center py-8 px-4">
+                    <Contact className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      {search || authorFilter !== 'all'
+                        ? 'Nenhum contato encontrado com os filtros atuais.'
+                        : 'Nenhum contato ainda. Clique em "Novo contato" para criar o primeiro!'}
+                    </p>
+                  </div>
+                ) : (
+                  contacts.map((c) => (
+                    <div
+                      key={c.id}
+                      className="rounded-lg border bg-card p-3 space-y-2 hover:bg-accent/50 transition-colors cursor-pointer"
+                      onClick={() => setViewingContact(c)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="shrink-0">
+                          {c.photoUrl ? (
+                            <img
+                              src={getImageUrl(c.photoUrl)}
+                              alt={c.name}
+                              className="w-12 h-12 rounded-full object-cover border-2 border-border"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center border-2 border-border">
+                              <Contact className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm">{c.name}</p>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
+                            {c.phone && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openWhatsApp(c.phone);
+                                }}
+                                className="flex items-center gap-1 hover:text-primary transition-colors"
+                              >
+                                <Phone className="h-3 w-3" />
+                                {c.phone}
+                              </button>
+                            )}
+                            {c.email && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEmail(c.email);
+                                }}
+                                className="flex items-center gap-1 hover:text-primary transition-colors"
+                              >
+                                <Mail className="h-3 w-3" />
+                                {c.email}
+                              </button>
+                            )}
+                            {c.link && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openLink(c.link);
+                                }}
+                                className="flex items-center gap-1 hover:text-primary transition-colors"
+                              >
+                                <LinkIcon className="h-3 w-3" />
+                                Link
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              {c.authorType === 'company' ? (
+                                <Building2 className="h-3 w-3" />
+                              ) : (
+                                <User className="h-3 w-3" />
+                              )}
+                              {authorLabel(c)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              {c.visibleToSellers === false || c.visibleToCompany === false ? (
+                                <Lock className="h-3 w-3" />
+                              ) : (
+                                <Users className="h-3 w-3" />
+                              )}
+                              {visibilityLabel(c)}
+                            </span>
+                            <span>
+                              {format(new Date(c.updatedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            </span>
+                          </div>
+                        </div>
+                        {canEdit(c) && (
+                          <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleEdit(c)}
+                              aria-label="Editar"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => setDeleteTarget({ id: c.id, name: c.name })}
+                              aria-label="Excluir"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         )}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm">{c.name}</p>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
-                          {c.phone && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openWhatsApp(c.phone);
-                              }}
-                              className="flex items-center gap-1 hover:text-primary transition-colors"
-                            >
-                              <Phone className="h-3 w-3" />
-                              {c.phone}
-                            </button>
-                          )}
-                          {c.email && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEmail(c.email);
-                              }}
-                              className="flex items-center gap-1 hover:text-primary transition-colors"
-                            >
-                              <Mail className="h-3 w-3" />
-                              {c.email}
-                            </button>
-                          )}
-                          {c.link && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openLink(c.link);
-                              }}
-                              className="flex items-center gap-1 hover:text-primary transition-colors"
-                            >
-                              <LinkIcon className="h-3 w-3" />
-                              Link
-                            </button>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            {c.authorType === 'company' ? (
-                              <Building2 className="h-3 w-3" />
-                            ) : (
-                              <User className="h-3 w-3" />
-                            )}
-                            {authorLabel(c)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            {c.visibleToSellers === false || c.visibleToCompany === false ? (
-                              <Lock className="h-3 w-3" />
-                            ) : (
-                              <Users className="h-3 w-3" />
-                            )}
-                            {visibilityLabel(c)}
-                          </span>
-                          <span>
-                            {format(new Date(c.updatedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                          </span>
-                        </div>
-                      </div>
-                      {canEdit(c) && (
-                        <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleEdit(c)}
-                            aria-label="Editar"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => setDeleteTarget({ id: c.id, name: c.name })}
-                            aria-label="Excluir"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      )}
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 

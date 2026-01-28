@@ -254,12 +254,12 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
           <div className="px-4 sm:px-6 space-y-3 pb-2">
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-[1]" />
                 <Input
                   placeholder="Buscar por título ou descrição..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10 pr-4"
+                  className="pl-10 pr-4 relative z-[2] bg-background"
                 />
               </div>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -296,7 +296,7 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
 
           <div className="flex flex-col lg:flex-row gap-4 px-4 sm:px-6 pb-4 flex-1 min-h-0">
             {/* Calendário */}
-            <div className="lg:w-1/2 w-full">
+            <div className="lg:w-[40%] w-full h-[92%]">
               <div className="flex items-center justify-between mb-2">
                 <Button
                   variant="outline"
