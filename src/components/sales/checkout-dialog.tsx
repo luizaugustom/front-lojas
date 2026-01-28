@@ -33,6 +33,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { printContent as printContentService } from '@/lib/print-service';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
 import { CardBrandSelect } from '@/components/ui/card-brand-select';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import type { CreateSaleDto, PaymentMethod, PaymentMethodDetail, InstallmentData, Seller } from '@/types';
 
 interface CheckoutDialogProps {
@@ -385,6 +386,107 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       setSelectedCustomerCpfCnpj(watchedCpfCnpj || '');
     }
   }, [watchedCpfCnpj]);
+
+  // Atalhos de teclado para checkout
+  useKeyboardShortcuts({
+    shortcuts: [
+      {
+        key: 'Enter',
+        handler: () => {
+          // Só confirmar se não estiver em modais secundários e formulário válido
+          if (!showInstallmentModal && !showCreditCardInstallmentModal && !loading && paymentDetails.length > 0) {
+            const formData = { clientName: watch('clientName'), clientCpfCnpj: watch('clientCpfCnpj') };
+            handleSubmit(onSubmit)(formData as any).catch(() => {});
+          }
+        },
+        context: ['checkout'],
+        preventDefault: false, // Permitir Enter em inputs
+      },
+      {
+        key: 'Escape',
+        handler: () => {
+          if (!showInstallmentModal && !showCreditCardInstallmentModal && !showPrintConfirmation && !showCustomerCopyConfirmation && !showBilletPrintConfirmation && !showStoreCreditVoucherConfirmation) {
+            onClose();
+          }
+        },
+        context: ['checkout'],
+      },
+      {
+        key: 'a',
+        ctrl: true,
+        handler: () => {
+          if (!showInstallmentModal && !showCreditCardInstallmentModal && !loading) {
+            addPaymentMethod();
+          }
+        },
+        context: ['checkout'],
+      },
+      {
+        key: '1',
+        handler: () => {
+          if (paymentDetails.length === 0 && !showInstallmentModal && !showCreditCardInstallmentModal && !loading) {
+            addPaymentMethod();
+            setTimeout(() => {
+              updatePaymentMethod(0, 'method', 'cash');
+            }, 0);
+          }
+        },
+        context: ['checkout'],
+      },
+      {
+        key: '2',
+        handler: () => {
+          if (paymentDetails.length === 0 && !showInstallmentModal && !showCreditCardInstallmentModal && !loading) {
+            addPaymentMethod();
+            setTimeout(() => {
+              updatePaymentMethod(0, 'method', 'credit_card');
+            }, 0);
+          }
+        },
+        context: ['checkout'],
+      },
+      {
+        key: '3',
+        handler: () => {
+          if (paymentDetails.length === 0 && !showInstallmentModal && !showCreditCardInstallmentModal && !loading) {
+            addPaymentMethod();
+            setTimeout(() => {
+              updatePaymentMethod(0, 'method', 'debit_card');
+            }, 0);
+          }
+        },
+        context: ['checkout'],
+      },
+      {
+        key: '4',
+        handler: () => {
+          if (paymentDetails.length === 0 && !showInstallmentModal && !showCreditCardInstallmentModal && !loading) {
+            addPaymentMethod();
+            setTimeout(() => {
+              updatePaymentMethod(0, 'method', 'pix');
+            }, 0);
+          }
+        },
+        context: ['checkout'],
+      },
+      {
+        key: '5',
+        handler: () => {
+          if (paymentDetails.length === 0 && !showInstallmentModal && !showCreditCardInstallmentModal && !loading && (companyConfig.maxInstallments ?? 12) > 0) {
+            addPaymentMethod();
+            setTimeout(() => {
+              updatePaymentMethod(0, 'method', 'installment');
+              setShowInstallmentModal(true);
+            }, 0);
+          }
+        },
+        context: ['checkout'],
+      },
+    ],
+    enabled: open && !showPrintConfirmation && !showCustomerCopyConfirmation && !showBilletPrintConfirmation && !showStoreCreditVoucherConfirmation,
+    context: 'checkout',
+    ignoreInputs: false, // Permitir atalhos mesmo em inputs no checkout
+  });
 
   // Função printWithElectron removida - funcionalidades de impressão do Electron removidas
 

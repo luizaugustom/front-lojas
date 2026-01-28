@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Search } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,7 @@ import { getImageUrl } from '@/lib/image-utils';
 import { productApi } from '@/lib/api-endpoints';
 import type { Product, CreateProductDto } from '@/types';
 import { useDeviceStore } from '@/store/device-store';
+import { NCMSearchModal } from './ncm-search-modal';
 import {
   MAX_PRODUCT_PHOTOS,
   ACCEPTED_IMAGE_STRING,
@@ -169,6 +170,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
     description: '',
     onConfirm: () => {},
   });
+  const [ncmModalOpen, setNcmModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isEditing = !!product;
   const { api, user } = useAuth();
@@ -881,19 +883,32 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                   NCM
                   <span className="text-xs text-amber-600 dark:text-amber-400 ml-1">(Necessário para NF-e)</span>
                 </Label>
-                <Input
-                  id="ncm"
-                  placeholder="85171231"
-                  maxLength={8}
-                  {...register('ncm', {
-                    onChange: (e) => {
-                      // Permite apenas números
-                      e.target.value = e.target.value.replace(/\D/g, '');
-                    }
-                  })}
-                  disabled={loading}
-                  className="text-foreground"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="ncm"
+                    placeholder="85171231"
+                    maxLength={8}
+                    {...register('ncm', {
+                      onChange: (e) => {
+                        // Permite apenas números
+                        e.target.value = e.target.value.replace(/\D/g, '');
+                      }
+                    })}
+                    disabled={loading}
+                    className="text-foreground flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setNcmModalOpen(true)}
+                    disabled={loading}
+                    title="Buscar NCM"
+                    className="shrink-0"
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
                 {errors.ncm && (
                   <p className="text-sm text-destructive">{errors.ncm.message}</p>
                 )}
@@ -1162,6 +1177,16 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         variant={confirmationModal.variant}
         confirmText={confirmationModal.variant === 'destructive' ? 'Excluir' : 'Confirmar'}
         cancelText="Cancelar"
+      />
+
+      {/* Modal de Busca NCM */}
+      <NCMSearchModal
+        open={ncmModalOpen}
+        onClose={() => setNcmModalOpen(false)}
+        onSelect={(code) => {
+          setValue('ncm', code, { shouldValidate: true, shouldDirty: true });
+          setNcmModalOpen(false);
+        }}
       />
     </Dialog>
   );

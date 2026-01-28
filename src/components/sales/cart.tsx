@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Minus, Plus, Trash2, ShoppingCart, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { ProductImage } from '@/components/products/product-image';
 import { useCartStore } from '@/store/cart-store';
 import { formatCurrency, parseDiscount } from '@/lib/utils-clean';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface CartProps {
   onCheckout: () => void;
@@ -20,6 +21,9 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
   const [discountInput, setDiscountInput] = useState('');
   const [isPercentageDiscount, setIsPercentageDiscount] = useState(false);
   const [percentageValue, setPercentageValue] = useState<number | null>(null);
+  const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
+  const discountInputRef = useRef<HTMLInputElement>(null);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const subtotal = getSubtotal();
   const total = getTotal();
@@ -47,8 +51,104 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
       setDiscountInput('');
       setIsPercentageDiscount(false);
       setPercentageValue(null);
+      setSelectedItemIndex(null);
+    } else if (selectedItemIndex !== null && selectedItemIndex >= items.length) {
+      setSelectedItemIndex(items.length - 1);
     }
-  }, [items.length]);
+  }, [items.length, selectedItemIndex]);
+
+  // Atalhos de teclado para o carrinho
+  useKeyboardShortcuts({
+    shortcuts: [
+      {
+        key: 'ArrowDown',
+        handler: () => {
+          if (items.length === 0) return;
+          const maxIndex = items.length - 1;
+          const current = selectedItemIndex ?? -1;
+          const nextIndex = current < maxIndex ? current + 1 : 0;
+          setSelectedItemIndex(nextIndex);
+          setTimeout(() => {
+            itemRefs.current[nextIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 0);
+        },
+        context: ['cart', 'sales'],
+      },
+      {
+        key: 'ArrowUp',
+        handler: () => {
+          if (items.length === 0) return;
+          const maxIndex = items.length - 1;
+          const current = selectedItemIndex ?? maxIndex + 1;
+          const prevIndex = current > 0 ? current - 1 : maxIndex;
+          setSelectedItemIndex(prevIndex);
+          setTimeout(() => {
+            itemRefs.current[prevIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 0);
+        },
+        context: ['cart', 'sales'],
+      },
+      {
+        key: '+',
+        handler: () => {
+          if (selectedItemIndex !== null && selectedItemIndex >= 0 && selectedItemIndex < items.length) {
+            const item = items[selectedItemIndex];
+            updateQuantity(item.product.id, item.quantity + 1);
+          }
+        },
+        context: ['cart', 'sales'],
+      },
+      {
+        key: '-',
+        handler: () => {
+          if (selectedItemIndex !== null && selectedItemIndex >= 0 && selectedItemIndex < items.length) {
+            const item = items[selectedItemIndex];
+            if (item.quantity > 1) {
+              updateQuantity(item.product.id, item.quantity - 1);
+            }
+          }
+        },
+        context: ['cart', 'sales'],
+      },
+      {
+        key: 'Delete',
+        handler: () => {
+          if (selectedItemIndex !== null && selectedItemIndex >= 0 && selectedItemIndex < items.length) {
+            const item = items[selectedItemIndex];
+            removeItem(item.product.id);
+            if (items.length > 1) {
+              const newIndex = selectedItemIndex >= items.length - 1 ? items.length - 2 : selectedItemIndex;
+              setSelectedItemIndex(newIndex);
+            } else {
+              setSelectedItemIndex(null);
+            }
+          }
+        },
+        context: ['cart', 'sales'],
+      },
+      {
+        key: 'd',
+        ctrl: true,
+        handler: () => {
+          discountInputRef.current?.focus();
+          discountInputRef.current?.select();
+        },
+        context: ['cart', 'sales'],
+      },
+    ],
+    enabled: items.length > 0,
+    context: 'cart',
+    ignoreInputs: true,
+  });
+
+  // Scroll para item selecionado quando mudar
+  useEffect(() => {
+    if (selectedItemIndex !== null && selectedItemIndex >= 0 && selectedItemIndex < items.length) {
+      setTimeout(() => {
+        itemRefs.current[selectedItemIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    }
+  }, [selectedItemIndex, items.length]);
 
   return (
     <Card className="flex flex-col h-full">
@@ -67,8 +167,14 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
             <p className="text-xs">Adicione produtos para começar</p>
           </div>
         ) : (
-          items.map((item) => (
-            <div key={item.product.id} className="flex gap-3 border-b pb-4">
+          items.map((item, index) => {
+            const isSelected = selectedItemIndex === index;
+            return (
+              <div 
+                key={item.product.id} 
+                ref={(el) => { itemRefs.current[index] = el; }}
+                className={`flex gap-3 border-b pb-4 transition-all ${isSelected ? 'ring-2 ring-primary rounded-md p-2 -m-2' : ''}`}
+              >
               <ProductImage 
                 photos={item.product.photos} 
                 name={item.product.name} 
@@ -112,7 +218,8 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
                 </Button>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </CardContent>
 
@@ -140,6 +247,7 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
           <div className="space-y-1">
             <Label htmlFor="discount" className="text-xs">Desconto</Label>
             <Input
+              ref={discountInputRef}
               id="discount"
               type="text"
               value={discountInput}

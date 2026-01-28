@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Printer } from 'lucide-react';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface PrintConfirmationDialogProps {
   open: boolean;
@@ -33,6 +35,43 @@ export function PrintConfirmationDialog({
     ? 'Deseja imprimir o cupom não fiscal desta venda agora?'
     : 'Deseja imprimir a Nota Fiscal do Consumidor Eletrônica (NFC-e) desta venda agora?';
   const footerMessage = 'O documento será enviado para a impressora térmica configurada.';
+
+  // Atalhos de teclado para impressão
+  useKeyboardShortcuts({
+    shortcuts: [
+      {
+        key: 'Enter',
+        handler: () => {
+          if (!loading) {
+            onConfirm();
+          }
+        },
+        context: ['print'],
+      },
+      {
+        key: 'Escape',
+        handler: () => {
+          if (!loading) {
+            onCancel();
+          }
+        },
+        context: ['print'],
+      },
+      {
+        key: 'p',
+        ctrl: true,
+        handler: () => {
+          if (!loading) {
+            onConfirm();
+          }
+        },
+        context: ['print'],
+      },
+    ],
+    enabled: open && !loading,
+    context: 'print',
+    ignoreInputs: true,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onCancel}>

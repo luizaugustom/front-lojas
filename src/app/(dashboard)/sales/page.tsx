@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, ShoppingCart } from 'lucide-react';
+import { Search, FileText, ShoppingCart, Info } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -18,11 +18,14 @@ import { Cart } from '@/components/sales/cart';
 import { CheckoutDialog } from '@/components/sales/checkout-dialog';
 import { BudgetDialog } from '@/components/sales/budget-dialog';
 import { BarcodeScanner } from '@/components/sales/barcode-scanner';
+import { KeyboardShortcutsHelpDialog } from '@/components/sales/keyboard-shortcuts-help-dialog';
 import { handleNumberInputChange, isValidId } from '@/lib/utils-clean';
 import { useDeviceStore } from '@/store/device-store';
 import type { Product } from '@/types';
 import { parseScaleBarcode } from '@/lib/scale-barcode';
 import { useUIStore } from '@/store/ui-store';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useRef } from 'react';
 
 const isValidHex = (hex: string | null | undefined) => {
   if (!hex) return false;
@@ -65,8 +68,11 @@ export default function SalesPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
-  const { addItem, items } = useCartStore();
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
+  const { addItem, items, clearCart } = useCartStore();
   const [lastScanned, setLastScanned] = useState(0);
+  const [selectedProductIndex, setSelectedProductIndex] = useState<number | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const companyColor = useUIStore((state) => state.companyColor);
   const brandColor = useMemo(() => normalizeHex(companyColor), [companyColor]);
   const gradientStart = useMemo(() => brandColor, [brandColor]);
@@ -316,6 +322,72 @@ export default function SalesPage() {
     toast.success('Orçamento criado com sucesso!');
   };
 
+  // Atalhos de teclado para página de vendas
+  useKeyboardShortcuts({
+    shortcuts: [
+      {
+        key: 'F6',
+        handler: () => {
+          if (items.length > 0 && !checkoutOpen && !budgetOpen && !openingDialogOpen) {
+            handleCheckout();
+          }
+        },
+        context: ['sales'],
+      },
+      {
+        key: 'Enter',
+        ctrl: true,
+        handler: () => {
+          if (items.length > 0 && !checkoutOpen && !budgetOpen && !openingDialogOpen) {
+            handleCheckout();
+          }
+        },
+        context: ['sales'],
+      },
+      {
+        key: 'b',
+        ctrl: true,
+        handler: () => {
+          if (!checkoutOpen && !budgetOpen && !openingDialogOpen) {
+            searchInputRef.current?.focus();
+            searchInputRef.current?.select();
+          }
+        },
+        context: ['sales'],
+      },
+      {
+        key: 'l',
+        ctrl: true,
+        handler: () => {
+          if (items.length > 0 && !checkoutOpen && !budgetOpen && !openingDialogOpen) {
+            clearCart();
+            toast.success('Carrinho limpo');
+          }
+        },
+        context: ['sales'],
+      },
+      {
+        key: 'Escape',
+        handler: () => {
+          // Fechar modais abertos
+          if (checkoutOpen) {
+            setCheckoutOpen(false);
+          } else if (budgetOpen) {
+            setBudgetOpen(false);
+          } else if (scannerOpen) {
+            setScannerOpen(false);
+          } else if (mobileCartOpen) {
+            setMobileCartOpen(false);
+          }
+        },
+        context: ['sales'],
+      },
+    ],
+    enabled: !checkoutOpen && !budgetOpen && !openingDialogOpen,
+    context: 'sales',
+    ignoreInputs: true,
+  });
+
   const submitOpening = async () => {
     const value = Number(openingBalance.replace(',', '.'));
     if (isNaN(value) || value < 0) {
@@ -339,9 +411,21 @@ export default function SalesPage() {
       {/* Products Section */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="mb-4">
-          <h1 className="text-2xl font-bold tracking-tight mb-2">Vendas</h1>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-2xl font-bold tracking-tight">Vendas</h1>
+            <button
+              type="button"
+              onClick={() => setHelpDialogOpen(true)}
+              className="inline-flex items-center justify-center rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Ver atalhos de teclado"
+              title="Ver atalhos de teclado"
+            >
+              <Info className="h-5 w-5" />
+            </button>
+          </div>
           <InputWithIcon
-            placeholder="Buscar produtos..."
+            ref={searchInputRef}
+            placeholder="Buscar produtos... (Ctrl+B)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             icon={<Search className="h-4 w-4" />}
@@ -354,6 +438,8 @@ export default function SalesPage() {
           <ProductList
             products={products || []}
             isLoading={isLoading}
+            selectedProductIndex={selectedProductIndex ?? undefined}
+            onProductSelect={setSelectedProductIndex}
             onAddToCart={(product) => {
               // Manter ID original do produto no carrinho
               console.log('[DEBUG] Adicionando produto ao carrinho:', {
@@ -443,6 +529,11 @@ export default function SalesPage() {
         open={budgetOpen}
         onClose={() => setBudgetOpen(false)}
         onSuccess={handleBudgetSuccess}
+      />
+
+      <KeyboardShortcutsHelpDialog
+        open={helpDialogOpen}
+        onClose={() => setHelpDialogOpen(false)}
       />
 
       {/* Mobile Cart Dialog */}
