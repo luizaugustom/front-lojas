@@ -836,6 +836,41 @@ export const billToPayApi = {
 };
 
 // ============================================================================
+// NOTES (ANOTAÇÕES)
+// ============================================================================
+
+export const notesApi = {
+  /**
+   * GET /note
+   * Roles: COMPANY, SELLER - Listar anotações
+   * Query: search, authorFilter
+   */
+  list: (params?: { search?: string; authorFilter?: string }) =>
+    api.get('/note', { params }),
+
+  /**
+   * POST /note
+   * Roles: COMPANY, SELLER - Criar anotação
+   * Body: { title?, content, visibleToSellers? (company only) }
+   */
+  create: (data: { title?: string; content: string; visibleToSellers?: boolean }) =>
+    api.post('/note', data),
+
+  /**
+   * PATCH /note/:id
+   * Roles: COMPANY, SELLER - Atualizar anotação
+   */
+  update: (id: string, data: { title?: string; content?: string; visibleToSellers?: boolean }) =>
+    api.patch(`/note/${id}`, data),
+
+  /**
+   * DELETE /note/:id
+   * Roles: COMPANY, SELLER - Remover anotação
+   */
+  delete: (id: string) => api.delete(`/note/${id}`),
+};
+
+// ============================================================================
 // UPLOAD
 // ============================================================================
 
