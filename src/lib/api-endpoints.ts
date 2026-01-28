@@ -871,6 +871,119 @@ export const notesApi = {
 };
 
 // ============================================================================
+// CONTACTS (CONTATOS)
+// ============================================================================
+
+export const contactsApi = {
+  /**
+   * GET /contact
+   * Roles: COMPANY, SELLER - Listar contatos
+   * Query: search, authorFilter
+   */
+  list: (params?: { search?: string; authorFilter?: string }) =>
+    api.get('/contact', { params }),
+
+  /**
+   * POST /contact
+   * Roles: COMPANY, SELLER - Criar contato
+   * Body: FormData com name, phone?, email?, link?, visibleToSellers? (company), visibleToCompany? (seller), photo?
+   */
+  create: (data: FormData) =>
+    api.post('/contact', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  /**
+   * PATCH /contact/:id
+   * Roles: COMPANY, SELLER - Atualizar contato
+   * Body: FormData com campos opcionais + photo?
+   */
+  update: (id: string, data: FormData) =>
+    api.patch(`/contact/${id}`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  /**
+   * DELETE /contact/:id
+   * Roles: COMPANY, SELLER - Remover contato
+   */
+  delete: (id: string) => api.delete(`/contact/${id}`),
+};
+
+// ============================================================================
+// TASKS (TAREFAS/AGENDA)
+// ============================================================================
+
+export const taskApi = {
+  /**
+   * POST /task
+   * Roles: COMPANY, SELLER - Criar tarefa
+   * Body: { title, description?, dueDate, type, assignedToId? }
+   */
+  create: (data: {
+    title: string;
+    description?: string;
+    dueDate: string;
+    type: 'PERSONAL' | 'WORK';
+    assignedToId?: string;
+  }) => api.post('/task', data),
+
+  /**
+   * GET /task
+   * Roles: COMPANY, SELLER - Listar tarefas
+   * Query: startDate, endDate, type, isCompleted, assignedToId, search
+   */
+  list: (params?: {
+    startDate?: string;
+    endDate?: string;
+    type?: 'PERSONAL' | 'WORK';
+    isCompleted?: boolean;
+    assignedToId?: string;
+    search?: string;
+  }) => api.get('/task', { params }),
+
+  /**
+   * GET /task/:id
+   * Roles: COMPANY, SELLER - Buscar tarefa por ID
+   */
+  get: (id: string) => api.get(`/task/${id}`),
+
+  /**
+   * PATCH /task/:id
+   * Roles: COMPANY, SELLER - Atualizar tarefa
+   * Body: { title?, description?, dueDate?, type?, assignedToId? }
+   */
+  update: (
+    id: string,
+    data: {
+      title?: string;
+      description?: string;
+      dueDate?: string;
+      type?: 'PERSONAL' | 'WORK';
+      assignedToId?: string;
+    },
+  ) => api.patch(`/task/${id}`, data),
+
+  /**
+   * DELETE /task/:id
+   * Roles: COMPANY, SELLER - Remover tarefa
+   */
+  delete: (id: string) => api.delete(`/task/${id}`),
+
+  /**
+   * PATCH /task/:id/complete
+   * Roles: COMPANY, SELLER - Marcar tarefa como concluída
+   */
+  markComplete: (id: string) => api.patch(`/task/${id}/complete`),
+
+  /**
+   * PATCH /task/:id/incomplete
+   * Roles: COMPANY, SELLER - Marcar tarefa como não concluída
+   */
+  markIncomplete: (id: string) => api.patch(`/task/${id}/incomplete`),
+};
+
+// ============================================================================
 // UPLOAD
 // ============================================================================
 

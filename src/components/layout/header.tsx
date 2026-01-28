@@ -10,6 +10,8 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { AdminBroadcastDialog } from '@/components/admin-broadcast-dialog';
 import { DateRangeModal } from '@/components/date-range/DateRangeModal';
 import { NotesButton } from '@/components/notes/NotesButton';
+import { ContactsButton } from '@/components/contacts/ContactsButton';
+import { CalendarButton } from '@/components/calendar/CalendarButton';
 import { companyApi } from '@/lib/api-endpoints';
 import { getImageUrl } from '@/lib/image-utils';
 import { logger } from '@/lib/logger';
@@ -100,8 +102,12 @@ export function Header() {
       {/* Espaço vazio no desktop para compensar o botão de menu no mobile */}
       <div className="hidden lg:block w-10"></div>
 
+      {/* Botão de contatos (lado esquerdo) - empresa e vendedor */}
+      <ContactsButton />
       {/* Botão de anotações (lado esquerdo) - empresa e vendedor */}
       <NotesButton />
+      {/* Botão de agenda (lado esquerdo) - empresa e vendedor */}
+      <CalendarButton />
 
       {/* Logomarca centralizada */}
       <div className="flex items-center justify-center flex-1 min-w-0">

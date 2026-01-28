@@ -1,0 +1,128 @@
+'use client';
+
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Pencil, Trash2, Lock } from 'lucide-react';
+import { TaskItemType } from './CalendarPanel';
+import { cn } from '@/lib/utils';
+
+interface TaskItemProps {
+  task: TaskItemType;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggleComplete: () => void;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
+export function TaskItem({
+  task,
+  onEdit,
+  onDelete,
+  onToggleComplete,
+  canEdit,
+  canDelete,
+}: TaskItemProps) {
+  const isOverdue = !task.isCompleted && new Date(task.dueDate) < new Date();
+  const isToday = new Date(task.dueDate).toDateString() === new Date().toDateString();
+
+  const typeColors = {
+    PERSONAL: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    WORK: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  };
+
+  const isCompanyCreated = task.authorType === 'company';
+
+  return (
+    <div
+      className={cn(
+        'rounded-lg border bg-card p-3 space-y-2 transition-colors',
+        task.isCompleted && 'opacity-60',
+        isOverdue && !task.isCompleted && 'border-destructive',
+        isToday && !task.isCompleted && 'border-primary',
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          <Checkbox
+            checked={task.isCompleted}
+            onCheckedChange={onToggleComplete}
+            className="mt-1"
+            disabled={!canEdit}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p
+                className={cn(
+                  'font-medium text-sm',
+                  task.isCompleted && 'line-through',
+                )}
+              >
+                {task.title}
+              </p>
+              <Badge
+                className={cn('text-xs', typeColors[task.type])}
+                variant="secondary"
+              >
+                {task.type === 'PERSONAL' ? 'Pessoal' : 'Trabalho'}
+              </Badge>
+              {isCompanyCreated && (
+                <span title="Criada pela empresa">
+                  <Lock className="h-3 w-3 text-muted-foreground" />
+                </span>
+              )}
+            </div>
+            {task.description && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                {task.description}
+              </p>
+            )}
+            <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+              <span>
+                {format(new Date(task.dueDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              </span>
+              {isOverdue && !task.isCompleted && (
+                <span className="text-destructive font-medium">Vencida</span>
+              )}
+              {isToday && !task.isCompleted && (
+                <span className="text-primary font-medium">Hoje</span>
+              )}
+              {task.assignedToName && (
+                <span className="text-xs">
+                  {task.assignedToType === 'company' ? 'Empresa' : `Vendedor: ${task.assignedToName}`}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-1 shrink-0">
+          {canEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onEdit}
+              aria-label="Editar"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive"
+              onClick={onDelete}
+              aria-label="Excluir"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

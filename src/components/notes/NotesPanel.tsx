@@ -90,6 +90,7 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string | null } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [viewingNote, setViewingNote] = useState<NoteItem | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim()), 400);
@@ -223,12 +224,12 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
           <div className="px-4 sm:px-6 space-y-3 pb-2">
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por título ou conteúdo..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8"
+                  className="pl-10"
                 />
               </div>
               <Select value={authorFilter} onValueChange={setAuthorFilter}>
@@ -321,7 +322,8 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
                 notes.map((n) => (
                   <div
                     key={n.id}
-                    className="rounded-lg border bg-card p-3 space-y-1.5 hover:bg-accent/50 transition-colors"
+                    className="rounded-lg border bg-card p-3 space-y-1.5 hover:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => setViewingNote(n)}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -352,7 +354,7 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
                         </div>
                       </div>
                       {canEdit(n) && (
-                        <div className="flex gap-1 shrink-0">
+                        <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -396,6 +398,91 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
         variant="destructive"
         loading={deleting}
       />
+
+      <Dialog open={!!viewingNote} onOpenChange={(open) => !open && setViewingNote(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <StickyNote className="h-5 w-5" />
+              {viewingNote?.title || '(sem título)'}
+            </DialogTitle>
+            <DialogDescription>
+              Detalhes da anotação
+            </DialogDescription>
+          </DialogHeader>
+          {viewingNote && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Conteúdo</Label>
+                <div className="rounded-lg border bg-muted/30 p-4 min-h-[100px]">
+                  <p className="text-sm whitespace-pre-wrap">{viewingNote.content}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Autor</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    {viewingNote.authorType === 'company' ? (
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <User className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span>{authorLabel(viewingNote)}</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Visibilidade</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    {viewingNote.visibleToSellers === false ? (
+                      <Lock className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span>{visibilityLabel(viewingNote)}</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Criada em</Label>
+                  <p className="mt-1">
+                    {format(new Date(viewingNote.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Atualizada em</Label>
+                  <p className="mt-1">
+                    {format(new Date(viewingNote.updatedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+              </div>
+              {canEdit(viewingNote) && (
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setViewingNote(null);
+                      handleEdit(viewingNote);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setViewingNote(null);
+                      setDeleteTarget({ id: viewingNote.id, title: viewingNote.title });
+                    }}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
