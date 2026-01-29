@@ -137,6 +137,7 @@ export const productFormSchema = z.object({
   costPrice: z.number().positive('Preço de custo deve ser positivo').optional(),
   stockQuantity: z.number().min(0, 'Quantidade não pode ser negativa'),
   minStockQuantity: z.number().min(0, 'Quantidade mínima não pode ser negativa').optional(),
+  lowStockAlertThreshold: z.number().int().min(0, 'Alerta de estoque baixo deve ser >= 0').optional(),
   category: optionalStringOrUndefined(),
   description: optionalStringOrUndefined(),
   expirationDate: optionalStringOrUndefined(),

@@ -33,7 +33,8 @@ export function applyProductFilters(products: Product[], filters: ProductFilters
     // Filtro de estoque baixo (3 ou menos unidades)
     if (filters.lowStock) {
       const stockNum = Number(product.stockQuantity ?? 0);
-      const isLowStock = !Number.isNaN(stockNum) && stockNum <= 3;
+      const threshold = product.lowStockAlertThreshold ?? 3;
+      const isLowStock = !Number.isNaN(stockNum) && stockNum <= threshold;
       matches = matches && isLowStock;
     }
 

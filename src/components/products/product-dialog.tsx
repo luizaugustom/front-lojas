@@ -116,6 +116,11 @@ function sanitizeProductData(data: any) {
   if (data.minStockQuantity !== undefined && data.minStockQuantity !== null && String(data.minStockQuantity).trim() !== '') {
     sanitized.minStockQuantity = Number(data.minStockQuantity);
   }
+
+  // Alerta de estoque baixo (default 3 no backend se não informado)
+  if (data.lowStockAlertThreshold !== undefined && data.lowStockAlertThreshold !== null && String(data.lowStockAlertThreshold).trim() !== '') {
+    sanitized.lowStockAlertThreshold = Number(data.lowStockAlertThreshold);
+  }
   
   // Adicionar campos opcionais apenas se tiverem valor
   if (data.category && String(data.category).trim() !== '') {
@@ -231,6 +236,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         ncm: product.ncm || '',
         cfop: product.cfop || '',
         costPrice: product.costPrice ? Number(product.costPrice) : undefined,
+        lowStockAlertThreshold: product.lowStockAlertThreshold ?? 3,
       });
       // Limpar estado de fotos ao carregar produto
       setSelectedPhotos([]);
@@ -248,6 +254,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         unitOfMeasure: 'un',
         ncm: '', // Será preenchido com padrão pelo backend se vazio
         cfop: '', // Será preenchido com padrão pelo backend se vazio
+        lowStockAlertThreshold: 3,
       });
       setSelectedPhotos([]);
       setPhotoPreviewUrls([]);
@@ -544,6 +551,9 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             if (data.minStockQuantity !== undefined && data.minStockQuantity !== null) {
               formData.append('minStockQuantity', Number(data.minStockQuantity || 0).toString());
             }
+            if (data.lowStockAlertThreshold !== undefined && data.lowStockAlertThreshold !== null) {
+              formData.append('lowStockAlertThreshold', Number(data.lowStockAlertThreshold ?? 3).toString());
+            }
             
             // Adicionar fotos novas
             selectedPhotos.forEach((photo) => {
@@ -615,6 +625,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
           if (sanitizedData.expirationDate) formData.append('expirationDate', sanitizedData.expirationDate);
           if (data.costPrice !== undefined && data.costPrice !== null) formData.append('costPrice', Number(data.costPrice || 0).toString());
           if (data.minStockQuantity !== undefined && data.minStockQuantity !== null) formData.append('minStockQuantity', Number(data.minStockQuantity || 0).toString());
+          if (data.lowStockAlertThreshold !== undefined && data.lowStockAlertThreshold !== null) formData.append('lowStockAlertThreshold', Number(data.lowStockAlertThreshold ?? 3).toString());
           if (sanitizedData.unitOfMeasure) formData.append('unitOfMeasure', sanitizedData.unitOfMeasure);
           if (sanitizedData.cfop) formData.append('cfop', sanitizedData.cfop);
           if (sanitizedData.ncm) formData.append('ncm', sanitizedData.ncm);
@@ -787,6 +798,28 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
               />
               {errors.stockQuantity && (
                 <p className="text-sm text-destructive">{errors.stockQuantity.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="lowStockAlertThreshold" className="text-foreground">Alerta de estoque baixo</Label>
+              <Input
+                id="lowStockAlertThreshold"
+                type="number"
+                min="0"
+                placeholder="3"
+                {...register('lowStockAlertThreshold', {
+                  setValueAs: (v) =>
+                    v === '' || v === undefined
+                      ? undefined
+                      : (isNaN(Number(v)) ? undefined : Number(v)),
+                })}
+                disabled={loading}
+                className="text-foreground"
+              />
+              <p className="text-xs text-muted-foreground">Avisar quando estoque for menor ou igual a esta quantidade (padrão: 3)</p>
+              {errors.lowStockAlertThreshold && (
+                <p className="text-sm text-destructive">{errors.lowStockAlertThreshold.message}</p>
               )}
             </div>
 

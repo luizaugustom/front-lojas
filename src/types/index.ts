@@ -121,6 +121,7 @@ export interface Product {
   costPrice?: number;
   stockQuantity: number;
   minStockQuantity?: number;
+  lowStockAlertThreshold?: number;
   category?: string;
   description?: string;
   photos?: string[];
@@ -507,6 +508,7 @@ export interface CreateProductDto {
   cfop?: string;
   costPrice?: number;
   minStockQuantity?: number;
+  lowStockAlertThreshold?: number;
 }
 
 export interface CreateSellerDto {

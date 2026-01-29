@@ -247,11 +247,12 @@ export default function DashboardPage() {
       return da - db;
     });
 
-  // Estoque baixo (local): stockQuantity <= 3 unidades
+  // Estoque baixo (local): stockQuantity <= lowStockAlertThreshold do produto (default 3)
   const lowStockList: Product[] = (products || []).filter((p) => {
     const stock = Number(p.stockQuantity ?? 0);
     if (Number.isNaN(stock)) return false;
-    return stock <= 3;
+    const threshold = p.lowStockAlertThreshold ?? 3;
+    return stock <= threshold;
   });
   const lowStockCount = lowStockList.length;
   const lowStockPreview = lowStockList.slice(0, 5);
