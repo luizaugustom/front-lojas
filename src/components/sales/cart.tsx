@@ -12,11 +12,13 @@ import { formatCurrency, parseDiscount } from '@/lib/utils-clean';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface CartProps {
+  keyboardFocusArea?: 'products' | 'cart';
+  keyboardShortcutsEnabled?: boolean;
   onCheckout: () => void;
   onBudget?: () => void;
 }
 
-export function Cart({ onCheckout, onBudget }: CartProps) {
+export function Cart({ keyboardFocusArea = 'products', keyboardShortcutsEnabled = true, onCheckout, onBudget }: CartProps) {
   const { items, discount, updateQuantity, removeItem, setDiscount, getSubtotal, getTotal, clearCart } = useCartStore();
   const [discountInput, setDiscountInput] = useState('');
   const [isPercentageDiscount, setIsPercentageDiscount] = useState(false);
@@ -57,7 +59,8 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
     }
   }, [items.length, selectedItemIndex]);
 
-  // Atalhos de teclado para o carrinho
+  // Atalhos de teclado para o carrinho (somente quando o foco está no carrinho e nenhum modal aberto)
+  const hasKeyboardFocus = keyboardFocusArea === 'cart' && keyboardShortcutsEnabled;
   useKeyboardShortcuts({
     shortcuts: [
       {
@@ -136,7 +139,7 @@ export function Cart({ onCheckout, onBudget }: CartProps) {
         context: ['cart', 'sales'],
       },
     ],
-    enabled: items.length > 0,
+    enabled: hasKeyboardFocus && items.length > 0,
     context: 'cart',
     ignoreInputs: true,
   });

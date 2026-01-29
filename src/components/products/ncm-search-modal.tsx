@@ -13,7 +13,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { loadNCMData, searchNCM, type NCMItem, clearNCMCache, getCacheInfo } from '@/lib/ncm-data';
+import { ncmApi } from '@/lib/api-endpoints';
 import { toast } from 'react-hot-toast';
+
+/** Fetcher que usa o backend (evita CORS) */
+const fetchNcmFromBackend = () => ncmApi.list().then((r) => r.data as NCMItem[]);
 
 interface NCMSearchModalProps {
   open: boolean;
@@ -54,27 +58,24 @@ export function NCMSearchModal({ open, onClose, onSelect }: NCMSearchModalProps)
       setError(null);
       
       try {
-        const data = await loadNCMData();
+        const data = await loadNCMData(false, fetchNcmFromBackend);
         setNcmData(data);
-        
         if (data.length === 0) {
           setError('Nenhum dado NCM disponível. Tente recarregar.');
         }
       } catch (err: any) {
         console.error('Erro ao carregar dados NCM:', err);
         setError(err.message || 'Erro ao carregar dados de NCM. Verifique sua conexão.');
-        
-        // Tentar usar cache mesmo que expirado
         try {
           const cacheInfo = getCacheInfo();
           if (cacheInfo.exists && cacheInfo.itemCount > 0) {
             toast.error('Usando dados em cache. Alguns dados podem estar desatualizados.');
-            const data = await loadNCMData(false);
+            const data = await loadNCMData(false, fetchNcmFromBackend);
             setNcmData(data);
             setError(null);
           }
         } catch (cacheErr) {
-          // Ignorar erro do cache
+          // Ignorar
         }
       } finally {
         setLoading(false);
@@ -172,7 +173,7 @@ export function NCMSearchModal({ open, onClose, onSelect }: NCMSearchModalProps)
     
     try {
       clearNCMCache();
-      const data = await loadNCMData(true);
+      const data = await loadNCMData(true, fetchNcmFromBackend);
       setNcmData(data);
       toast.success('Dados atualizados com sucesso!');
     } catch (err: any) {

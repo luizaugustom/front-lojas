@@ -146,12 +146,14 @@ export function TaskDialog({ open, onClose, onSave, task, sellers = [] }: TaskDi
 
           <div className="space-y-2">
             <Label htmlFor="task-due-date">Data de Vencimento *</Label>
-            <DatePicker
-              date={dueDate}
-              onSelect={setDueDate}
-              placeholder="Selecione a data"
-              disabled={saving}
-            />
+            <div className="flex justify-center">
+              <DatePicker
+                date={dueDate}
+                onSelect={setDueDate}
+                placeholder="Selecione a data"
+                disabled={saving}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

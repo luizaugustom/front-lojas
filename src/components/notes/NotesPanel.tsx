@@ -28,7 +28,6 @@ import toast from 'react-hot-toast';
 import {
   StickyNote,
   Plus,
-  Search,
   Pencil,
   Trash2,
   Building2,
@@ -210,8 +209,8 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-x-hidden">
-          <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2 pr-10">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-2 pr-10">
             <DialogTitle className="flex items-center gap-2">
               <StickyNote className="h-5 w-5" />
               Anotações
@@ -221,15 +220,13 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="px-4 sm:px-6 space-y-3 pb-2">
+          <div className="shrink-0 px-4 sm:px-6 space-y-3 pb-2">
             <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+              <div className="flex-1">
                 <Input
                   placeholder="Buscar por título ou conteúdo..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10 relative z-0"
                 />
               </div>
               <Select value={authorFilter} onValueChange={setAuthorFilter}>
@@ -297,8 +294,9 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
             )}
           </div>
 
-          <ScrollArea className="flex-1 min-h-[200px] max-h-[50vh] px-4 sm:px-6 overflow-x-hidden">
-            <div className="space-y-2 pb-4 w-full max-w-full min-w-0 box-border">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <ScrollArea className="h-full px-4 sm:px-6">
+              <div className="space-y-2 pb-4 w-full max-w-full min-w-0 box-border">
               {loading ? (
                 <div className="space-y-2 w-full max-w-full min-w-0">
                   {[1, 2, 3].map((i) => (
@@ -382,8 +380,9 @@ export function NotesPanel({ open, onOpenChange }: NotesPanelProps) {
                   </div>
                 ))
               )}
-            </div>
-          </ScrollArea>
+              </div>
+            </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 

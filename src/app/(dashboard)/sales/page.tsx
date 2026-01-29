@@ -72,6 +72,7 @@ export default function SalesPage() {
   const { addItem, items, clearCart } = useCartStore();
   const [lastScanned, setLastScanned] = useState(0);
   const [selectedProductIndex, setSelectedProductIndex] = useState<number | null>(null);
+  const [keyboardFocusArea, setKeyboardFocusArea] = useState<'products' | 'cart'>('products');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const companyColor = useUIStore((state) => state.companyColor);
   const brandColor = useMemo(() => normalizeHex(companyColor), [companyColor]);
@@ -322,7 +323,10 @@ export default function SalesPage() {
     toast.success('Orçamento criado com sucesso!');
   };
 
-  // Atalhos de teclado para página de vendas
+  // Quando qualquer modal está aberto, atalhos da página não devem interferir (apenas o modal responde)
+  const anyModalOpen = checkoutOpen || budgetOpen || openingDialogOpen || helpDialogOpen || scannerOpen || mobileCartOpen;
+
+  // Atalhos de teclado para página de vendas (desabilitados quando há modal aberto)
   useKeyboardShortcuts({
     shortcuts: [
       {
@@ -382,8 +386,22 @@ export default function SalesPage() {
         },
         context: ['sales'],
       },
+      {
+        key: 'ArrowLeft',
+        handler: () => {
+          setKeyboardFocusArea('products');
+        },
+        context: ['sales'],
+      },
+      {
+        key: 'ArrowRight',
+        handler: () => {
+          setKeyboardFocusArea('cart');
+        },
+        context: ['sales'],
+      },
     ],
-    enabled: !checkoutOpen && !budgetOpen && !openingDialogOpen,
+    enabled: !anyModalOpen,
     context: 'sales',
     ignoreInputs: true,
   });
@@ -409,7 +427,11 @@ export default function SalesPage() {
   return (
     <div className="relative flex flex-col md:flex-row h-full md:h-[calc(100vh-8rem)] gap-4">
       {/* Products Section */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div
+        className={`flex-1 flex flex-col overflow-hidden rounded-lg transition-all ${
+          keyboardFocusArea === 'products' ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''
+        }`}
+      >
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
             <h1 className="text-2xl font-bold tracking-tight">Vendas</h1>
@@ -438,6 +460,8 @@ export default function SalesPage() {
           <ProductList
             products={products || []}
             isLoading={isLoading}
+            keyboardFocusArea={keyboardFocusArea}
+            keyboardShortcutsEnabled={!anyModalOpen}
             selectedProductIndex={selectedProductIndex ?? undefined}
             onProductSelect={setSelectedProductIndex}
             onAddToCart={(product) => {
@@ -460,8 +484,17 @@ export default function SalesPage() {
       </div>
 
       {/* Cart Section */}
-      <div className="hidden md:flex w-96 flex-col">
-        <Cart onCheckout={handleCheckout} onBudget={handleBudget} />
+      <div
+        className={`hidden md:flex w-96 flex-col rounded-lg transition-all ${
+          keyboardFocusArea === 'cart' ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''
+        }`}
+      >
+        <Cart
+          keyboardFocusArea={keyboardFocusArea}
+          keyboardShortcutsEnabled={!anyModalOpen}
+          onCheckout={handleCheckout}
+          onBudget={handleBudget}
+        />
       </div>
 
       {/* Floating Cart Button - Mobile */}
@@ -568,7 +601,12 @@ export default function SalesPage() {
             </div>
             <div className="px-3 pb-4 pt-3">
               <div className="max-h-[70vh] overflow-y-auto pr-1">
-                <Cart onCheckout={handleCheckout} onBudget={handleBudget} />
+                <Cart
+                  keyboardFocusArea={mobileCartOpen ? 'cart' : keyboardFocusArea}
+                  keyboardShortcutsEnabled={!anyModalOpen}
+                  onCheckout={handleCheckout}
+                  onBudget={handleBudget}
+                />
               </div>
             </div>
           </div>

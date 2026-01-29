@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { contactsApi } from '@/lib/api-endpoints';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
@@ -27,7 +26,6 @@ import toast from 'react-hot-toast';
 import {
   Contact,
   Plus,
-  Search,
   Pencil,
   Trash2,
   Building2,
@@ -334,12 +332,11 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
           <div className="px-4 sm:px-6 space-y-3 pb-2 shrink-0">
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
                 <Input
                   placeholder="Buscar por nome, telefone ou email..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10 pr-3 relative z-0"
+                  className="pr-3"
                 />
               </div>
               <Select value={authorFilter} onValueChange={setAuthorFilter}>
@@ -489,8 +486,8 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
             )}
           </div>
 
-          <div className="flex-1 min-h-0 overflow-hidden border-t">
-            <ScrollArea className="h-full px-4 sm:px-6">
+          <div className="flex-1 min-h-0 flex flex-col border-t overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 sm:px-6">
               <div className="space-y-2 py-4">
                 {loading ? (
                   <div className="space-y-2">
@@ -621,7 +618,7 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
                   ))
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

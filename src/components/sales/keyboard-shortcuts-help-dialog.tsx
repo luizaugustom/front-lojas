@@ -20,25 +20,38 @@ export function KeyboardShortcutsHelpDialog({
 }: KeyboardShortcutsHelpDialogProps) {
   const shortcuts = [
     {
-      category: 'Navegação',
+      category: 'Foco',
       items: [
-        { keys: ['↑', '↓'], description: 'Navegar entre produtos na lista' },
+        { keys: ['←'], description: 'Mover foco para a lista de produtos' },
+        { keys: ['→'], description: 'Mover foco para o carrinho' },
+      ],
+    },
+    {
+      category: 'Navegação (lista de produtos)',
+      items: [
+        { keys: ['↑', '↓'], description: 'Navegar entre produtos (quando foco está nos produtos)' },
         { keys: ['Enter'], description: 'Adicionar produto selecionado ao carrinho' },
         { keys: ['Tab'], description: 'Navegar para o próximo campo' },
         { keys: ['Shift', '+', 'Tab'], description: 'Voltar para o campo anterior' },
       ],
     },
     {
-      category: 'Gerenciamento do Carrinho',
+      category: 'Gerenciamento do Carrinho (quando foco está no carrinho)',
+      items: [
+        { keys: ['↑', '↓'], description: 'Navegar entre itens do carrinho' },
+        { keys: ['+'], description: 'Aumentar quantidade do item selecionado' },
+        { keys: ['-'], description: 'Diminuir quantidade do item selecionado' },
+        { keys: ['Delete'], description: 'Remover item selecionado do carrinho' },
+        { keys: ['Ctrl', '+', 'D'], description: 'Focar campo de desconto' },
+      ],
+    },
+    {
+      category: 'Ações gerais',
       items: [
         { keys: ['F6'], description: 'Abrir checkout / Finalizar venda' },
         { keys: ['Ctrl', '+', 'Enter'], description: 'Abrir checkout (alternativa)' },
         { keys: ['Ctrl', '+', 'L'], description: 'Limpar carrinho' },
         { keys: ['Ctrl', '+', 'B'], description: 'Focar campo de busca de produtos' },
-        { keys: ['+'], description: 'Aumentar quantidade do item selecionado' },
-        { keys: ['-'], description: 'Diminuir quantidade do item selecionado' },
-        { keys: ['Delete'], description: 'Remover item selecionado do carrinho' },
-        { keys: ['Ctrl', '+', 'D'], description: 'Focar campo de desconto' },
       ],
     },
     {
@@ -117,8 +130,9 @@ export function KeyboardShortcutsHelpDialog({
 
         <div className="mt-6 p-4 bg-muted rounded-lg">
           <p className="text-xs text-muted-foreground">
-            <strong>Dica:</strong> Os atalhos são desabilitados automaticamente quando você está
-            digitando em campos de texto. O leitor de código de barras continua funcionando normalmente.
+            <strong>Dica:</strong> Use as setas ← e → para alternar o foco entre a lista de produtos e o carrinho.
+            Apenas a área com foco (destacada) responde às setas ↑↓ e às teclas de ação. Os atalhos são desabilitados
+            quando você está digitando em campos de texto. O leitor de código de barras continua funcionando normalmente.
           </p>
         </div>
       </DialogContent>

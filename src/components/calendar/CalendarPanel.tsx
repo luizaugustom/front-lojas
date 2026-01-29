@@ -29,6 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TaskItem } from './TaskItem';
 import { TaskDialog } from './TaskDialog';
+import { TaskDetailsModal } from './TaskDetailsModal';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 
 export interface TaskItemType {
@@ -82,6 +83,7 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskItemType | null>(null);
+  const [detailsTask, setDetailsTask] = useState<TaskItemType | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [sellers, setSellers] = useState<Array<{ id: string; name: string }>>([]);
@@ -318,7 +320,7 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="w-full">
+              <div className="w-full flex justify-center">
                 <Calendar
                   mode="single"
                   selected={selectedDate}
@@ -326,7 +328,7 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
                   month={currentMonth}
                   onMonthChange={setCurrentMonth}
                   locale={ptBR}
-                  className="rounded-md border w-full"
+                  className="rounded-md border"
                   classNames={{
                     nav_button_previous: 'hidden',
                     nav_button_next: 'hidden',
@@ -344,14 +346,14 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
             </div>
 
             {/* Lista de tarefas do dia */}
-            <div className="lg:w-1/2 flex flex-col min-h-0">
-              <div className="mb-2">
-                <h3 className="font-medium text-sm">
+            <div className="lg:w-1/2 flex flex-col min-h-0 min-w-0">
+              <div className="mb-2 min-w-0">
+                <h3 className="font-medium text-sm truncate">
                   Tarefas de {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
                 </h3>
               </div>
-              <ScrollArea className="flex-1 min-h-[200px]">
-                <div className="space-y-2 w-full">
+              <ScrollArea className="flex-1 min-h-[200px] min-w-0">
+                <div className="space-y-2 w-full min-w-0">
                   {loading ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map((i) => (
@@ -376,6 +378,7 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
                         onEdit={() => handleEdit(task)}
                         onDelete={() => setDeleteTarget({ id: task.id, title: task.title })}
                         onToggleComplete={() => handleToggleComplete(task)}
+                        onViewDetails={() => setDetailsTask(task)}
                         canEdit={isCompany || (isSeller && task.assignedToId === user?.id)}
                         canDelete={
                           isCompany || (isSeller && task.authorType === 'seller' && task.authorId === user?.id)
@@ -399,6 +402,19 @@ export function CalendarPanel({ open, onOpenChange }: CalendarPanelProps) {
         onSave={handleTaskSaved}
         task={editingTask}
         sellers={sellers}
+      />
+
+      <TaskDetailsModal
+        open={!!detailsTask}
+        onClose={() => setDetailsTask(null)}
+        task={detailsTask}
+        onEdit={() => detailsTask && handleEdit(detailsTask)}
+        onDelete={() => detailsTask && setDeleteTarget({ id: detailsTask.id, title: detailsTask.title })}
+        canEdit={!!detailsTask && (isCompany || (isSeller && detailsTask.assignedToId === user?.id))}
+        canDelete={
+          !!detailsTask &&
+          (isCompany || (isSeller && detailsTask.authorType === 'seller' && detailsTask.authorId === user?.id))
+        }
       />
 
       <ConfirmationModal

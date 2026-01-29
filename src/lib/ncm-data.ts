@@ -22,6 +22,157 @@ const CACHE_EXPIRY_DAYS = 7;
 const API_URL = 'https://portalunico.siscomex.gov.br/classif/api/publico/nomenclatura/download/json';
 
 /**
+ * Lista fallback de NCMs comuns quando a API falha (CORS, rede ou indisponibilidade).
+ * Permite que o modal funcione mesmo sem acesso à API da Receita Federal.
+ */
+const NCM_FALLBACK: NCMItem[] = [
+  { codigo: '04012010', descricao: 'Leite UHT integral' },
+  { codigo: '04021010', descricao: 'Leite em pó, grânulos ou outras formas sólidas' },
+  { codigo: '04029100', descricao: 'Leite concentrado, não adicionado de açúcar' },
+  { codigo: '04029900', descricao: 'Leite condensado e outros' },
+  { codigo: '04070021', descricao: 'Ovos de galinha frescos' },
+  { codigo: '07019000', descricao: 'Batatas frescas ou refrigeradas' },
+  { codigo: '07031000', descricao: 'Cebolas e chalotas frescas' },
+  { codigo: '07032000', descricao: 'Alhos frescos ou secos' },
+  { codigo: '08051000', descricao: 'Laranjas frescas ou secas' },
+  { codigo: '08052000', descricao: 'Tangerinas e clementinas frescas' },
+  { codigo: '08061000', descricao: 'Uvas frescas' },
+  { codigo: '08071100', descricao: 'Melancias frescas' },
+  { codigo: '08071900', descricao: 'Melões frescos' },
+  { codigo: '08081000', descricao: 'Maçãs frescas' },
+  { codigo: '08083000', descricao: 'Pêras frescas' },
+  { codigo: '08093000', descricao: 'Damasco, cereja, pêssego e ameixa frescos' },
+  { codigo: '08105000', descricao: 'Framboesas, amoras e morangos frescos' },
+  { codigo: '08109000', descricao: 'Outras frutas frescas' },
+  { codigo: '09012100', descricao: 'Café não torrado, descafeinado' },
+  { codigo: '09012200', descricao: 'Café não torrado, não descafeinado' },
+  { codigo: '09021000', descricao: 'Chá verde não fermentado' },
+  { codigo: '09022000', descricao: 'Outros chás não fermentados' },
+  { codigo: '10019000', descricao: 'Trigo e mistura de trigo e centeio' },
+  { codigo: '10063021', descricao: 'Arroz beneficiado polido' },
+  { codigo: '11010010', descricao: 'Farinha de trigo' },
+  { codigo: '11032000', descricao: 'Grânulos e pellets de cereais' },
+  { codigo: '15079011', descricao: 'Óleo de soja refinado' },
+  { codigo: '15079019', descricao: 'Outros óleos de soja' },
+  { codigo: '17019900', descricao: 'Açúcar de cana' },
+  { codigo: '17021100', descricao: 'Lactose e xarope de lactose' },
+  { codigo: '17049020', descricao: 'Chocolate branco' },
+  { codigo: '17049090', descricao: 'Outros chocolates e preparações alimentícias' },
+  { codigo: '18063200', descricao: 'Chocolates em tabletes recheados' },
+  { codigo: '18069000', descricao: 'Outras preparações de cacau' },
+  { codigo: '19053100', descricao: 'Biscoitos e bolachas adicionados de edulcorantes' },
+  { codigo: '19059090', descricao: 'Outros pães e bolos' },
+  { codigo: '20079990', descricao: 'Outras geleias e purês de frutas' },
+  { codigo: '20081100', descricao: 'Amendoins preparados ou conservados' },
+  { codigo: '20089900', descricao: 'Outras nozes e sementes preparadas' },
+  { codigo: '20091100', descricao: 'Suco de laranja congelado' },
+  { codigo: '20091900', descricao: 'Suco de laranja não congelado' },
+  { codigo: '20098000', descricao: 'Suco de outras frutas' },
+  { codigo: '21039000', descricao: 'Outras molhos e preparações' },
+  { codigo: '21069090', descricao: 'Outras preparações alimentícias' },
+  { codigo: '21011100', descricao: 'Extratos de café' },
+  { codigo: '21012000', descricao: 'Extratos de chá ou mate' },
+  { codigo: '22011000', descricao: 'Águas minerais e gaseificadas' },
+  { codigo: '22021000', descricao: 'Bebidas não alcoólicas' },
+  { codigo: '22029000', descricao: 'Outras bebidas não alcoólicas' },
+  { codigo: '22030000', descricao: 'Cervejas de malte' },
+  { codigo: '22042100', descricao: 'Vinhos tintos em recipientes até 2 litros' },
+  { codigo: '22042900', descricao: 'Outros vinhos' },
+  { codigo: '22071000', descricao: 'Álcool etílico não desnaturado' },
+  { codigo: '23099000', descricao: 'Outras preparações para alimentação animal' },
+  { codigo: '24022000', descricao: 'Cigarros contendo tabaco' },
+  { codigo: '25010019', descricao: 'Sal de mesa' },
+  { codigo: '25232900', descricao: 'Cimento Portland' },
+  { codigo: '27100019', descricao: 'Gasolina (exceto aviação)' },
+  { codigo: '27101921', descricao: 'Óleo diesel' },
+  { codigo: '27149020', descricao: 'Vaselina' },
+  { codigo: '27149090', descricao: 'Outros resíduos de óleos de petróleo' },
+  { codigo: '30049099', descricao: 'Outros medicamentos' },
+  { codigo: '33030000', descricao: 'Perfumes e águas de toilette' },
+  { codigo: '33049900', descricao: 'Outros preparados para beleza ou maquiagem' },
+  { codigo: '33051000', descricao: 'Xampus' },
+  { codigo: '33059000', descricao: 'Outros preparados para os cabelos' },
+  { codigo: '34011100', descricao: 'Sabões de toilette' },
+  { codigo: '34011900', descricao: 'Outros sabões' },
+  { codigo: '34022000', descricao: 'Preparações para lavagem' },
+  { codigo: '39232100', descricao: 'Sacos e bolsas de plástico' },
+  { codigo: '39232900', descricao: 'Outras embalagens de plástico' },
+  { codigo: '39241000', descricao: 'Mesa e artigos de mesa de plástico' },
+  { codigo: '39269090', descricao: 'Outros artigos de plástico' },
+  { codigo: '40169990', descricao: 'Outros artigos de borracha vulcanizada' },
+  { codigo: '48191000', descricao: 'Caixas e cartonagens de papel' },
+  { codigo: '48192000', descricao: 'Sacolas e bolsas de papel' },
+  { codigo: '48211000', descricao: 'Etiquetas de papel' },
+  { codigo: '48239000', descricao: 'Outros artigos de papel' },
+  { codigo: '61091000', descricao: 'Camisetas de algodão' },
+  { codigo: '61103000', descricao: 'Suéteres de malha' },
+  { codigo: '62034200', descricao: 'Calças de algodão para homens' },
+  { codigo: '62046200', descricao: 'Calças de algodão para mulheres' },
+  { codigo: '62052000', descricao: 'Camisas de algodão para homens' },
+  { codigo: '62061000', descricao: 'Camisas de seda para mulheres' },
+  { codigo: '63026000', descricao: 'Roupas de cama de algodão' },
+  { codigo: '63039200', descricao: 'Cortinas de algodão' },
+  { codigo: '64039900', descricao: 'Outros calçados com sola de borracha' },
+  { codigo: '64041100', descricao: 'Calçados esportivos' },
+  { codigo: '64052000', descricao: 'Outros calçados com parte superior de couro' },
+  { codigo: '65069900', descricao: 'Outros chapéus e artefatos de uso semelhante' },
+  { codigo: '68109900', descricao: 'Artigos de cimento, concreto ou pedra' },
+  { codigo: '69111000', descricao: 'Artigos de mesa de porcelana' },
+  { codigo: '69120000', descricao: 'Artigos de cerâmica para serviço de mesa' },
+  { codigo: '70133700', descricao: 'Copos de vidro' },
+  { codigo: '70139900', descricao: 'Outros artigos de vidro' },
+  { codigo: '72142000', descricao: 'Barras de ferro ou aço' },
+  { codigo: '73181500', descricao: 'Parafusos de ferro ou aço' },
+  { codigo: '73211100', descricao: 'Fogões a gás' },
+  { codigo: '73218100', descricao: 'Outros aparelhos para cozinhar' },
+  { codigo: '73219000', descricao: 'Partes de aparelhos de cozinha' },
+  { codigo: '74199900', descricao: 'Outras obras de cobre' },
+  { codigo: '76151000', descricao: 'Ferramentas de alumínio' },
+  { codigo: '84143000', descricao: 'Compressores de ar' },
+  { codigo: '84158100', descricao: 'Aparelhos de ar condicionado' },
+  { codigo: '84182100', descricao: 'Geladeiras e freezers domésticos' },
+  { codigo: '84183000', descricao: 'Congeladores horizontais' },
+  { codigo: '84195000', descricao: 'Máquinas e aparelhos para condicionamento de ar' },
+  { codigo: '84249000', descricao: 'Partes de pulverizadores' },
+  { codigo: '84501100', descricao: 'Máquinas de lavar roupa' },
+  { codigo: '84713000', descricao: 'Computadores portáteis' },
+  { codigo: '84715000', descricao: 'Unidades de processamento' },
+  { codigo: '84716000', descricao: 'Unidades de entrada ou saída' },
+  { codigo: '84717000', descricao: 'Unidades de memória' },
+  { codigo: '84718000', descricao: 'Outras unidades de máquinas automáticas' },
+  { codigo: '84733000', descricao: 'Partes de máquinas de processamento de dados' },
+  { codigo: '85171200', descricao: 'Aparelhos de telefonia' },
+  { codigo: '85171231', descricao: 'Telefones celulares' },
+  { codigo: '85171239', descricao: 'Outros aparelhos para redes de celulares' },
+  { codigo: '85171800', descricao: 'Outros aparelhos de transmissão' },
+  { codigo: '85176200', descricao: 'Receptores de rádio' },
+  { codigo: '85182200', descricao: 'Alto-falantes montados' },
+  { codigo: '85183000', descricao: 'Fones de ouvido' },
+  { codigo: '85287200', descricao: 'Receptores de televisão em cores' },
+  { codigo: '85366900', descricao: 'Outros conectores para tensão até 1.000 V' },
+  { codigo: '85371000', descricao: 'Quadros de comando e distribuição' },
+  { codigo: '85444200', descricao: 'Cabos coaxiais' },
+  { codigo: '85444900', descricao: 'Outros condutores elétricos' },
+  { codigo: '90049000', descricao: 'Outros óculos e artefatos semelhantes' },
+  { codigo: '91011100', descricao: 'Relógios de pulso, mecanismo de quartzo' },
+  { codigo: '91021100', descricao: 'Relógios de pulso, mecanismo automático' },
+  { codigo: '94016100', descricao: 'Cadeiras estofadas com estrutura de madeira' },
+  { codigo: '94032000', descricao: 'Móveis de metal para escritório' },
+  { codigo: '94036000', descricao: 'Outros móveis de metal' },
+  { codigo: '94037000', descricao: 'Móveis de madeira' },
+  { codigo: '94038000', descricao: 'Móveis de plástico' },
+  { codigo: '94042100', descricao: 'Colchões de borracha ou plástico' },
+  { codigo: '94042900', descricao: 'Colchões de outros materiais' },
+  { codigo: '95030000', descricao: 'Outros brinquedos' },
+  { codigo: '96032100', descricao: 'Escovas de dentes' },
+  { codigo: '96081000', descricao: 'Canetas esferográficas' },
+  { codigo: '96091000', descricao: 'Lápis e pastas' },
+  { codigo: '96151100', descricao: 'Pentes e travetas' },
+  { codigo: '96190000', descricao: 'Fraldas e artigos de higiene' },
+  { codigo: '99999999', descricao: 'Outros produtos (genérico)' },
+];
+
+/**
  * Verifica se o cache está válido
  */
 function isCacheValid(cache: NCMCache | null): boolean {
@@ -114,9 +265,16 @@ function normalizeAPIData(apiData: any[]): NCMItem[] {
 }
 
 /**
- * Carrega dados de NCM da API ou cache
+ * Carrega dados de NCM.
+ * Prioridade: backend (evita CORS) > cache > API direta > fallback.
+ *
+ * @param forceRefresh - se true, ignora cache e tenta buscar de novo
+ * @param fetchFromBackend - função que chama o endpoint GET /ncm do backend (recomendado para evitar CORS)
  */
-export async function loadNCMData(forceRefresh = false): Promise<NCMItem[]> {
+export async function loadNCMData(
+  forceRefresh = false,
+  fetchFromBackend?: () => Promise<NCMItem[]>,
+): Promise<NCMItem[]> {
   // Tentar carregar do cache primeiro (se não for refresh forçado)
   if (!forceRefresh) {
     const cached = loadFromCache();
@@ -125,12 +283,27 @@ export async function loadNCMData(forceRefresh = false): Promise<NCMItem[]> {
     }
   }
 
+  // 1) Tentar via backend (proxy) — evita CORS e usa autenticação
+  if (fetchFromBackend) {
+    try {
+      const data = await fetchFromBackend();
+      if (data && Array.isArray(data) && data.length > 0) {
+        const normalized = normalizeAPIData(data);
+        if (normalized.length > 0) {
+          saveToCache(normalized);
+          return normalized;
+        }
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar NCM pelo backend:', err);
+    }
+  }
+
+  // 2) Tentar API direta da Receita Federal (pode falhar por CORS no browser)
   try {
     const response = await fetch(API_URL, {
       method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
+      headers: { Accept: 'application/json' },
     });
 
     if (!response.ok) {
@@ -138,39 +311,28 @@ export async function loadNCMData(forceRefresh = false): Promise<NCMItem[]> {
     }
 
     const data = await response.json();
-    
-    // Verificar se a resposta é um erro da API
     if (data.code || data.message) {
       throw new Error(data.message || 'Erro desconhecido da API');
     }
 
-    // Normalizar dados
     const normalizedData = normalizeAPIData(Array.isArray(data) ? data : [data]);
-    
     if (normalizedData.length === 0) {
-      // Se não conseguiu normalizar, tentar cache novamente
       const cached = loadFromCache();
-      if (cached && cached.data.length > 0) {
-        return cached.data;
-      }
+      if (cached && cached.data.length > 0) return cached.data;
       throw new Error('Nenhum dado NCM encontrado na resposta da API');
     }
 
-    // Salvar no cache
     saveToCache(normalizedData);
-    
     return normalizedData;
   } catch (error) {
     console.error('Erro ao carregar dados NCM da API:', error);
-    
-    // Tentar usar cache mesmo que expirado em caso de erro
     const cached = loadFromCache();
     if (cached && cached.data.length > 0) {
       console.warn('Usando cache expirado devido a erro na API');
       return cached.data;
     }
-
-    throw error;
+    console.warn('API NCM indisponível. Usando lista de códigos mais usados.');
+    return NCM_FALLBACK;
   }
 }
 

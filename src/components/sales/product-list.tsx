@@ -17,11 +17,13 @@ interface ProductListProps {
   products: Product[];
   isLoading: boolean;
   onAddToCart: (product: Product, quantity?: number) => void;
+  keyboardFocusArea?: 'products' | 'cart';
+  keyboardShortcutsEnabled?: boolean;
   selectedProductIndex?: number;
   onProductSelect?: (index: number) => void;
 }
 
-export function ProductList({ products, isLoading, onAddToCart, selectedProductIndex, onProductSelect }: ProductListProps) {
+export function ProductList({ products, isLoading, onAddToCart, keyboardFocusArea = 'products', keyboardShortcutsEnabled = true, selectedProductIndex, onProductSelect }: ProductListProps) {
   const [selectedImage, setSelectedImage] = useState<{ images: string[], index: number } | null>(null);
   const [page, setPage] = useState(1);
   const [internalSelectedIndex, setInternalSelectedIndex] = useState<number | null>(null);
@@ -46,7 +48,8 @@ export function ProductList({ products, isLoading, onAddToCart, selectedProductI
 
   const paginatedProducts = products.slice((page - 1) * pageSize, page * pageSize);
 
-  // Navegação por teclado
+  // Navegação por teclado (somente quando o foco está na lista de produtos e nenhum modal aberto)
+  const hasKeyboardFocus = keyboardFocusArea === 'products' && keyboardShortcutsEnabled;
   useKeyboardShortcuts({
     shortcuts: [
       {
@@ -101,7 +104,7 @@ export function ProductList({ products, isLoading, onAddToCart, selectedProductI
         preventDefault: false, // Permitir que Enter funcione normalmente em outros contextos
       },
     ],
-    enabled: !isLoading && paginatedProducts.length > 0,
+    enabled: hasKeyboardFocus && !isLoading && paginatedProducts.length > 0,
     context: 'sales',
     ignoreInputs: true,
   });

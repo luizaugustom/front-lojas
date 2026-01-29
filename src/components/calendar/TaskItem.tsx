@@ -14,6 +14,7 @@ interface TaskItemProps {
   onEdit: () => void;
   onDelete: () => void;
   onToggleComplete: () => void;
+  onViewDetails: () => void;
   canEdit: boolean;
   canDelete: boolean;
 }
@@ -23,6 +24,7 @@ export function TaskItem({
   onEdit,
   onDelete,
   onToggleComplete,
+  onViewDetails,
   canEdit,
   canDelete,
 }: TaskItemProps) {
@@ -39,7 +41,7 @@ export function TaskItem({
   return (
     <div
       className={cn(
-        'rounded-lg border bg-card p-3 space-y-2 transition-colors w-full max-w-full overflow-hidden',
+        'rounded-lg border bg-card p-3 space-y-2 transition-colors w-full min-w-0 max-w-full overflow-hidden',
         task.isCompleted && 'opacity-60',
         isOverdue && !task.isCompleted && 'border-destructive',
         isToday && !task.isCompleted && 'border-primary',
@@ -53,8 +55,15 @@ export function TaskItem({
             className="mt-1 shrink-0"
             disabled={!canEdit}
           />
-          <div className="min-w-0 flex-1 overflow-hidden">
-            <div className="flex items-center gap-2 flex-wrap min-w-0 w-full">
+          <div
+            className="min-w-0 flex-1 overflow-hidden cursor-pointer"
+            onClick={onViewDetails}
+            onKeyDown={(e) => e.key === 'Enter' && onViewDetails()}
+            role="button"
+            tabIndex={0}
+            aria-label={`Ver detalhes da tarefa ${task.title}`}
+          >
+            <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden">
               <p
                 className={cn(
                   'font-medium text-sm truncate flex-1 min-w-0',
@@ -77,15 +86,15 @@ export function TaskItem({
               )}
             </div>
             {task.description && (
-              <p 
-                className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words overflow-hidden"
+              <p
+                className="text-xs text-muted-foreground mt-1 line-clamp-2 overflow-hidden text-ellipsis"
                 title={task.description}
               >
                 {task.description}
               </p>
             )}
             <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground min-w-0 w-full overflow-hidden">
-              <span className="truncate">
+              <span className="truncate min-w-0">
                 {format(new Date(task.dueDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
               </span>
               {isOverdue && !task.isCompleted && (
@@ -95,7 +104,7 @@ export function TaskItem({
                 <span className="text-primary font-medium shrink-0">Hoje</span>
               )}
               {task.assignedToName && (
-                <span className="text-xs truncate min-w-0 flex-1">
+                <span className="text-xs truncate min-w-0 flex-1 overflow-hidden">
                   {task.assignedToType === 'company' ? 'Empresa' : `Vendedor: ${task.assignedToName}`}
                 </span>
               )}
