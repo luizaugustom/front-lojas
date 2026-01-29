@@ -168,7 +168,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <>
+    <div className="min-h-0">
       <div className="mb-2">
         <h1 className="text-3xl font-bold tracking-tight">Relatórios Contábeis</h1>
         <p className="text-muted-foreground">
@@ -176,7 +176,7 @@ export default function ReportsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 w-full mb-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 w-full mb-2 items-start">
         {/* Form Section */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
@@ -329,26 +329,21 @@ export default function ReportsPage() {
                 render={({ field }) => (
                   <div className="flex items-center justify-between rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30 p-3">
                     <div className="space-y-1 pr-4">
-                      <div className="flex items-center gap-2">
-                        <Label
-                          htmlFor="include-documents"
-                          className="text-sm font-medium leading-none"
-                        >
-                          Incluir arquivos das notas fiscais
-                        </Label>
-                        <span className="inline-block px-2 py-0.5 text-xs font-medium text-orange-600 bg-orange-50 rounded">
-                          Em desenvolvimento
-                        </span>
-                      </div>
+                      <Label
+                        htmlFor="include-documents"
+                        className="text-sm font-medium leading-none"
+                      >
+                        Incluir arquivos das notas fiscais de entrada
+                      </Label>
                       <p className="text-xs text-muted-foreground">
-                        Gera um arquivo ZIP com o relatório e pastas contendo os XMLs das NF-e, NFC-e e notas de entrada.
+                        Gera um arquivo ZIP com o relatório e a pasta contendo os XMLs e PDFs das notas fiscais de entrada.
                       </p>
                     </div>
                     <Switch
                       id="include-documents"
                       checked={!!field.value}
                       onCheckedChange={(checked) => field.onChange(checked === true)}
-                      disabled={true}
+                      disabled={loading}
                     />
                   </div>
                 )}
@@ -372,7 +367,7 @@ export default function ReportsPage() {
         </Card>
 
         {/* History Section */}
-        <Card className="flex flex-col h-fit max-h-[450px]">
+        <Card className="flex flex-col min-h-0 lg:h-full">
           <CardHeader className="flex-shrink-0 pb-2">
             <CardTitle className="flex items-center gap-2">
               <Calendar className="w-5 h-5" />
@@ -380,7 +375,7 @@ export default function ReportsPage() {
             </CardTitle>
             <CardDescription>Relatórios gerados recentemente</CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto min-h-0 pb-3">
+          <CardContent className="flex-1 min-h-0 overflow-y-auto pb-3">
             <div className="space-y-1.5">
               {history.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
@@ -442,6 +437,6 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       )}
-    </>
+    </div>
   );
 }

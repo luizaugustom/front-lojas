@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Bell, AlertCircle, AlertTriangle, Info, CheckCircle, X, ExternalLink } from 'lucide-react';
+import { Bell, AlertCircle, AlertTriangle, Info, CheckCircle, X, ExternalLink, Calendar, UserPlus, XCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -57,6 +57,9 @@ const typeConfig: Record<string, { icon: any; color: string }> = {
   system_update: { icon: Info, color: 'text-purple-500' },
   payment_reminder: { icon: AlertCircle, color: 'text-yellow-500' },
   low_stock: { icon: AlertTriangle, color: 'text-orange-500' },
+  task_created: { icon: UserPlus, color: 'text-green-500' },
+  task_due_soon: { icon: Calendar, color: 'text-amber-500' },
+  task_cancelled: { icon: XCircle, color: 'text-red-500' },
   general: { icon: Bell, color: 'text-gray-500' },
 };
 

@@ -429,7 +429,7 @@ export default function SalesPage() {
       {/* Products Section */}
       <div
         className={`flex-1 flex flex-col overflow-hidden rounded-lg transition-all ${
-          keyboardFocusArea === 'products' ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''
+          keyboardFocusArea === 'products' ? 'ring-1 ring-primary/20 ring-offset-1 ring-offset-background' : ''
         }`}
       >
         <div className="mb-4">
@@ -486,7 +486,7 @@ export default function SalesPage() {
       {/* Cart Section */}
       <div
         className={`hidden md:flex w-96 flex-col rounded-lg transition-all ${
-          keyboardFocusArea === 'cart' ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''
+          keyboardFocusArea === 'cart' ? 'ring-1 ring-primary/20 ring-offset-1 ring-offset-background' : ''
         }`}
       >
         <Cart
