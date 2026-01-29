@@ -168,15 +168,15 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-2 w-full">
-      <div>
+    <>
+      <div className="mb-2">
         <h1 className="text-3xl font-bold tracking-tight">Relatórios Contábeis</h1>
         <p className="text-muted-foreground">
           Gere relatórios completos para envio à contabilidade
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 w-full">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 w-full mb-2">
         {/* Form Section */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
@@ -442,6 +442,6 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </>
   );
 }

@@ -71,7 +71,7 @@ export function TaskItem({
                 )}
                 title={task.title}
               >
-                {task.title}
+                {task.title.length > 20 ? `${task.title.slice(0, 20)}...` : task.title}
               </p>
               <Badge
                 className={cn('text-xs shrink-0', typeColors[task.type])}
@@ -90,7 +90,7 @@ export function TaskItem({
                 className="text-xs text-muted-foreground mt-1 line-clamp-2 overflow-hidden text-ellipsis"
                 title={task.description}
               >
-                {task.description}
+                {task.description.length > 15 ? `${task.description.slice(0, 15)}...` : task.description}
               </p>
             )}
             <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground min-w-0 w-full overflow-hidden">

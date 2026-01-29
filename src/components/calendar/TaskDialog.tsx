@@ -39,9 +39,15 @@ export function TaskDialog({ open, onClose, onSave, task, sellers = [] }: TaskDi
   const isCompany = user?.role === 'empresa';
   const isSeller = user?.role === 'vendedor';
 
+  const formatTime = (d: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>(new Date());
+  const [dueTime, setDueTime] = useState<string>('09:00');
   const [type, setType] = useState<'PERSONAL' | 'WORK'>('WORK');
   const [assignedToId, setAssignedToId] = useState<string>('');
   const [saving, setSaving] = useState(false);
@@ -49,15 +55,18 @@ export function TaskDialog({ open, onClose, onSave, task, sellers = [] }: TaskDi
   useEffect(() => {
     if (open) {
       if (task) {
+        const d = new Date(task.dueDate);
         setTitle(task.title);
         setDescription(task.description || '');
-        setDueDate(new Date(task.dueDate));
+        setDueDate(d);
+        setDueTime(formatTime(d));
         setType(task.type);
         setAssignedToId(task.assignedToType === 'company' ? 'company' : task.assignedToId);
       } else {
         setTitle('');
         setDescription('');
         setDueDate(new Date());
+        setDueTime('09:00');
         setType('WORK');
         setAssignedToId('');
       }
@@ -74,12 +83,16 @@ export function TaskDialog({ open, onClose, onSave, task, sellers = [] }: TaskDi
       return;
     }
 
+    const [hours, minutes] = dueTime.split(':').map(Number);
+    const finalDueDate = new Date(dueDate);
+    finalDueDate.setHours(isNaN(hours) ? 9 : hours, isNaN(minutes) ? 0 : minutes, 0, 0);
+
     setSaving(true);
     try {
       const data: any = {
         title: title.trim(),
         description: description.trim() || undefined,
-        dueDate: dueDate.toISOString(),
+        dueDate: finalDueDate.toISOString(),
         type,
       };
 
@@ -154,6 +167,18 @@ export function TaskDialog({ open, onClose, onSave, task, sellers = [] }: TaskDi
                 disabled={saving}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="task-due-time">Hora de Vencimento</Label>
+            <Input
+              id="task-due-time"
+              type="time"
+              value={dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
+              disabled={saving}
+              className="max-w-[140px]"
+            />
           </div>
 
           <div className="space-y-2">

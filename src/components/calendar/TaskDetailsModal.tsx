@@ -49,11 +49,11 @@ function DetailRow({
   className?: string;
 }) {
   return (
-    <div className={cn('flex gap-3 py-2', className)}>
+    <div className={cn('flex gap-3 py-2 min-w-0', className)}>
       <Icon className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 overflow-hidden">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="text-sm mt-0.5 break-words">{value ?? '—'}</p>
+        <p className="text-sm mt-0.5 break-words [overflow-wrap:anywhere]">{value ?? '—'}</p>
       </div>
     </div>
   );
@@ -93,10 +93,10 @@ export function TaskDetailsModal({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <div className="flex items-start gap-2 pr-8">
+          <div className="flex items-start gap-2 pr-8 min-w-0">
             <DialogTitle
               className={cn(
-                'flex-1 text-lg',
+                'flex-1 text-lg break-words min-w-0 [overflow-wrap:anywhere]',
                 task.isCompleted && 'line-through text-muted-foreground'
               )}
             >
@@ -129,7 +129,7 @@ export function TaskDetailsModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0 overflow-hidden">
           {task.description && (
             <>
               <DetailRow
