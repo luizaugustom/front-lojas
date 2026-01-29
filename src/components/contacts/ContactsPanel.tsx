@@ -353,137 +353,10 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
               </Select>
             </div>
 
-            {formMode !== 'idle' ? (
-              <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="contact-name">Nome *</Label>
-                  <Input
-                    id="contact-name"
-                    placeholder="Nome do contato"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-phone">Telefone</Label>
-                    <Input
-                      id="contact-phone"
-                      placeholder="(11) 98765-4321"
-                      value={formPhone}
-                      onChange={(e) => setFormPhone(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-email">Email</Label>
-                    <Input
-                      id="contact-email"
-                      type="email"
-                      placeholder="contato@exemplo.com"
-                      value={formEmail}
-                      onChange={(e) => setFormEmail(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="contact-link">Link</Label>
-                  <Input
-                    id="contact-link"
-                    placeholder="https://..."
-                    value={formLink}
-                    onChange={(e) => setFormLink(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Foto</Label>
-                  <div className="flex items-center gap-3">
-                    {formPhotoPreview ? (
-                      <div className="relative">
-                        <img
-                          src={formPhotoPreview}
-                          alt="Preview"
-                          className="w-20 h-20 rounded-full object-cover border-2 border-border"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          onClick={removePhoto}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="w-20 h-20 rounded-full border-2 border-dashed border-muted-foreground/50 flex items-center justify-center">
-                        <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div>
-                      <Input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoChange}
-                        className="hidden"
-                        id="contact-photo"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        {formPhotoPreview ? 'Trocar foto' : 'Adicionar foto'}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {isCompany && (formMode === 'create' || editingAuthorType === 'company') && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="contact-visible-sellers"
-                      checked={formVisibleToSellers}
-                      onCheckedChange={(v) => setFormVisibleToSellers(!!v)}
-                    />
-                    <Label htmlFor="contact-visible-sellers" className="text-sm font-normal cursor-pointer">
-                      Compartilhar com vendedores
-                    </Label>
-                  </div>
-                )}
-
-                {isSeller && (formMode === 'create' || editingAuthorType === 'seller') && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="contact-visible-company"
-                      checked={formVisibleToCompany}
-                      onCheckedChange={(v) => setFormVisibleToCompany(!!v)}
-                    />
-                    <Label htmlFor="contact-visible-company" className="text-sm font-normal cursor-pointer">
-                      Compartilhar com empresa
-                    </Label>
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <Button onClick={handleSave} disabled={saving}>
-                    {saving ? 'Salvando...' : formMode === 'create' ? 'Criar' : 'Salvar'}
-                  </Button>
-                  <Button variant="outline" onClick={resetForm} disabled={saving}>
-                    Cancelar
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button type="button" onClick={handleCreate} className="w-full sm:w-auto" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Novo contato
-              </Button>
-            )}
+            <Button type="button" onClick={handleCreate} className="w-full sm:w-auto" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo contato
+            </Button>
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col border-t overflow-hidden">
@@ -618,6 +491,146 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
                   ))
                 )}
               </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={formMode !== 'idle'} onOpenChange={(open) => !open && resetForm()}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Contact className="h-5 w-5" />
+              {formMode === 'create' ? 'Novo contato' : 'Editar contato'}
+            </DialogTitle>
+            <DialogDescription>
+              {formMode === 'create'
+                ? 'Preencha os dados do novo contato.'
+                : 'Altere os dados do contato conforme necessário.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="contact-form-name">Nome *</Label>
+              <Input
+                id="contact-form-name"
+                placeholder="Nome do contato"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="contact-form-phone">Telefone</Label>
+                <Input
+                  id="contact-form-phone"
+                  placeholder="(11) 98765-4321"
+                  value={formPhone}
+                  onChange={(e) => setFormPhone(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="contact-form-email">Email</Label>
+                <Input
+                  id="contact-form-email"
+                  type="email"
+                  placeholder="contato@exemplo.com"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="contact-form-link">Link</Label>
+              <Input
+                id="contact-form-link"
+                placeholder="https://..."
+                value={formLink}
+                onChange={(e) => setFormLink(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Foto</Label>
+              <div className="flex items-center gap-3">
+                {formPhotoPreview ? (
+                  <div className="relative">
+                    <img
+                      src={formPhotoPreview}
+                      alt="Preview"
+                      className="w-20 h-20 rounded-full object-cover border-2 border-border"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={removePhoto}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 rounded-full border-2 border-dashed border-muted-foreground/50 flex items-center justify-center">
+                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
+                <div>
+                  <Input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="hidden"
+                    id="contact-form-photo"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {formPhotoPreview ? 'Trocar foto' : 'Adicionar foto'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {isCompany && (formMode === 'create' || editingAuthorType === 'company') && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="contact-form-visible-sellers"
+                  checked={formVisibleToSellers}
+                  onCheckedChange={(v) => setFormVisibleToSellers(!!v)}
+                />
+                <Label htmlFor="contact-form-visible-sellers" className="text-sm font-normal cursor-pointer">
+                  Compartilhar com vendedores
+                </Label>
+              </div>
+            )}
+
+            {isSeller && (formMode === 'create' || editingAuthorType === 'seller') && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="contact-form-visible-company"
+                  checked={formVisibleToCompany}
+                  onCheckedChange={(v) => setFormVisibleToCompany(!!v)}
+                />
+                <Label htmlFor="contact-form-visible-company" className="text-sm font-normal cursor-pointer">
+                  Compartilhar com empresa
+                </Label>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? 'Salvando...' : formMode === 'create' ? 'Criar' : 'Salvar'}
+              </Button>
+              <Button variant="outline" onClick={resetForm} disabled={saving}>
+                Cancelar
+              </Button>
             </div>
           </div>
         </DialogContent>
