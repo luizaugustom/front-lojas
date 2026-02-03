@@ -278,6 +278,7 @@ export const createSellerSchema = z.object({
     })
     .optional(),
   hasIndividualCash: z.boolean().optional(),
+  nfeEmissionEnabled: z.boolean().optional(),
 });
 
 export const updateSellerSchema = z.object({
@@ -328,6 +329,7 @@ export const updateSellerSchema = z.object({
     .optional(),
   confirmPassword: optionalString(),
   hasIndividualCash: z.boolean().optional(),
+  nfeEmissionEnabled: z.boolean().optional(),
   commissionRate: z.number().min(0).max(100).optional(),
 }).refine((data) => {
   if (data.password && data.password !== '') {

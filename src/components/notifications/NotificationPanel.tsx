@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { NotificationItem } from './NotificationItem';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,73 +28,21 @@ export function NotificationPanel() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const previousNotificationIds = useRef<Set<string> | null>(null);
-
-  useEffect(() => {
-    const loadPrefs = async () => {
-      try {
-        const prefs = await api.getNotificationPreferences();
-        setPushEnabled(!!prefs?.pushEnabled);
-      } catch {
-        // ignore
-      }
-    };
-    loadPrefs();
-  }, []);
 
   useEffect(() => {
     loadNotifications();
   }, []);
 
-  useEffect(() => {
-    if (!pushEnabled) return;
-    const interval = setInterval(() => loadNotifications(true), 30000);
-    return () => clearInterval(interval);
-  }, [pushEnabled]);
-
-  const showNativeNotification = (n: Notification) => {
-    if (typeof window === 'undefined' || !('Notification' in window)) return;
-    if (Notification.permission !== 'granted') return;
-    const notif = new Notification(n.title, { body: n.message });
-    if (n.actionUrl) {
-      notif.onclick = () => {
-        window.focus();
-        router.push(n.actionUrl!);
-      };
-    }
-  };
-
-  const loadNotifications = async (isRefresh = false) => {
+  const loadNotifications = async () => {
     try {
-      if (!isRefresh) setLoading(true);
-      const data = (await api.getNotifications()) as Notification[];
-      const newIds = new Set<string>((data || []).map((n) => n.id));
-      if (previousNotificationIds.current !== null) {
-        const canPush =
-          typeof window !== 'undefined' &&
-          'Notification' in window &&
-          Notification.permission === 'granted';
-        try {
-          const prefs = await api.getNotificationPreferences();
-          if (prefs?.pushEnabled && canPush) {
-            for (const n of data) {
-              if (!previousNotificationIds.current.has(n.id)) {
-                showNativeNotification(n);
-              }
-            }
-          }
-        } catch {
-          // ignore prefs
-        }
-      }
-      previousNotificationIds.current = newIds;
+      setLoading(true);
+      const data = await api.getNotifications();
       setNotifications(data);
     } catch (error: any) {
       console.error('Erro ao carregar notificações:', error);
-      if (!isRefresh) toast.error('Erro ao carregar notificações');
+      toast.error('Erro ao carregar notificações');
     } finally {
-      if (!isRefresh) setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -163,7 +111,7 @@ export function NotificationPanel() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => loadNotifications(true)}
+            onClick={loadNotifications}
             title="Atualizar"
           >
             <RefreshCw className="h-4 w-4" />

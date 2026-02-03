@@ -82,6 +82,11 @@ export function Sidebar() {
       return false;
     }
 
+    // Notas Fiscais: empresa sempre; vendedor apenas se nfeEmissionEnabled
+    if (item.name === 'Notas Fiscais') {
+      return user.role === 'empresa' || (user.role === 'vendedor' && user.nfeEmissionEnabled === true);
+    }
+
     // O role já foi normalizado na API (company -> empresa)
     return item.roles.includes(user.role);
   });

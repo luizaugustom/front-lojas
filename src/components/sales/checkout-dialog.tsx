@@ -32,6 +32,7 @@ import { InstallmentBilletViewer } from '@/components/installments/installment-b
 import { useAuth } from '@/hooks/useAuth';
 import { printContent as printContentService } from '@/lib/print-service';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
+import { getLastSelectedAcquirer } from '@/lib/acquirer-cnpj-list';
 import { CardBrandSelect } from '@/components/ui/card-brand-select';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import type { CreateSaleDto, PaymentMethod, PaymentMethodDetail, InstallmentData, Seller } from '@/types';
@@ -440,6 +441,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
             addPaymentMethod();
             setTimeout(() => {
               updatePaymentMethod(0, 'method', 'credit_card');
+              // Pré-preencher campos do grupo Card (NT 2025.001) - obrigatório para cartão
+              updatePaymentMethod(0, 'cardIntegrationType', '2');
+              updatePaymentMethod(0, 'cardOperationType', '01'); // 01 - Crédito à Vista
+              updatePaymentMethod(0, 'cardBrand', '99'); // 99 - Outras
+              const lastAcquirer = getLastSelectedAcquirer();
+              if (lastAcquirer) updatePaymentMethod(0, 'acquirerCnpj', lastAcquirer);
             }, 0);
           }
         },
@@ -452,6 +459,12 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
             addPaymentMethod();
             setTimeout(() => {
               updatePaymentMethod(0, 'method', 'debit_card');
+              // Pré-preencher campos do grupo Card (NT 2025.001) - obrigatório para cartão
+              updatePaymentMethod(0, 'cardIntegrationType', '2');
+              updatePaymentMethod(0, 'cardOperationType', '03'); // 03 - Débito
+              updatePaymentMethod(0, 'cardBrand', '99'); // 99 - Outras
+              const lastAcquirer = getLastSelectedAcquirer();
+              if (lastAcquirer) updatePaymentMethod(0, 'acquirerCnpj', lastAcquirer);
             }, 0);
           }
         },

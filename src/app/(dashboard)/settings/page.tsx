@@ -28,7 +28,6 @@ import { getImageUrl } from '@/lib/image-utils';
 import { useUIStore } from '@/store/ui-store';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
 import { getAcquirerList } from '@/lib/acquirer-cnpj-list';
-import { requestNotificationPermission } from '@/lib/electron-adapter';
 
 const PUBLIC_SITE_URL = (process.env.NEXT_PUBLIC_PUBLIC_SITE_URL || 'https://montshop.vercel.app').replace(/\/+$/, '');
 
@@ -413,10 +412,8 @@ export default function SettingsPage() {
           weeklyReports: false,
           salesAlerts: false,
           systemUpdates: false,
-          taskAlerts: false,
           emailEnabled: false,
           inAppEnabled: false,
-          pushEnabled: false,
         });
         return;
       }
@@ -464,24 +461,6 @@ export default function SettingsPage() {
     } finally {
       setUpdatingPreferences(false);
     }
-  };
-
-  const handleTogglePushEnabled = async (value: boolean) => {
-    if (value) {
-      try {
-        const permission = await requestNotificationPermission();
-        if (permission !== 'granted') {
-          toast.error(
-            'Permissão de notificações negada. Ative nas configurações do navegador para receber notificações fora do app.',
-          );
-          return;
-        }
-      } catch (err) {
-        toast.error('Não foi possível solicitar permissão de notificações.');
-        return;
-      }
-    }
-    await handleToggleNotification('pushEnabled', value);
   };
 
   // Funções para gerenciar logo da empresa
@@ -2712,23 +2691,6 @@ export default function SettingsPage() {
                   </Button>
                 </div>
 
-                {/* Tarefas */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Tarefas</p>
-                    <p className="text-sm text-muted-foreground">
-                      Tarefas criadas, vencimentos e canceladas (para o responsável)
-                    </p>
-                  </div>
-                  <Button
-                    variant={notificationPreferences.taskAlerts ? "default" : "outline"}
-                    onClick={() => handleToggleNotification('taskAlerts', !notificationPreferences.taskAlerts)}
-                    disabled={updatingPreferences}
-                  >
-                    {notificationPreferences.taskAlerts ? 'Ativado' : 'Desativado'}
-                  </Button>
-                </div>
-
                 <div className="border-t pt-6">
                   <h4 className="font-semibold mb-4">Canais de Notificação</h4>
                   
@@ -2750,7 +2712,7 @@ export default function SettingsPage() {
                   </div>
 
                   {/* In-App */}
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">Notificações In-App</p>
                       <p className="text-sm text-muted-foreground">
@@ -2763,23 +2725,6 @@ export default function SettingsPage() {
                       disabled={updatingPreferences}
                     >
                       {notificationPreferences.inAppEnabled ? 'Ativado' : 'Desativado'}
-                    </Button>
-                  </div>
-
-                  {/* Notificações fora do app */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Notificações fora do app</p>
-                      <p className="text-sm text-muted-foreground">
-                        Receber notificações fora do sistema (navegador ou dispositivo)
-                      </p>
-                    </div>
-                    <Button
-                      variant={notificationPreferences.pushEnabled ? "default" : "outline"}
-                      onClick={() => handleTogglePushEnabled(!notificationPreferences.pushEnabled)}
-                      disabled={updatingPreferences}
-                    >
-                      {notificationPreferences.pushEnabled ? 'Ativado' : 'Desativado'}
                     </Button>
                   </div>
             </div>

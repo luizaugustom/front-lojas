@@ -137,22 +137,25 @@ export default function InvoicesPage() {
     enabled: productSearchOpen,
   });
 
-  // Protege rota: apenas empresa deve ver
+  // Protege rota: empresa ou vendedor com nfeEmissionEnabled
   useEffect(() => {
-    if (user && user.role !== 'empresa') {
-      // Redireciono via location para evitar uso de router no layout client
-      window.location.href = '/dashboard';
+    if (user) {
+      const canAccess = user.role === 'empresa' || (user.role === 'vendedor' && user.nfeEmissionEnabled === true);
+      if (!canAccess) {
+        window.location.href = '/dashboard';
+      }
     }
   }, [user]);
 
   // Verificar configuração fiscal quando componente carrega ou quando abre diálogo de emissão
+  const canEmitNfe = user?.role === 'empresa' || (user?.role === 'vendedor' && user?.nfeEmissionEnabled === true);
   useEffect(() => {
-    if (user?.role === 'empresa' && emitOpen) {
+    if (canEmitNfe && emitOpen) {
       const checkFiscalConfig = async () => {
         try {
           setCheckingFiscalConfig(true);
           const response = await api.get('/company/my-company/fiscal-config/valid');
-          setHasValidFiscalConfig(response.data === true);
+          setHasValidFiscalConfig(response.data?.hasValidConfig === true || response.data === true);
         } catch (error) {
           console.error('Erro ao verificar configuração fiscal:', error);
           setHasValidFiscalConfig(false);
@@ -162,7 +165,7 @@ export default function InvoicesPage() {
       };
       checkFiscalConfig();
     }
-  }, [user, emitOpen, api]);
+  }, [canEmitNfe, emitOpen, api]);
 
   // Tenta normalizar possíveis formatos de resposta
   const raw = data as any;
@@ -503,7 +506,7 @@ export default function InvoicesPage() {
           <p className="text-muted-foreground">Visualize e baixe suas NF-e</p>
         </div>
         <div className="flex gap-2">
-          {user?.role === 'empresa' && (
+          {(user?.role === 'empresa' || (user?.role === 'vendedor' && user?.nfeEmissionEnabled)) && (
             <Button onClick={() => openEmitDialog('nfe')}>
               <PlusCircle className="mr-2 h-4 w-4" /> Emitir NF-e
             </Button>

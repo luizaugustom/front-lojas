@@ -758,7 +758,7 @@ class ApiClient {
    * PUT /notification/preferences
    * Atualizar preferências de notificação
    * Autenticação: Requerida (Bearer token)
-   * Body: { stockAlerts?, billReminders?, weeklyReports?, salesAlerts?, systemUpdates?, taskAlerts?, emailEnabled?, inAppEnabled?, pushEnabled? }
+   * Body: { stockAlerts?, billReminders?, weeklyReports?, salesAlerts?, systemUpdates?, emailEnabled?, inAppEnabled? }
    */
   async updateNotificationPreferences(data: {
     stockAlerts?: boolean;
@@ -766,10 +766,8 @@ class ApiClient {
     weeklyReports?: boolean;
     salesAlerts?: boolean;
     systemUpdates?: boolean;
-    taskAlerts?: boolean;
     emailEnabled?: boolean;
     inAppEnabled?: boolean;
-    pushEnabled?: boolean;
   }) {
     const response = await this.client.put('/notification/preferences', data);
     return response.data;
