@@ -747,6 +747,20 @@ export const cashClosureApi = {
   stats: () => api.get('/cash-closure/stats'),
 
   /**
+   * POST /cash-closure/withdrawals
+   * Roles: COMPANY - Registrar saque no caixa aberto
+   * Body: { amount, reason }
+   */
+  createWithdrawal: (data: { amount: number; reason: string }) =>
+    api.post('/cash-closure/withdrawals', data),
+
+  /**
+   * GET /cash-closure/withdrawals
+   * Roles: COMPANY - Listar saques do caixa aberto
+   */
+  getWithdrawals: () => api.get('/cash-closure/withdrawals'),
+
+  /**
    * GET /cash-closure/history
    * Roles: COMPANY - Paginação
    */
