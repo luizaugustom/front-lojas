@@ -1150,6 +1150,20 @@ export default function CashClosurePage() {
               </Card>
             )}
 
+            {/* Botão Registrar Saque */}
+            <div className="flex justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setWithdrawDialogOpen(true)}
+                disabled={loading}
+                className="gap-2"
+              >
+                <ArrowDownCircle className="h-4 w-4" />
+                Registrar Saque
+              </Button>
+            </div>
+
             {/* Formulário de Fechamento */}
             <Card className="border-2 border-red-200 dark:border-red-800">
               <CardHeader>
@@ -1163,45 +1177,33 @@ export default function CashClosurePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4">
-                  <div className="flex items-end justify-between gap-4">
-                    <div className="space-y-2 flex-1">
-                      <Label htmlFor="closingAmount" className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4" />
-                        Valor Contado no Caixa (R$) *
-                      </Label>
-                      <Input
-                        id="closingAmount"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={closingAmount ?? ''}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setClosingAmount(v === '' ? undefined : (() => { const n = Number(v); return isNaN(n) ? undefined : n; })());
-                        }}
-                        onFocus={(e) => {
-                          if (Number(e.target.value) === 0) {
-                            e.target.value = '';
-                          }
-                        }}
-                        placeholder="0.00"
-                        disabled={loading}
-                        className="text-lg"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Conte todo o dinheiro físico no caixa
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setWithdrawDialogOpen(true)}
+                  <div className="flex flex-col items-center w-full max-w-[50%] mx-auto space-y-2">
+                    <Label htmlFor="closingAmount" className="flex justify-center items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      Valor Contado no Caixa (R$) *
+                    </Label>
+                    <Input
+                      id="closingAmount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={closingAmount ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setClosingAmount(v === '' ? undefined : (() => { const n = Number(v); return isNaN(n) ? undefined : n; })());
+                      }}
+                      onFocus={(e) => {
+                        if (Number(e.target.value) === 0) {
+                          e.target.value = '';
+                        }
+                      }}
+                      placeholder="0.00"
                       disabled={loading}
-                      className="shrink-0 gap-2"
-                    >
-                      <ArrowDownCircle className="h-4 w-4" />
-                      Registrar Saque
-                    </Button>
+                      className="text-lg h-12 w-full"
+                    />
+                    <p className="text-xs text-muted-foreground text-center">
+                      Conte todo o dinheiro físico no caixa
+                    </p>
                   </div>
 
                   {stats?.withdrawals && stats.withdrawals.length > 0 && (
