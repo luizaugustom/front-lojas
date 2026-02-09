@@ -100,18 +100,12 @@ export default function CustomersPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Clientes</h1>
           <p className="text-muted-foreground">Gerencie seus clientes</p>
         </div>
-        {/** Não mostrar botão para usuários do tipo 'vendedor' */}
-        {/** useAuth fornece o user e seu role */}
-        {(() => {
-          const { user } = useAuth();
-          if (user?.role === 'vendedor') return null;
-          return (
-            <Button onClick={handleCreate} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Cliente
-            </Button>
-          );
-        })()}
+        {user?.role !== 'vendedor' && (
+          <Button onClick={handleCreate} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Cliente
+          </Button>
+        )}
       </div>
 
       <Card className="p-4 bg-card border-border">

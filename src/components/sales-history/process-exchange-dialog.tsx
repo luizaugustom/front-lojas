@@ -93,7 +93,7 @@ export function ProcessExchangeDialog({
 
   const debouncedSearch = useDebounce(searchTerm, 350);
 
-  const saleItems = sale?.items ?? [];
+  const saleItems = useMemo(() => sale?.items ?? [], [sale]);
 
   const alreadyReturnedMap = useMemo(() => {
     const map = new Map<string, number>();

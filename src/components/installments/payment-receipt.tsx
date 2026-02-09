@@ -105,7 +105,7 @@ export function PaymentReceipt({
     return () => {
       isCancelled = true;
     };
-  }, [customerId, installment?.remainingAmount, payment.amount]);
+  }, [customerId, installment?.remainingAmount, installment?.customer?.totalDebt, payment.amount]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

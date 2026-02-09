@@ -10,7 +10,6 @@ export const metadata: Metadata = {
   title: 'Sistema Montshop - Gestão Lojas',
   description: 'Sistema de gerenciamento de lojas completo',
   manifest: '/manifest.json',
-  themeColor: '#3B82F6',
   icons: {
     icon: [
       { url: '/logo.png', type: 'image/png' },
@@ -22,6 +21,10 @@ export const metadata: Metadata = {
       { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
     ],
   },
+};
+
+export const viewport = {
+  themeColor: '#3B82F6',
 };
 
 export default function RootLayout({

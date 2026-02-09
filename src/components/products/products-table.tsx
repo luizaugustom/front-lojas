@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Edit, Trash2, Package, AlertCircle, AlertTriangle, Tag } from 'lucide-react';
+import { Edit, Trash2, Package, AlertCircle, AlertTriangle, Tag, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
   Table,
@@ -21,6 +21,7 @@ import { formatCurrency, formatDate, generateUUID } from '@/lib/utils';
 import { ensureValidUUID as ensureUUID } from '@/lib/utils-clean';
 import { getImageUrl } from '@/lib/image-utils';
 import { ProductImage } from './product-image';
+import { ProductDetailsModal } from './product-details-modal';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { PromotionDialog } from '@/components/promotions/promotion-dialog';
 import type { Product } from '@/types';
@@ -40,6 +41,8 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
   const [selectedImage, setSelectedImage] = useState<{ images: string[], index: number } | null>(null);
   const [promotionDialogOpen, setPromotionDialogOpen] = useState(false);
   const [selectedProductForPromotion, setSelectedProductForPromotion] = useState<Product | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [selectedProductForDetails, setSelectedProductForDetails] = useState<Product | null>(null);
   const [confirmationModal, setConfirmationModal] = useState<{
     open: boolean;
     product: Product | null;
@@ -212,6 +215,19 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => {
+                            setSelectedProductForDetails(product);
+                            setDetailsModalOpen(true);
+                          }}
+                          aria-label={`Ver detalhes de ${product.name}`}
+                          className="focus:ring-2 focus:ring-primary focus:ring-offset-2 text-blue-600 hover:text-blue-700"
+                          title="Ver detalhes"
+                        >
+                          <Eye className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => {
                             setSelectedProductForPromotion(product);
                             setPromotionDialogOpen(true);
                           }}
@@ -307,6 +323,18 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
           setSelectedProductForPromotion(null);
         }}
         selectedProducts={selectedProductForPromotion ? [selectedProductForPromotion] : []}
+      />
+
+      {/* Modal de Detalhes do Produto */}
+      <ProductDetailsModal
+        open={detailsModalOpen}
+        onClose={() => {
+          setDetailsModalOpen(false);
+          setSelectedProductForDetails(null);
+        }}
+        product={selectedProductForDetails}
+        onEdit={canManage ? onEdit : undefined}
+        canEdit={canManage}
       />
     </Card>
   );

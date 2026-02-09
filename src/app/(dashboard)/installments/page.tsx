@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DollarSign, AlertTriangle, CheckCircle2, Filter, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -272,7 +272,7 @@ export default function InstallmentsPage() {
   };
 
   // Função para buscar parcela por código de barras
-  const handleBarcodeScanned = async (barcode: string) => {
+  const handleBarcodeScanned = useCallback(async (barcode: string) => {
     try {
       const response = await api.get(`/installment/barcode/${barcode}`);
       const installment = response.data;
@@ -293,7 +293,7 @@ export default function InstallmentsPage() {
         toast.error('Erro ao buscar parcela');
       }
     }
-  };
+  }, [api, setScanSuccess]);
 
   // Leitura de código de barras
   useEffect(() => {
@@ -347,7 +347,7 @@ export default function InstallmentsPage() {
         // Não atualizar estado se o componente foi desmontado
       }, 0);
     };
-  }, [barcodeBuffer, lastScanned, scannerActive, setScannerActive, setBarcodeBuffer]);
+  }, [barcodeBuffer, lastScanned, scannerActive, setScannerActive, setBarcodeBuffer, handleBarcodeScanned]);
 
   // Se for vendedor, mostrar versão simplificada
   if (isSeller) {

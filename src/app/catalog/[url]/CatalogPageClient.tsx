@@ -27,6 +27,7 @@ interface CatalogData {
   company: {
     id: string;
     name: string;
+    fantasyName?: string | null;
     phone: string | null;
     email: string | null;
     logoUrl: string | null;
@@ -120,15 +121,15 @@ export default function CatalogPageClient() {
     }
   }, [url]);
 
-  // Atualizar título da página com nome da empresa do catálogo
+  // Atualizar título da página com nome fantasia da empresa do catálogo
   useEffect(() => {
-    if (data?.company?.name) {
-      document.title = data.company.name;
+    if (data?.company) {
+      document.title = data.company.fantasyName || data.company.name;
     } else {
       // Manter título padrão enquanto carrega
       document.title = 'Sistema Montshop - Gestão Lojas';
     }
-  }, [data?.company?.name]);
+  }, [data?.company]);
 
   // Aplicar cor da empresa na scrollbar quando os dados forem carregados
   useEffect(() => {
@@ -280,7 +281,7 @@ export default function CatalogPageClient() {
               )}
               <div>
                 <h1 className="text-3xl font-bold text-white">
-                  {company.name}
+                  {company.fantasyName || company.name}
                 </h1>
               </div>
             </div>

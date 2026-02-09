@@ -2,6 +2,7 @@
 
 import { Menu, Moon, Sun, LogOut, Megaphone, CalendarRange } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useUIStore } from '@/store/ui-store';
@@ -20,6 +21,7 @@ export function Header() {
   const router = useRouter();
   const { theme, toggleTheme, toggleSidebar } = useUIStore();
   const { logout, user } = useAuth();
+  const passthroughLoader = ({ src }: { src: string }) => src;
 
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
   const [dateRangeModalOpen, setDateRangeModalOpen] = useState(false);
@@ -69,7 +71,7 @@ export function Header() {
       }
     }
     fetchCompanyLogo();
-  }, [user?.companyId, user?.role]);
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -116,24 +118,28 @@ export function Header() {
       <div className="flex items-center justify-center flex-1 min-w-0">
         {companyLogoUrl && companyLogoUrl.trim() !== '' && companyLogoUrl !== 'null' && companyLogoUrl !== 'undefined' ? (
           <div className="relative flex items-center justify-center h-14 w-full max-w-[250px]">
-            <img
+            <Image
               src={getImageUrl(companyLogoUrl)}
               alt="Logomarca da empresa"
-              className="h-full w-full object-contain max-h-full"
+              className="object-contain"
+              fill
+              sizes="250px"
+              unoptimized
+              loader={passthroughLoader}
               onError={(e) => {
-                const target = e.target as HTMLImageElement;
+                const target = e.currentTarget as HTMLImageElement;
                 logger.error('🔍 [Header] Erro ao carregar imagem:', {
                   src: target.src,
                   originalUrl: companyLogoUrl
                 });
                 setCompanyLogoUrl(null);
               }}
-              onLoad={() => logger.log('🔍 [Header] Imagem carregada com sucesso:', getImageUrl(companyLogoUrl))}
+              onLoadingComplete={() => logger.log('🔍 [Header] Imagem carregada com sucesso:', getImageUrl(companyLogoUrl))}
             />
           </div>
         ) : (
           <div className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
-            {user?.name || 'MontShop'}
+            {user?.fantasyName || user?.name || 'MontShop'}
           </div>
         )}
       </div>

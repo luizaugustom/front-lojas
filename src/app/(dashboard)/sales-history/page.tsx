@@ -142,28 +142,27 @@ export default function SalesHistoryPage() {
     };
   }, [periodRange, queryParams]);
 
-  // Buscar vendas
+  // Buscar vendas (com filtros aplicados no backend)
   const { data: salesData, isLoading, refetch } = useQuery({
-    queryKey: ['sales-history', queryKeyPart, period, page, limit, startDate, endDate],
+    queryKey: ['sales-history', queryKeyPart, period, page, limit, startDate, endDate, filterClient, filterSeller, filterPayment],
     queryFn: async () => {
       const params: any = { page, limit };
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
 
+      // Adicionar novos filtros
+      if (filterClient.trim()) {
+        params.clientName = filterClient.trim();
+        params.clientCpfCnpj = filterClient.trim();
+      }
+      if (filterSeller.trim()) {
+        params.sellerId = filterSeller.trim();
+      }
+      if (filterPayment.trim()) {
+        params.paymentMethod = filterPayment.trim();
+      }
+
       const response = await api.get('/sale', { params });
-      return response.data;
-    },
-  });
-
-  // Buscar estatísticas
-  const { data: statsData } = useQuery({
-    queryKey: ['sales-stats', queryKeyPart, period, startDate, endDate],
-    queryFn: async () => {
-      const params: any = {};
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-
-      const response = await api.get('/sale/stats', { params });
       return response.data;
     },
   });
@@ -171,43 +170,46 @@ export default function SalesHistoryPage() {
   // Verificar se é empresa
   const isCompany = user?.role === 'empresa';
 
-  // Buscar contas a pagar do período (apenas para empresas)
-  // Apenas contas que vencem até hoje (não incluir contas futuras)
-  const { data: billsData } = useQuery({
-    queryKey: ['bills-period', queryKeyPart, period, startDate, endDate],
-    queryFn: async () => {
-      const params: any = {};
-      if (startDate) params.startDate = startDate;
-      
-      // Sempre limitar até hoje para não incluir contas futuras
-      // Mesmo que o período selecionado inclua datas futuras, só consideramos contas que já venceram
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-      params.endDate = today.toISOString();
-      // Considerar apenas contas pagas no período para cálculo do lucro líquido
-      params.isPaid = true;
-
-      const response = await api.get('/bill-to-pay', { params });
-      return response.data;
-    },
-    enabled: isCompany,
-  });
-
-  // Buscar resumo de perdas do período (apenas para empresas)
-  const { data: lossesData } = useQuery({
-    queryKey: ['product-losses-summary', queryKeyPart, period, startDate, endDate],
+  // Buscar estatísticas (com TODOS os filtros)
+  const { data: statsData } = useQuery({
+    queryKey: ['sales-stats', queryKeyPart, period, startDate, endDate, filterClient, filterSeller, filterPayment],
     queryFn: async () => {
       const params: any = {};
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
 
-      const response = await api.get('/product-losses/summary', { params });
+      // Adicionar novos filtros
+      if (filterClient.trim()) {
+        params.clientName = filterClient.trim();
+        params.clientCpfCnpj = filterClient.trim(); // Backend busca em ambos
+      }
+      if (filterSeller.trim()) {
+        params.sellerId = filterSeller.trim(); // Nota: precisa ser ID do vendedor
+      }
+      if (filterPayment.trim()) {
+        params.paymentMethod = filterPayment.trim();
+      }
+
+      const response = await api.get('/sale/stats', { params });
       return response.data;
     },
-    enabled: isCompany,
   });
 
-  const sales = salesData?.sales || salesData?.data || [];
+  // Buscar lucro líquido (SOMENTE com filtros de data)
+  const { data: netProfitData } = useQuery({
+    queryKey: ['net-profit', queryKeyPart, period, startDate, endDate],
+    queryFn: async () => {
+      const params: any = {};
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+
+      const response = await api.get('/sale/net-profit', { params });
+      return response.data;
+    },
+    enabled: isCompany, // Apenas para empresas
+  });
+
+  const sales = useMemo(() => salesData?.sales || salesData?.data || [], [salesData]);
   const total = salesData?.total || 0;
   const totalPages = salesData?.totalPages || Math.ceil(total / limit);
 
@@ -218,27 +220,8 @@ export default function SalesHistoryPage() {
     totalCostOfGoods: statsData?.totalCostOfGoods || 0,
   };
 
-  // Calcular lucro líquido (apenas para empresas)
-  const bills = billsData?.bills || [];
-  const totalBills = bills.reduce((sum: number, bill: any) => sum + Number(bill.amount || 0), 0);
-  const totalLosses = Number(lossesData?.totalCost || 0);
-  const totalInstallmentInterest = Number(statsData?.totalInstallmentInterest || 0);
-  const netProfit = isCompany ? stats.totalRevenue - stats.totalCostOfGoods - totalBills - totalLosses - totalInstallmentInterest : null;
-
-  // Debug: log stats data
-  if (statsData) {
-    console.log('[Sales History] Stats from API:', statsData);
-    console.log('[Sales History] Parsed stats:', stats);
-    console.log('[Sales History] Bills:', totalBills, 'Losses:', totalLosses);
-    console.log('[Sales History] Net Profit Calculation:', {
-      revenue: stats.totalRevenue,
-      cogs: stats.totalCostOfGoods,
-      bills: totalBills,
-      losses: totalLosses,
-      installmentInterest: totalInstallmentInterest,
-      netProfit: stats.totalRevenue - stats.totalCostOfGoods - totalBills - totalLosses - totalInstallmentInterest,
-    });
-  }
+  // Lucro líquido vem diretamente do endpoint (apenas para empresas)
+  const netProfit = isCompany ? (netProfitData?.netProfit ?? 0) : null;
 
   const handleViewDetails = (saleId: string) => {
     setSelectedSaleId(saleId);
@@ -287,6 +270,18 @@ export default function SalesHistoryPage() {
       const params: any = { limit: 10000 }; // Limite alto para pegar todas
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
+
+      // Adicionar filtros aplicados
+      if (filterClient.trim()) {
+        params.clientName = filterClient.trim();
+        params.clientCpfCnpj = filterClient.trim();
+      }
+      if (filterSeller.trim()) {
+        params.sellerId = filterSeller.trim();
+      }
+      if (filterPayment.trim()) {
+        params.paymentMethod = filterPayment.trim();
+      }
 
       const response = await api.get('/sale', { params });
       const allSales = response.data.sales || response.data.data || [];
@@ -564,61 +559,63 @@ export default function SalesHistoryPage() {
         </div>
       </Card>
 
-      {/* Estatísticas */}
-      <div className={`grid gap-4 sm:grid-cols-2 ${isCompany ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-            <CardTitle className="text-sm font-medium">Total de Vendas</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <TrendingUp className="h-4 w-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 py-1 pt-0">
-            <div className="text-xl font-bold">{stats.totalSales}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 py-1 pt-0">
-            <div className="text-xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-            <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-              <Calendar className="h-4 w-4 text-blue-600" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 py-1 pt-0">
-            <div className="text-xl font-bold">{formatCurrency(stats.averageTicket)}</div>
-          </CardContent>
-        </Card>
-
-        {isCompany && netProfit !== null && (
+      {/* Estatísticas - apenas para empresas */}
+      {isCompany && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-              <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                <DollarSign className={`h-4 w-4 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              <CardTitle className="text-sm font-medium">Total de Vendas</CardTitle>
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-primary" />
               </div>
             </CardHeader>
             <CardContent className="px-4 py-1 pt-0">
-              <div className={`text-xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(netProfit)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Receita - COGS - Contas - Perdas - Juros</p>
+              <div className="text-xl font-bold">{stats.totalSales}</div>
             </CardContent>
           </Card>
-        )}
-      </div>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
+              <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
+              <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-green-600" />
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 py-1 pt-0">
+              <div className="text-xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
+              <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+              <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <Calendar className="h-4 w-4 text-blue-600" />
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 py-1 pt-0">
+              <div className="text-xl font-bold">{formatCurrency(stats.averageTicket)}</div>
+            </CardContent>
+          </Card>
+
+          {netProfit !== null && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
+                <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                  <DollarSign className={`h-4 w-4 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                </div>
+              </CardHeader>
+              <CardContent className="px-4 py-1 pt-0">
+                <div className={`text-xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(netProfit)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Receita - COGS - Contas - Perdas - Juros</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Tabela de Vendas */}
       <Card>

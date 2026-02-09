@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CreditCard, AlertCircle } from 'lucide-react';
 import {
   Dialog,
@@ -38,13 +38,7 @@ export function CreditCardInstallmentModal({
   const [estimatedRate, setEstimatedRate] = useState<number | null>(null);
   const [loadingRate, setLoadingRate] = useState(false);
 
-  useEffect(() => {
-    if (open && acquirerCnpj && user?.companyId) {
-      loadEstimatedRate();
-    }
-  }, [open, acquirerCnpj, installmentCount, user?.companyId]);
-
-  const loadEstimatedRate = async () => {
+  const loadEstimatedRate = useCallback(async () => {
     if (!acquirerCnpj || !user?.companyId) return;
 
     try {
@@ -74,7 +68,13 @@ export function CreditCardInstallmentModal({
     } finally {
       setLoadingRate(false);
     }
-  };
+  }, [acquirerCnpj, installmentCount, user?.companyId]);
+
+  useEffect(() => {
+    if (open && acquirerCnpj && user?.companyId) {
+      loadEstimatedRate();
+    }
+  }, [open, acquirerCnpj, user?.companyId, loadEstimatedRate]);
 
   const handleConfirm = () => {
     onConfirm(installmentCount);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { Calendar, FileText, User, Phone, Mail, CreditCard } from 'lucide-react';
 import {
@@ -48,13 +48,7 @@ export function BudgetDialog({ open, onClose, onSuccess }: BudgetDialogProps) {
   const total = getTotal();
 
   // Carregar vendedores quando for empresa e o modal abrir
-  useEffect(() => {
-    if (open && isCompany && sellers.length === 0) {
-      loadSellers();
-    }
-  }, [open, isCompany]);
-
-  const loadSellers = async () => {
+  const loadSellers = useCallback(async () => {
     if (!isCompany) return;
     
     setLoadingSellers(true);
@@ -82,7 +76,13 @@ export function BudgetDialog({ open, onClose, onSuccess }: BudgetDialogProps) {
     } finally {
       setLoadingSellers(false);
     }
-  };
+  }, [isCompany, user?.companyId]);
+
+  useEffect(() => {
+    if (open && isCompany && sellers.length === 0) {
+      loadSellers();
+    }
+  }, [open, isCompany, sellers.length, loadSellers]);
 
   // Resetar estado quando o modal fechar
   useEffect(() => {

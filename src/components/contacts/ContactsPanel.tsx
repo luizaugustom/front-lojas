@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
@@ -83,6 +84,7 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
   const { user } = useAuth();
   const isCompany = user?.role === 'empresa';
   const isSeller = user?.role === 'vendedor';
+  const passthroughLoader = ({ src }: { src: string }) => src;
 
   const [contacts, setContacts] = useState<ContactItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -391,10 +393,14 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
                       <div className="flex items-start gap-3">
                         <div className="shrink-0">
                           {c.photoUrl ? (
-                            <img
+                            <Image
                               src={getImageUrl(c.photoUrl)}
                               alt={c.name}
                               className="w-12 h-12 rounded-full object-cover border-2 border-border"
+                              width={48}
+                              height={48}
+                              unoptimized
+                              loader={passthroughLoader}
                             />
                           ) : (
                             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center border-2 border-border">
@@ -557,10 +563,14 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
               <div className="flex items-center gap-3">
                 {formPhotoPreview ? (
                   <div className="relative">
-                    <img
+                    <Image
                       src={formPhotoPreview}
                       alt="Preview"
                       className="w-20 h-20 rounded-full object-cover border-2 border-border"
+                      width={80}
+                      height={80}
+                      unoptimized
+                      loader={passthroughLoader}
                     />
                     <Button
                       type="button"
@@ -664,10 +674,14 @@ export function ContactsPanel({ open, onOpenChange }: ContactsPanelProps) {
             <div className="space-y-4">
               <div className="flex items-center justify-center">
                 {viewingContact.photoUrl ? (
-                  <img
+                  <Image
                     src={getImageUrl(viewingContact.photoUrl)}
                     alt={viewingContact.name}
                     className="w-32 h-32 rounded-full object-cover border-4 border-border"
+                    width={128}
+                    height={128}
+                    unoptimized
+                    loader={passthroughLoader}
                   />
                 ) : (
                   <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center border-4 border-border">

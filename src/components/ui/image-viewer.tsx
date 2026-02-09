@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from './button';
-import { OptimizedImage } from './optimized-image';
 import { Dialog, DialogContent } from './dialog';
 
 interface ImageViewerProps {
@@ -21,6 +21,7 @@ interface ImageViewerProps {
 export function ImageViewer({ open, onClose, images, initialIndex = 0, alt = 'Imagem' }: ImageViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [loaded, setLoaded] = useState(false);
+  const passthroughLoader = ({ src }: { src: string }) => src;
 
   useEffect(() => {
     if (open) {
@@ -29,17 +30,17 @@ export function ImageViewer({ open, onClose, images, initialIndex = 0, alt = 'Im
     }
   }, [open, initialIndex]);
 
-  const handlePrevious = () => {
+  const handlePrevious = useCallback(() => {
     setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
-  };
+  }, [images.length]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  };
+  }, [images.length]);
 
-  const handleKeyDown = (e: KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!open) return;
-    
+
     if (e.key === 'ArrowLeft') {
       handlePrevious();
     } else if (e.key === 'ArrowRight') {
@@ -47,14 +48,14 @@ export function ImageViewer({ open, onClose, images, initialIndex = 0, alt = 'Im
     } else if (e.key === 'Escape') {
       onClose();
     }
-  };
+  }, [open, handlePrevious, handleNext, onClose]);
 
   useEffect(() => {
     if (open) {
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [open, images.length]);
+  }, [open, handleKeyDown]);
 
   if (!images || images.length === 0) {
     return null;
@@ -86,11 +87,15 @@ export function ImageViewer({ open, onClose, images, initialIndex = 0, alt = 'Im
                 <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin" />
               </div>
             )}
-            <img
+            <Image
               src={currentImage}
               alt={`${alt} - ${currentIndex + 1}`}
-              className="max-w-full max-h-[80vh] object-contain"
-              onLoad={() => setLoaded(true)}
+              className="object-contain"
+              fill
+              sizes="90vw"
+              unoptimized
+              loader={passthroughLoader}
+              onLoadingComplete={() => setLoaded(true)}
             />
           </div>
 
@@ -126,10 +131,14 @@ export function ImageViewer({ open, onClose, images, initialIndex = 0, alt = 'Im
                   }`}
                   aria-label={`Ir para imagem ${index + 1}`}
                 >
-                  <img
+                  <Image
                     src={image}
                     alt={`${alt} - Thumbnail ${index + 1}`}
                     className="w-16 h-16 object-cover rounded-md"
+                    width={64}
+                    height={64}
+                    unoptimized
+                    loader={passthroughLoader}
                   />
                 </button>
               ))}

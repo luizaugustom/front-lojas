@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, FileText, ShoppingCart, Info } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -25,7 +25,6 @@ import type { Product } from '@/types';
 import { parseScaleBarcode } from '@/lib/scale-barcode';
 import { useUIStore } from '@/store/ui-store';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useRef } from 'react';
 
 const isValidHex = (hex: string | null | undefined) => {
   if (!hex) return false;
@@ -117,7 +116,7 @@ export default function SalesPage() {
 
   const products = productsResponse?.products || [];
 
-  const handleBarcodeScanned = async (barcode: string) => {
+  const handleBarcodeScanned = useCallback(async (barcode: string) => {
     setScanSuccess(true);
     setTimeout(() => setScanSuccess(false), 1500);
     
@@ -173,7 +172,7 @@ export default function SalesPage() {
         setScanSuccess(false);
       }
     }
-  };
+  }, [api, addItem, setScanSuccess, setScannerOpen]);
 
   // Clear barcode buffer after inactivity
   useEffect(() => {
@@ -184,7 +183,7 @@ export default function SalesPage() {
       
       return () => clearTimeout(timer);
     }
-  }, [barcodeBuffer]);
+  }, [barcodeBuffer, setBarcodeBuffer]);
 
   // Verificar status da impressora apenas ao montar o componente (não periodicamente)
   useEffect(() => {
@@ -304,7 +303,7 @@ export default function SalesPage() {
       window.removeEventListener('keydown', onKey);
       setScannerActive(false);
     };
-  }, [barcodeBuffer, lastScanned, setScannerActive, setBarcodeBuffer]);
+  }, [barcodeBuffer, lastScanned, setScannerActive, setBarcodeBuffer, handleBarcodeScanned, user, api]);
 
   const handleCheckout = () => {
     if (items.length === 0) return;

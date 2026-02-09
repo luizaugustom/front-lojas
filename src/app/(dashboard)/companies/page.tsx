@@ -17,6 +17,7 @@ import { convertPrismaIdToUUID, isValidId } from '@/lib/utils';
 
 export default function CompaniesPage() {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,23 +28,6 @@ export default function CompaniesPage() {
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [isFocusNfeModalOpen, setIsFocusNfeModalOpen] = useState(false);
   const [companyForFocusNfe, setCompanyForFocusNfe] = useState<Company | null>(null);
-
-  // Verificar se o usuário é admin
-  if (user?.role !== 'admin') {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-muted-foreground">
-            Acesso negado
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Apenas administradores podem gerenciar empresas.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   const fetchCompanies = async () => {
     try {
@@ -61,8 +45,14 @@ export default function CompaniesPage() {
   };
 
   useEffect(() => {
+    if (!isAdmin) {
+      setCompanies([]);
+      setLoading(false);
+      return;
+    }
+
     fetchCompanies();
-  }, []);
+  }, [isAdmin]);
 
   const handleCreateCompany = async (data: CreateCompanyDto) => {
     try {
@@ -175,6 +165,23 @@ export default function CompaniesPage() {
       setIsTogglingStatus(false);
     }
   };
+
+  // Verificar se o usuário é admin
+  if (!isAdmin) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-muted-foreground">
+            Acesso negado
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Apenas administradores podem gerenciar empresas.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const filteredCompanies = companies.filter(company =>
     company.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

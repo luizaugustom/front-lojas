@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Package } from 'lucide-react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { getImageUrl } from '@/lib/image-utils';
 
@@ -37,7 +38,8 @@ export function OptimizedImage({
 }: OptimizedImageProps) {
   const [imageState, setImageState] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [imageSrc, setImageSrc] = useState<string>('');
-  const imgRef = useRef<HTMLImageElement>(null);
+  const shouldFill = !width || !height;
+  const passthroughLoader = ({ src }: { src: string }) => src;
 
   useEffect(() => {
     if (!src) {
@@ -85,8 +87,7 @@ export function OptimizedImage({
       )}
 
       {/* Imagem real */}
-      <img
-        ref={imgRef}
+      <Image
         src={imageSrc}
         alt={alt}
         className={cn(
@@ -94,11 +95,15 @@ export function OptimizedImage({
           imageState === 'loaded' ? 'opacity-100' : 'opacity-0',
         )}
         loading={priority ? 'eager' : 'lazy'}
-        onLoad={handleLoad}
+        priority={priority}
+        onLoadingComplete={handleLoad}
         onError={handleError}
-        width={width}
-        height={height}
-        decoding="async"
+        width={shouldFill ? undefined : width}
+        height={shouldFill ? undefined : height}
+        fill={shouldFill}
+        sizes={shouldFill ? '100vw' : undefined}
+        unoptimized
+        loader={passthroughLoader}
       />
     </div>
   );

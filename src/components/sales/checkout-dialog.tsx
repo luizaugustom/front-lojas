@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
@@ -112,7 +112,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
 
 
   // Carregar configuração da empresa
-  const loadCompanyConfig = async () => {
+  const loadCompanyConfig = useCallback(async () => {
     if (!isCompany) return;
     
     try {
@@ -124,19 +124,10 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       console.error('Erro ao carregar configuração da empresa:', error);
       setCompanyConfig({ maxInstallments: 12 });
     }
-  };
-
-  // Carregar vendedores quando o modal abrir e o usuário for empresa
-  useEffect(() => {
-    if (open && isCompany) {
-      loadSellers();
-      checkFiscalConfig();
-      loadCompanyConfig();
-    }
-  }, [open, isCompany]);
+  }, [isCompany]);
 
   // Verificar configuração fiscal
-  const checkFiscalConfig = async () => {
+  const checkFiscalConfig = useCallback(async () => {
     if (!isCompany) return;
     
     setLoadingFiscalConfig(true);
@@ -149,7 +140,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     } finally {
       setLoadingFiscalConfig(false);
     }
-  };
+  }, [isCompany]);
 
   // Resetar estado quando o modal fechar
   useEffect(() => {
@@ -176,20 +167,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     }
   }, [open]);
 
-  // Buscar saldo de crédito quando CPF/CNPJ for informado
-  useEffect(() => {
-    const cpfCnpj = selectedCustomerCpfCnpj?.trim().replace(/\D/g, '');
-    if (cpfCnpj && cpfCnpj.length >= 11) {
-      loadStoreCreditBalance(cpfCnpj);
-    } else {
-      setStoreCreditBalance(0);
-      setStoreCreditCustomerId(null);
-      setUseStoreCredit(false);
-      setStoreCreditAmount(0);
-    }
-  }, [selectedCustomerCpfCnpj]);
-
-  const loadStoreCreditBalance = async (cpfCnpj: string) => {
+  const loadStoreCreditBalance = useCallback(async (cpfCnpj: string) => {
     setLoadingStoreCredit(true);
     try {
       const balance = await api.getStoreCreditBalanceByCpfCnpj(cpfCnpj);
@@ -207,9 +185,22 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     } finally {
       setLoadingStoreCredit(false);
     }
-  };
+  }, [api]);
 
-  const loadSellers = async () => {
+  // Buscar saldo de crédito quando CPF/CNPJ for informado
+  useEffect(() => {
+    const cpfCnpj = selectedCustomerCpfCnpj?.trim().replace(/\D/g, '');
+    if (cpfCnpj && cpfCnpj.length >= 11) {
+      loadStoreCreditBalance(cpfCnpj);
+    } else {
+      setStoreCreditBalance(0);
+      setStoreCreditCustomerId(null);
+      setUseStoreCredit(false);
+      setStoreCreditAmount(0);
+    }
+  }, [selectedCustomerCpfCnpj, loadStoreCreditBalance]);
+
+  const loadSellers = useCallback(async () => {
     if (!isCompany) return;
     
     setLoadingSellers(true);
@@ -255,7 +246,16 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     } finally {
       setLoadingSellers(false);
     }
-  };
+  }, [isCompany, user?.companyId]);
+
+  // Carregar vendedores quando o modal abrir e o usuário for empresa
+  useEffect(() => {
+    if (open && isCompany) {
+      loadSellers();
+      checkFiscalConfig();
+      loadCompanyConfig();
+    }
+  }, [open, isCompany, loadSellers, checkFiscalConfig, loadCompanyConfig]);
 
 
   const addPaymentMethod = () => {
@@ -386,7 +386,7 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     if (watchedCpfCnpj !== selectedCustomerCpfCnpj) {
       setSelectedCustomerCpfCnpj(watchedCpfCnpj || '');
     }
-  }, [watchedCpfCnpj]);
+  }, [watchedCpfCnpj, selectedCustomerCpfCnpj]);
 
   // Atalhos de teclado para checkout
   useKeyboardShortcuts({

@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ProductImage } from '@/components/products/product-image';
+import { ProductDetailsModal } from '@/components/products/product-details-modal';
 import { ImageViewer } from '@/components/ui/image-viewer';
 import { formatCurrency } from '@/lib/utils';
 import { getImageUrl } from '@/lib/image-utils';
@@ -25,6 +26,8 @@ interface ProductListProps {
 
 export function ProductList({ products, isLoading, onAddToCart, keyboardFocusArea = 'products', keyboardShortcutsEnabled = true, selectedProductIndex, onProductSelect }: ProductListProps) {
   const [selectedImage, setSelectedImage] = useState<{ images: string[], index: number } | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [selectedProductForDetails, setSelectedProductForDetails] = useState<Product | null>(null);
   const [page, setPage] = useState(1);
   const [internalSelectedIndex, setInternalSelectedIndex] = useState<number | null>(null);
   const productRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -183,7 +186,16 @@ export function ProductList({ products, isLoading, onAddToCart, keyboardFocusAre
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <h3 className="text-sm font-medium truncate">{product.name}</h3>
+                        <h3
+                          className="text-sm font-medium truncate cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => {
+                            setSelectedProductForDetails(product);
+                            setDetailsModalOpen(true);
+                          }}
+                          title="Clique para ver detalhes"
+                        >
+                          {product.name}
+                        </h3>
                         {product.isOnPromotion && (
                           <Tag className="h-3 w-3 text-red-500 flex-shrink-0" />
                         )}
@@ -246,6 +258,17 @@ export function ProductList({ products, isLoading, onAddToCart, keyboardFocusAre
             alt="Imagem do produto"
           />
         )}
+
+        {/* Modal de Detalhes do Produto */}
+        <ProductDetailsModal
+          open={detailsModalOpen}
+          onClose={() => {
+            setDetailsModalOpen(false);
+            setSelectedProductForDetails(null);
+          }}
+          product={selectedProductForDetails}
+          canEdit={false}
+        />
       </>
     );
 }

@@ -52,7 +52,7 @@ function MetricCard({ title, value, change, icon: Icon, trend = 'neutral' }: Met
 export default function DashboardPage() {
   const { api, isAuthenticated, user } = useAuth();
   const router = useRouter();
-  const { queryParams, queryKeyPart } = useDateRange();
+  const { queryParams, queryKeyPart, dateRange } = useDateRange();
 
   // Sales com filtro global de data
   const { data: salesData, isLoading: isSalesLoading, error: salesError } = useQuery({
@@ -76,7 +76,6 @@ export default function DashboardPage() {
   };
 
   // Sales last 7 days (for chart) - usa filtro global se disponível, senão últimos 7 dias
-  const { dateRange } = useDateRange();
   const now = new Date();
   const chartStartDate = dateRange.startDate || new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 0, 0, 0);
   const chartEndDate = dateRange.endDate || new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
@@ -223,6 +222,18 @@ export default function DashboardPage() {
       router.replace('/sales');
     }
   }, [isAuthenticated, user, router]);
+
+  // Formatar período para exibição
+  const getPeriodLabel = () => {
+    if (!dateRange.startDate || !dateRange.endDate) {
+      return 'período';
+    }
+    const start = new Date(dateRange.startDate);
+    const end = new Date(dateRange.endDate);
+    const formatShort = (d: Date) => `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+    return `${formatShort(start)} - ${formatShort(end)}`;
+  };
+
   // Compute sales metrics for month
   const sales: Sale[] = normalizeList<Sale>(salesData, 'sales');
   const totalSalesCount = sales.length;
@@ -363,12 +374,12 @@ export default function DashboardPage() {
       {/* Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          title="Vendas (mês)"
+          title={`Vendas (${getPeriodLabel()})`}
           value={totalSalesCount}
           icon={ShoppingCart}
         />
         <MetricCard
-          title="Receita (mês)"
+          title={`Receita (${getPeriodLabel()})`}
           value={formatCurrency(revenueTotal || 0)}
           icon={DollarSign}
         />

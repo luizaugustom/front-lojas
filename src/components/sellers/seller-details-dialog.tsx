@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { 
   X, 
@@ -40,13 +40,7 @@ export function SellerDetailsDialog({ isOpen, onClose, onEdit, seller }: SellerD
   const [isLoadingSales, setIsLoadingSales] = useState(false);
 
   // Carregar estatísticas e vendas quando o modal abrir
-  useEffect(() => {
-    if (seller && isOpen) {
-      loadSellerData();
-    }
-  }, [seller, isOpen]);
-
-  const loadSellerData = async () => {
+  const loadSellerData = useCallback(async () => {
     if (!seller) return;
 
     // Carregar estatísticas
@@ -78,7 +72,13 @@ export function SellerDetailsDialog({ isOpen, onClose, onEdit, seller }: SellerD
     } finally {
       setIsLoadingSales(false);
     }
-  };
+  }, [seller]);
+
+  useEffect(() => {
+    if (seller && isOpen) {
+      loadSellerData();
+    }
+  }, [seller, isOpen, loadSellerData]);
 
   const handleClose = () => {
     setStats(null);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
@@ -130,70 +131,7 @@ export function InstallmentSaleModal({
   }, [open, isAuthenticated, isInitialLoad]);
 
 
-  // Função de busca otimizada com controle de chamadas duplicadas
-  const debouncedSearch = useCallback(
-    debounce(async (term: string) => {
-      // Evitar chamadas duplicadas
-      if (term === lastSearchTerm) {
-        console.log('[DEBUG] Busca duplicada evitada:', term);
-        return;
-      }
-      
-      // Só busca se tiver o número mínimo de caracteres
-      if (term.trim().length >= minSearchLength) {
-        console.log('[DEBUG] Buscando na API:', term);
-        setLastSearchTerm(term);
-        await loadCustomers(term);
-      } else if (term.trim().length === 0) {
-        // Se campo estiver vazio, carrega todos os clientes apenas se necessário
-        if (customers.length === 0) {
-          console.log('[DEBUG] Carregando todos os clientes');
-          setLastSearchTerm('');
-          await loadCustomers();
-        }
-      }
-    }, 500), // Aumentei o debounce para 500ms
-    [minSearchLength, lastSearchTerm, customers.length]
-  );
-
-  // Filtrar clientes baseado na busca (otimizado para reduzir chamadas à API)
-  useEffect(() => {
-    if (!searchTerm) {
-      setFilteredCustomers(customers);
-      return;
-    }
-
-    // Sempre fazer busca local primeiro (instantânea)
-    const filtered = customers.filter(customer =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.cpfCnpj?.includes(searchTerm) ||
-      customer.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredCustomers(filtered);
-
-    // Só buscar na API se:
-    // 1. Tiver o mínimo de caracteres
-    // 2. Não for o carregamento inicial
-    // 3. Não for uma busca duplicada
-    if (searchTerm.length >= minSearchLength && !isInitialLoad && searchTerm !== lastSearchTerm) {
-      console.log('[DEBUG] Busca local feita, agendando busca na API');
-      debouncedSearch(searchTerm);
-    }
-  }, [searchTerm, customers, debouncedSearch, minSearchLength, isInitialLoad, lastSearchTerm]);
-
-  // Resetar estado quando o modal fechar
-  useEffect(() => {
-    if (!open) {
-      setSelectedCustomer(null);
-      setSearchTerm('');
-      setInstallments(1);
-      setLastSearchTerm('');
-      setIsInitialLoad(true);
-      reset();
-    }
-  }, [open, reset]);
-
-  const loadCustomers = async (searchTerm?: string) => {
+  const loadCustomers = useCallback(async (searchTerm?: string) => {
     console.log('[DEBUG] loadCustomers chamada com:', { 
       searchTerm, 
       loading, 
@@ -351,7 +289,70 @@ export function InstallmentSaleModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, isAuthenticated, loading, user, customers.length, isInitialLoad]);
+
+  // Função de busca otimizada com controle de chamadas duplicadas
+  const debouncedSearch = useMemo(() =>
+    debounce(async (term: string) => {
+      // Evitar chamadas duplicadas
+      if (term === lastSearchTerm) {
+        console.log('[DEBUG] Busca duplicada evitada:', term);
+        return;
+      }
+
+      // Só busca se tiver o número mínimo de caracteres
+      if (term.trim().length >= minSearchLength) {
+        console.log('[DEBUG] Buscando na API:', term);
+        setLastSearchTerm(term);
+        await loadCustomers(term);
+      } else if (term.trim().length === 0) {
+        // Se campo estiver vazio, carrega todos os clientes apenas se necessário
+        if (customers.length === 0) {
+          console.log('[DEBUG] Carregando todos os clientes');
+          setLastSearchTerm('');
+          await loadCustomers();
+        }
+      }
+    }, 500), // Aumentei o debounce para 500ms
+    [minSearchLength, lastSearchTerm, customers.length, loadCustomers]
+  );
+
+  // Filtrar clientes baseado na busca (otimizado para reduzir chamadas à API)
+  useEffect(() => {
+    if (!searchTerm) {
+      setFilteredCustomers(customers);
+      return;
+    }
+
+    // Sempre fazer busca local primeiro (instantânea)
+    const filtered = customers.filter(customer =>
+      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.cpfCnpj?.includes(searchTerm) ||
+      customer.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredCustomers(filtered);
+
+    // Só buscar na API se:
+    // 1. Tiver o mínimo de caracteres
+    // 2. Não for o carregamento inicial
+    // 3. Não for uma busca duplicada
+    if (searchTerm.length >= minSearchLength && !isInitialLoad && searchTerm !== lastSearchTerm) {
+      console.log('[DEBUG] Busca local feita, agendando busca na API');
+      debouncedSearch(searchTerm);
+    }
+  }, [searchTerm, customers, debouncedSearch, minSearchLength, isInitialLoad, lastSearchTerm]);
+
+  // Resetar estado quando o modal fechar
+  useEffect(() => {
+    if (!open) {
+      setSelectedCustomer(null);
+      setSearchTerm('');
+      setInstallments(1);
+      setLastSearchTerm('');
+      setIsInitialLoad(true);
+      reset();
+    }
+  }, [open, reset]);
 
   const calculateInstallmentValue = (parcelaNumber: number = 1) => {
     const interestRates = companyConfig?.installmentInterestRates || {};

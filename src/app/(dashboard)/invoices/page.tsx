@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileText, Download, RefreshCw, Search, PlusCircle, Trash2, Plus, Package, XCircle, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { FileText, Download, RefreshCw, Search, PlusCircle, Trash2, Plus, Package, XCircle, CheckCircle2, AlertCircle, Info, HelpCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -19,6 +19,7 @@ import { formatCurrency, formatDateTime, downloadFile } from '@/lib/utils';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
 import { isValidCPF, isValidCNPJ, isValidCPFOrCNPJ } from '@/lib/validations';
+import { InvoiceHelpModal } from '@/components/invoices/invoice-help-modal';
 
 interface FiscalDoc {
   id: string;
@@ -114,6 +115,9 @@ export default function InvoicesPage() {
   // Estado para verificação de configuração fiscal
   const [hasValidFiscalConfig, setHasValidFiscalConfig] = useState<boolean | null>(null);
   const [checkingFiscalConfig, setCheckingFiscalConfig] = useState(false);
+
+  // Estado para modal de ajuda
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const { queryKeyPart } = useDateRange();
   const { data, isLoading, refetch } = useQuery({
@@ -502,7 +506,18 @@ export default function InvoicesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Notas Fiscais</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">Notas Fiscais</h1>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setHelpOpen(true)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              title="Ajuda sobre funcionalidades"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </Button>
+          </div>
           <p className="text-muted-foreground">Visualize e baixe suas NF-e</p>
         </div>
         <div className="flex gap-2">
@@ -1332,6 +1347,9 @@ export default function InvoicesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Help Modal */}
+      <InvoiceHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

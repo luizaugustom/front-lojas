@@ -4,6 +4,7 @@ export type UserRole = 'admin' | 'empresa' | 'vendedor';
 export interface User {
   id: string;
   name: string;
+  fantasyName?: string | null;
   email?: string;
   login?: string;
   role: UserRole;
@@ -41,6 +42,7 @@ export type DataPeriodFilter =
 export interface Company {
   id: string;
   name: string;
+  fantasyName?: string | null;
   login: string;
   cnpj: string;
   email: string;
@@ -78,6 +80,7 @@ export interface Company {
 
 export interface CreateCompanyDto {
   name: string;
+  fantasyName?: string;
   login: string;
   password?: string;
   cnpj: string;
@@ -485,13 +488,39 @@ export interface GenerateReportDto {
   includeDocuments?: boolean;
 }
 
+// Enum para filtros de período
+export enum ReportHistoryPeriodFilter {
+  THIS_MONTH = 'THIS_MONTH',
+  LAST_3_MONTHS = 'LAST_3_MONTHS',
+  LAST_6_MONTHS = 'LAST_6_MONTHS',
+  LAST_YEAR = 'LAST_YEAR',
+}
+
+// Interface atualizada de histórico
 export interface ReportHistory {
   id: string;
-  type: ReportType;
+  reportType: ReportType;
   format: ReportFormat;
-  date: string;
-  size: number;
+  startDate?: string;
+  endDate?: string;
+  sellerId?: string;
+  sellerName?: string;
+  includeDocuments: boolean;
   filename: string;
+  fileSize: number;
+  generatedAt: string;
+}
+
+// Response com paginação
+export interface ReportHistoryResponse {
+  data: ReportHistory[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
 }
 
 // DTO Types

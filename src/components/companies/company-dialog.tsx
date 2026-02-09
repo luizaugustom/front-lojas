@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Company, CreateCompanyDto, PlanType } from '@/types';
 import {
   Dialog,
@@ -26,9 +27,11 @@ interface CompanyDialogProps {
 export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDialogProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const passthroughLoader = ({ src }: { src: string }) => src;
 
   const [formData, setFormData] = useState<CreateCompanyDto>({
     name: '',
+    fantasyName: '',
     login: '',
     password: '',
     cnpj: '',
@@ -70,6 +73,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
     if (company) {
       setFormData({
         name: company.name,
+        fantasyName: company.fantasyName || '',
         login: company.login || company.email, // Usar login da empresa, ou email como fallback
         password: '', // Não mostrar senha existente
         cnpj: company.cnpj,
@@ -107,6 +111,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
     } else {
       setFormData({
         name: '',
+        fantasyName: '',
         login: '',
         password: '',
         cnpj: '',
@@ -283,20 +288,38 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Nome */}
+                {/* Razão Social */}
                 <div className="md:col-span-2">
                   <Label htmlFor="name" className="flex items-center gap-2 text-foreground">
                     <Building2 className="h-4 w-4" />
-                    Nome da Empresa *
+                    Razão Social *
                   </Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => handleChange('name', e.target.value)}
-                    placeholder="Nome da empresa"
+                    placeholder="Ex: MINHA LOJA LTDA"
                     required
                     className="text-foreground"
                   />
+                </div>
+
+                {/* Nome Fantasia */}
+                <div className="md:col-span-2">
+                  <Label htmlFor="fantasyName" className="flex items-center gap-2 text-foreground">
+                    <Building2 className="h-4 w-4" />
+                    Nome Fantasia
+                  </Label>
+                  <Input
+                    id="fantasyName"
+                    value={formData.fantasyName}
+                    onChange={(e) => handleChange('fantasyName', e.target.value)}
+                    placeholder="Ex: Loja do João"
+                    className="text-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Nome usado no catálogo público e comunicações com clientes
+                  </p>
                 </div>
 
                 {/* Login - Exibir na criação ou edição (se admin) */}
@@ -494,7 +517,15 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
                   />
                   {formData.logoUrl && (
                     <div className="mt-2">
-                      <img src={formData.logoUrl} alt="Logomarca" className="h-16 rounded" />
+                      <Image
+                        src={formData.logoUrl}
+                        alt="Logomarca"
+                        className="h-16 w-auto rounded"
+                        width={64}
+                        height={64}
+                        unoptimized
+                        loader={passthroughLoader}
+                      />
                     </div>
                   )}
                 </div>

@@ -185,7 +185,7 @@ export function NCMSearchModal({ open, onClose, onSelect }: NCMSearchModalProps)
     }
   };
 
-  const cacheInfo = useMemo(() => getCacheInfo(), [ncmData]);
+  const cacheInfo = getCacheInfo();
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, Upload, X, Image, MessageSquare, Store, ExternalLink, Percent, CreditCard, Plus, Edit2, Trash2, AlertCircle } from 'lucide-react';
+import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, Upload, X, Image as ImageIcon, MessageSquare, Store, ExternalLink, Percent, CreditCard, Plus, Edit2, Trash2, AlertCircle } from 'lucide-react';
+import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,7 @@ const withPublicSiteUrl = (path?: string | null) => {
 export default function SettingsPage() {
   const { user, api: authApi, logout } = useAuth();
   const setCompanyColor = useUIStore((s) => s.setCompanyColor);
+  const passthroughLoader = ({ src }: { src: string }) => src;
   
   // Estado do perfil
   const [profile, setProfile] = useState<any>(null);
@@ -169,7 +171,7 @@ export default function SettingsPage() {
 
 
   // Carregar dados da empresa (incluindo plano)
-  const loadCompanyData = async () => {
+  const loadCompanyData = useCallback(async () => {
     try {
       setLoadingCompanyData(true);
       const response = await authApi.get('/company/my-company');
@@ -184,7 +186,7 @@ export default function SettingsPage() {
     } finally {
       setLoadingCompanyData(false);
     }
-  };
+  }, [authApi, setCompanyColor]);
 
   const handleSaveBrandColor = async () => {
     try {
@@ -200,7 +202,7 @@ export default function SettingsPage() {
   };
 
   // Carregar configuração global Focus NFe (apenas para admin)
-  const loadAdminFocusNfeConfig = async () => {
+  const loadAdminFocusNfeConfig = useCallback(async () => {
     try {
       setLoadingAdminFocusNfe(true);
       const response = await adminApi.getFocusNfeConfig();
@@ -216,7 +218,7 @@ export default function SettingsPage() {
     } finally {
       setLoadingAdminFocusNfe(false);
     }
-  };
+  }, []);
 
   const handleSaveAdminFocusNfeConfig = async () => {
     try {
@@ -232,30 +234,7 @@ export default function SettingsPage() {
     }
   };
 
-  // Carregar perfil do usuário quando o user mudar
-  useEffect(() => {
-    if (user) {
-      loadProfile();
-      if (user.role === 'empresa') {
-        loadCompanyData();
-        loadCompanyLogo();
-        loadAutoMessageStatus();
-        loadCatalogPageConfig();
-        loadFiscalConfig();
-        loadInstallmentConfig();
-        loadCardRates();
-      } else if (user.role === 'admin') {
-        loadAdminFocusNfeConfig();
-      }
-    }
-  }, [user]);
-
-  // Carregar preferências na montagem
-  useEffect(() => {
-    loadNotificationPreferences();
-  }, []);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       setLoadingProfile(true);
       
@@ -295,7 +274,7 @@ export default function SettingsPage() {
     } finally {
       setLoadingProfile(false);
     }
-  };
+  }, [authApi, user]);
 
   const handleUpdateProfile = async () => {
     try {
@@ -388,7 +367,7 @@ export default function SettingsPage() {
     }
   };
 
-  const loadNotificationPreferences = async () => {
+  const loadNotificationPreferences = useCallback(async () => {
     try {
       setLoadingPreferences(true);
       const data = await authApi.getNotificationPreferences();
@@ -422,7 +401,7 @@ export default function SettingsPage() {
     } finally {
       setLoadingPreferences(false);
     }
-  };
+  }, [authApi]);
 
   const handleToggleNotification = async (field: string, value: boolean) => {
     try {
@@ -464,7 +443,7 @@ export default function SettingsPage() {
   };
 
   // Funções para gerenciar logo da empresa
-  const loadCompanyLogo = async () => {
+  const loadCompanyLogo = useCallback(async () => {
     try {
       const response = await companyApi.myCompany();
       const logoUrl = response.data?.logoUrl;
@@ -473,7 +452,7 @@ export default function SettingsPage() {
       console.error('Erro ao carregar logo da empresa:', error);
       setCompanyLogo(null);
     }
-  };
+  }, []);
 
   const handleLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -537,7 +516,7 @@ export default function SettingsPage() {
   };
 
   // Funções para gerenciar mensagens automáticas
-  const loadAutoMessageStatus = async () => {
+  const loadAutoMessageStatus = useCallback(async () => {
     try {
       setLoadingAutoMessage(true);
       const response = await authApi.get('/company/my-company/auto-message/status');
@@ -548,7 +527,7 @@ export default function SettingsPage() {
     } finally {
       setLoadingAutoMessage(false);
     }
-  };
+  }, [authApi]);
 
   const handleToggleAutoMessage = async (enable: boolean) => {
     try {
@@ -586,7 +565,7 @@ export default function SettingsPage() {
   };
 
   // Funções para gerenciar certificado digital
-  const loadFiscalConfig = async () => {
+  const loadFiscalConfig = useCallback(async () => {
     try {
       setLoadingFiscalConfig(true);
       const response = await companyApi.getFiscalConfig();
@@ -608,7 +587,7 @@ export default function SettingsPage() {
     } finally {
       setLoadingFiscalConfig(false);
     }
-  };
+  }, []);
 
   const handleCertificateFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -713,7 +692,7 @@ export default function SettingsPage() {
   };
 
   // Funções para gerenciar página de catálogo
-  const loadCatalogPageConfig = async () => {
+  const loadCatalogPageConfig = useCallback(async () => {
     try {
       setLoadingCatalogPage(true);
       const response = await authApi.get('/company/my-company/catalog-page');
@@ -737,7 +716,7 @@ export default function SettingsPage() {
     } finally {
       setLoadingCatalogPage(false);
     }
-  };
+  }, [authApi]);
 
   const handleUpdateCatalogPage = async () => {
     try {
@@ -799,7 +778,7 @@ export default function SettingsPage() {
   };
 
   // Carregar configurações de parcelamento
-  const loadInstallmentConfig = async () => {
+  const loadInstallmentConfig = useCallback(async () => {
     try {
       const response = await authApi.get('/company/my-company');
       const data = response.data;
@@ -816,7 +795,7 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Erro ao carregar configurações de parcelamento:', error);
     }
-  };
+  }, [authApi]);
 
   // Salvar configurações de parcelamento
   const handleSaveInstallmentConfig = async () => {
@@ -865,7 +844,7 @@ export default function SettingsPage() {
   };
 
   // Funções para gerenciar taxas de cartão
-  const loadCardRates = async () => {
+  const loadCardRates = useCallback(async () => {
     try {
       setLoadingCardRates(true);
       const response = await cardAcquirerRateApi.list();
@@ -875,7 +854,41 @@ export default function SettingsPage() {
     } finally {
       setLoadingCardRates(false);
     }
-  };
+  }, []);
+
+  // Carregar perfil do usuário quando o user mudar
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+      if (user.role === 'empresa') {
+        loadCompanyData();
+        loadCompanyLogo();
+        loadAutoMessageStatus();
+        loadCatalogPageConfig();
+        loadFiscalConfig();
+        loadInstallmentConfig();
+        loadCardRates();
+      } else if (user.role === 'admin') {
+        loadAdminFocusNfeConfig();
+      }
+    }
+  }, [
+    user,
+    loadProfile,
+    loadCompanyData,
+    loadCompanyLogo,
+    loadAutoMessageStatus,
+    loadCatalogPageConfig,
+    loadFiscalConfig,
+    loadInstallmentConfig,
+    loadCardRates,
+    loadAdminFocusNfeConfig,
+  ]);
+
+  // Carregar preferências na montagem
+  useEffect(() => {
+    loadNotificationPreferences();
+  }, [loadNotificationPreferences]);
 
   const handleOpenCardRateDialog = (rate?: CardAcquirerRate) => {
     if (rate) {
@@ -1464,7 +1477,7 @@ export default function SettingsPage() {
           <Card id="empresa-logo-cor" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Image className="h-5 w-5" />
+                <ImageIcon className="h-5 w-5" />
                 Logo e Cor da Empresa
               </CardTitle>
               <CardDescription>
@@ -1478,10 +1491,14 @@ export default function SettingsPage() {
                   <div>
                     <Label>Logo Atual</Label>
                     <div className="mt-2 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
-                      <img
+                      <Image
                         src={getImageUrl(companyLogo)}
                         alt="Logo atual da empresa"
                         className="h-16 mx-auto object-contain"
+                        width={160}
+                        height={64}
+                        unoptimized
+                        loader={passthroughLoader}
                         onError={() => setCompanyLogo(null)}
                       />
                     </div>
@@ -1533,10 +1550,14 @@ export default function SettingsPage() {
                     <div>
                       <Label>Pré-visualização</Label>
                       <div className="mt-2 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
-                        <img
+                        <Image
                           src={URL.createObjectURL(logoFile)}
                           alt="Pré-visualização do logo"
                           className="h-16 mx-auto object-contain"
+                          width={160}
+                          height={64}
+                          unoptimized
+                          loader={passthroughLoader}
                         />
                       </div>
                     </div>

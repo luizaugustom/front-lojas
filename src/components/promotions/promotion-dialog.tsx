@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import { X, Search } from 'lucide-react';
@@ -77,13 +77,6 @@ export function PromotionDialog({
   const discountType = watch('discountType');
   const selectedProductIds = watch('productIds') || [];
 
-  // Carregar produtos
-  useEffect(() => {
-    if (open) {
-      loadProducts();
-    }
-  }, [open]);
-
   // Preencher formulário ao editar
   useEffect(() => {
     if (promotion && open) {
@@ -119,14 +112,21 @@ export function PromotionDialog({
     }
   }, [promotion, selectedProducts, open, reset]);
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     try {
       const response = await api.get('/product', { params: { limit: 1000 } });
       setProducts(response.data?.products || []);
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
     }
-  };
+  }, [api]);
+
+  // Carregar produtos
+  useEffect(() => {
+    if (open) {
+      loadProducts();
+    }
+  }, [open, loadProducts]);
 
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())

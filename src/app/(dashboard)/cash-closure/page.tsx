@@ -209,7 +209,7 @@ const WITHDRAWAL_REASONS = [
 ] as const;
 
 export default function CashClosurePage() {
-  const { api } = useAuth();
+  const { api, user } = useAuth();
   const [openingAmount, setOpeningAmount] = useState<number | undefined>(0);
   const [closingAmount, setClosingAmount] = useState<number | undefined>(0);
   const [loading, setLoading] = useState(false);
@@ -1312,151 +1312,153 @@ export default function CashClosurePage() {
           </>
         )}
 
-        {/* Histórico de Fechamentos */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <History className="h-5 w-5" />
-                  Histórico de Fechamentos
-                </CardTitle>
-                <CardDescription>
-                  Fechamentos anteriores realizados
-                </CardDescription>
+        {/* Histórico de Fechamentos - Visível apenas para empresa e admin */}
+        {user?.role !== 'vendedor' && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <History className="h-5 w-5" />
+                    Histórico de Fechamentos
+                  </CardTitle>
+                  <CardDescription>
+                    Fechamentos anteriores realizados
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowHistory(!showHistory);
+                    if (!showHistory) refetchHistory();
+                  }}
+                >
+                  {showHistory ? (
+                    <>
+                      <ChevronUp className="h-4 w-4 mr-2" />
+                      Ocultar
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4 mr-2" />
+                      Mostrar
+                    </>
+                  )}
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowHistory(!showHistory);
-                  if (!showHistory) refetchHistory();
-                }}
-              >
-                {showHistory ? (
-                  <>
-                    <ChevronUp className="h-4 w-4 mr-2" />
-                    Ocultar
-                  </>
+            </CardHeader>
+            {showHistory && (
+              <CardContent>
+                {!historyData || historyData.closures?.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>Nenhum fechamento anterior encontrado</p>
+                  </div>
                 ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4 mr-2" />
-                    Mostrar
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardHeader>
-          {showHistory && (
-            <CardContent>
-              {!historyData || historyData.closures?.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Nenhum fechamento anterior encontrado</p>
-                </div>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Abertura</TableHead>
-                        <TableHead>Fechamento</TableHead>
-                        <TableHead>Saldo Inicial</TableHead>
-                        <TableHead>Vendas</TableHead>
-                        <TableHead>Saldo Final</TableHead>
-                        <TableHead>Diferença</TableHead>
-                        <TableHead>Vendas</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {historyData?.closures.map((closure: CashClosure) => {
-                        const diff = closure.difference ?? (Number(closure.closingAmount || 0) - (
-                          Number(closure.openingAmount || 0) + Number(closure.totalSales || 0) - Number(closure.totalWithdrawals || 0)
-                        ));
-                        const diffBadgeClass = Math.abs(diff) < 0.01
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : diff > 0
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Abertura</TableHead>
+                          <TableHead>Fechamento</TableHead>
+                          <TableHead>Saldo Inicial</TableHead>
+                          <TableHead>Vendas</TableHead>
+                          <TableHead>Saldo Final</TableHead>
+                          <TableHead>Diferença</TableHead>
+                          <TableHead>Vendas</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {historyData?.closures.map((closure: CashClosure) => {
+                          const diff = closure.difference ?? (Number(closure.closingAmount || 0) - (
+                            Number(closure.openingAmount || 0) + Number(closure.totalSales || 0) - Number(closure.totalWithdrawals || 0)
+                          ));
+                          const diffBadgeClass = Math.abs(diff) < 0.01
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : diff > 0
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
 
-                        return (
-                          <TableRow key={closure.id}>
-                            <TableCell className="font-medium">
-                              {formatDate(closure.openingDate)}
-                            </TableCell>
-                            <TableCell>
-                              {closure.closingDate ? formatDate(closure.closingDate) : '-'}
-                            </TableCell>
-                            <TableCell>{formatCurrency(closure.openingAmount || 0)}</TableCell>
-                            <TableCell className="text-green-600">
-                              {formatCurrency(closure.totalSales || 0)}
-                            </TableCell>
-                            <TableCell className="font-bold">
-                              {formatCurrency(closure.closingAmount || 0)}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={Math.abs(diff) < 0.01 ? 'default' : 'secondary'}
-                                className={diffBadgeClass}
-                              >
-                                {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">
-                                {closure.salesCount ?? 0} vendas
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleViewDetails(
-                                    closure.id,
-                                    `Detalhes do fechamento (${formatDate(closure.openingDate)})`,
-                                    true,
-                                  )}
-                                  disabled={detailsLoadingId === closure.id}
-                                  title="Ver detalhes"
+                          return (
+                            <TableRow key={closure.id}>
+                              <TableCell className="font-medium">
+                                {formatDate(closure.openingDate)}
+                              </TableCell>
+                              <TableCell>
+                                {closure.closingDate ? formatDate(closure.closingDate) : '-'}
+                              </TableCell>
+                              <TableCell>{formatCurrency(closure.openingAmount || 0)}</TableCell>
+                              <TableCell className="text-green-600">
+                                {formatCurrency(closure.totalSales || 0)}
+                              </TableCell>
+                              <TableCell className="font-bold">
+                                {formatCurrency(closure.closingAmount || 0)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={Math.abs(diff) < 0.01 ? 'default' : 'secondary'}
+                                  className={diffBadgeClass}
                                 >
-                                  {detailsLoadingId === closure.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Eye className="h-4 w-4" />
-                                  )}
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReprintReport(closure.id, false)}
-                                  title="Reimprimir apenas o resumo"
-                                >
-                                  <Printer className="h-4 w-4" />
-                                  <span className="ml-2">Resumo</span>
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReprintReport(closure.id, true)}
-                                  title="Reimprimir com detalhes das vendas"
-                                >
-                                  <Printer className="h-4 w-4" />
-                                  <span className="ml-2">Detalhes</span>
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          )}
-        </Card>
+                                  {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {closure.salesCount ?? 0} vendas
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleViewDetails(
+                                      closure.id,
+                                      `Detalhes do fechamento (${formatDate(closure.openingDate)})`,
+                                      true,
+                                    )}
+                                    disabled={detailsLoadingId === closure.id}
+                                    title="Ver detalhes"
+                                  >
+                                    {detailsLoadingId === closure.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Eye className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleReprintReport(closure.id, false)}
+                                    title="Reimprimir apenas o resumo"
+                                  >
+                                    <Printer className="h-4 w-4" />
+                                    <span className="ml-2">Resumo</span>
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleReprintReport(closure.id, true)}
+                                    title="Reimprimir com detalhes das vendas"
+                                  >
+                                    <Printer className="h-4 w-4" />
+                                    <span className="ml-2">Detalhes</span>
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            )}
+          </Card>
+        )}
       </div>
     </>
   );

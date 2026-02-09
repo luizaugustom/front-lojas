@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,22 +32,7 @@ export function FocusNfeConfigModal({ open, onOpenChange, company, onSuccess }: 
     ibptToken: '',
   });
 
-  useEffect(() => {
-    if (open && company) {
-      loadConfig();
-      loadFiscalConfig();
-    } else {
-      // Reset form when modal closes
-      setFormData({
-        focusNfeApiKey: '',
-        focusNfeEnvironment: 'sandbox',
-        ibptToken: '',
-      });
-      setFiscalConfig(null);
-    }
-  }, [open, company]);
-
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     if (!company) return;
 
     setLoadingConfig(true);
@@ -74,9 +59,9 @@ export function FocusNfeConfigModal({ open, onOpenChange, company, onSuccess }: 
     } finally {
       setLoadingConfig(false);
     }
-  };
+  }, [company]);
 
-  const loadFiscalConfig = async () => {
+  const loadFiscalConfig = useCallback(async () => {
     if (!company) return;
 
     setLoadingFiscalConfig(true);
@@ -88,7 +73,22 @@ export function FocusNfeConfigModal({ open, onOpenChange, company, onSuccess }: 
     } finally {
       setLoadingFiscalConfig(false);
     }
-  };
+  }, [company]);
+
+  useEffect(() => {
+    if (open && company) {
+      loadConfig();
+      loadFiscalConfig();
+    } else {
+      // Reset form when modal closes
+      setFormData({
+        focusNfeApiKey: '',
+        focusNfeEnvironment: 'sandbox',
+        ibptToken: '',
+      });
+      setFiscalConfig(null);
+    }
+  }, [open, company, loadConfig, loadFiscalConfig]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

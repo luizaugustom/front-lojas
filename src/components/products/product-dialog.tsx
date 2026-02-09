@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Image from 'next/image';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
@@ -157,6 +158,7 @@ interface ProductDialogProps {
 }
 
 export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
+  const passthroughLoader = ({ src }: { src: string }) => src;
   const [loading, setLoading] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
@@ -1009,7 +1011,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                             ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
                             : 'border-border bg-muted group-hover:border-border/80'
                         }`}>
-                          <img
+                          <Image
                             src={fullImageUrl}
                             alt={`Foto existente ${index + 1}`}
                             className={`w-full h-full object-cover rounded transition-all duration-200 ${
@@ -1017,15 +1019,18 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                                 ? 'opacity-50 grayscale' 
                                 : ''
                             }`}
-                            onLoad={() => console.log(`[ProductDialog] Foto ${index} carregada com sucesso:`, fullImageUrl)}
+                            width={64}
+                            height={64}
+                            unoptimized
+                            loader={passthroughLoader}
+                            onLoadingComplete={() => console.log(`[ProductDialog] Foto ${index} carregada com sucesso:`, fullImageUrl)}
                             onError={(e) => {
                               console.error(`[ProductDialog] Erro ao carregar foto ${index}:`, {
                                 originalUrl: photoUrl,
                                 fullUrl: fullImageUrl,
                                 error: e
                               });
-                              // Mostrar placeholder quando a imagem falha ao carregar
-                              const imgElement = e.target as HTMLImageElement;
+                              const imgElement = e.currentTarget as HTMLImageElement;
                               imgElement.style.display = 'none';
                               const placeholder = imgElement.nextElementSibling as HTMLElement;
                               if (placeholder) {
@@ -1169,10 +1174,14 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
                 <div className="flex flex-wrap gap-2">
                   {selectedPhotos.map((photo, index) => (
                     <div key={index} className="relative">
-                      <img
+                      <Image
                         src={photoPreviewUrls[index]}
                         alt={`Preview ${index + 1}`}
                         className="w-16 h-16 object-cover rounded border border-border"
+                        width={64}
+                        height={64}
+                        unoptimized
+                        loader={passthroughLoader}
                       />
                       <div className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center cursor-pointer hover:bg-red-600 transition-colors"
                            onClick={() => {

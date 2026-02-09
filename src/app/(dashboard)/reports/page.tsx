@@ -23,7 +23,7 @@ import { useDateRange } from '@/hooks/useDateRange';
 import { handleApiError } from '@/lib/handleApiError';
 import { reportSchema } from '@/lib/validations';
 import { downloadFile, getFileExtension } from '@/lib/utils';
-import type { GenerateReportDto, ReportHistory, Seller } from '@/types';
+import type { GenerateReportDto, ReportHistory, ReportHistoryPeriodFilter, ReportHistoryResponse, Seller } from '@/types';
 
 const reportTypes = [
   { value: 'sales', label: 'Relatório de Vendas', icon: ShoppingCart },
@@ -43,7 +43,9 @@ export default function ReportsPage() {
   const { api, user } = useAuth();
   const { queryKeyPart } = useDateRange();
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState<ReportHistory[]>([]);
+  const [periodFilter, setPeriodFilter] = useState('THIS_MONTH' as ReportHistoryPeriodFilter);
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   // Carregar vendedores para o filtro
   const { data: sellersData } = useQuery({
@@ -53,6 +55,25 @@ export default function ReportsPage() {
   });
 
   const sellers: Seller[] = sellersData || [];
+
+  // Carregar histórico de relatórios do backend
+  const { data: historyData, isLoading: historyLoading, refetch: refetchHistory } = useQuery({
+    queryKey: ['report-history', periodFilter, page],
+    queryFn: async () => {
+      const response = await api.get('/reports/history', {
+        params: {
+          period: periodFilter,
+          page,
+          limit: ITEMS_PER_PAGE,
+        },
+      });
+      return response.data as ReportHistoryResponse;
+    },
+    enabled: user?.role === 'empresa',
+  });
+
+  const history = historyData?.data || [];
+  const pagination = historyData?.pagination;
 
   const {
     handleSubmit,
@@ -120,18 +141,10 @@ export default function ReportsPage() {
 
       downloadFile(blob, filename);
 
-      // Adicionar ao histórico
-      const newHistoryItem: ReportHistory = {
-        id: Date.now().toString(),
-        type: data.reportType,
-        format: data.format,
-        date: new Date().toISOString(),
-        size: blob.size,
-        filename,
-      };
-      setHistory((prev) => [newHistoryItem, ...prev]);
-
       toast.success('Relatório gerado e baixado com sucesso!');
+
+      // Atualizar histórico do backend
+      refetchHistory();
     } catch (error: any) {
       console.error('Erro ao gerar relatório:', error);
       
@@ -147,6 +160,56 @@ export default function ReportsPage() {
       } else {
         handleApiError(error);
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper para formatar tamanho do arquivo
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // Função para re-gerar relatório do histórico
+  const handleRegenerate = async (historyId: string) => {
+    setLoading(true);
+    try {
+      const response = await api.post(
+        '/reports/regenerate',
+        { historyId },
+        { responseType: 'blob' }
+      );
+
+      const blob = response.data instanceof Blob
+        ? response.data
+        : new Blob([response.data], {
+            type: response.headers['content-type'] || 'application/octet-stream',
+          });
+
+      const extractFilename = (contentDisposition?: string): string | null => {
+        if (!contentDisposition) return null;
+        const encodedMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+        if (encodedMatch?.[1]) {
+          try {
+            return decodeURIComponent(encodedMatch[1]);
+          } catch {
+            return encodedMatch[1];
+          }
+        }
+        const regularMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+        return regularMatch?.[1]?.trim() ?? null;
+      };
+
+      const contentDisposition = response.headers['content-disposition'];
+      const filename = extractFilename(contentDisposition) || 'relatorio.xlsx';
+
+      downloadFile(blob, filename);
+      toast.success('Relatório baixado com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao re-gerar relatório:', error);
+      handleApiError(error);
     } finally {
       setLoading(false);
     }
@@ -373,36 +436,111 @@ export default function ReportsPage() {
               <Calendar className="w-5 h-5" />
               Histórico
             </CardTitle>
-            <CardDescription>Relatórios gerados recentemente</CardDescription>
+            <CardDescription>Relatórios gerados</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 min-h-0 overflow-y-auto pb-3">
+            {/* Filtro de período */}
+            <div className="space-y-2 mb-3">
+              <Label>Período</Label>
+              <Select
+                value={periodFilter}
+                onValueChange={(value) => {
+                  setPeriodFilter(value as ReportHistoryPeriodFilter);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="THIS_MONTH">Gerados esse mês</SelectItem>
+                  <SelectItem value="LAST_3_MONTHS">Últimos 3 meses</SelectItem>
+                  <SelectItem value="LAST_6_MONTHS">Últimos 6 meses</SelectItem>
+                  <SelectItem value="LAST_YEAR">Último ano</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-1.5">
-              {history.length === 0 ? (
+              {historyLoading && !history.length ? (
+                <div className="text-center py-4">
+                  <span className="animate-spin">⏳</span>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Carregando histórico...
+                  </p>
+                </div>
+              ) : history.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum relatório gerado ainda
+                  Nenhum relatório gerado {
+                    periodFilter === 'THIS_MONTH'
+                      ? 'esse mês'
+                      : 'no período selecionado'
+                  }
                 </p>
               ) : (
                 history.map((item) => (
                   <div
                     key={item.id}
-                    className="p-3 border rounded-lg hover:bg-accent transition-colors"
+                    className="p-3 border rounded-lg space-y-2"
                   >
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="font-medium text-sm capitalize">
-                        {reportTypes.find((t) => t.value === item.type)?.label}
-                      </span>
-                      <span className="text-xs text-muted-foreground uppercase bg-secondary px-2 py-0.5 rounded">
-                        {item.format}
-                      </span>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium text-sm">
+                          {reportTypes.find((t) => t.value === item.reportType)?.label || item.reportType}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.format.toUpperCase()}
+                        </p>
+                      </div>
+                      {item.includeDocuments && (
+                        <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-0.5 rounded">
+                          Com documentos
+                        </span>
+                      )}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(item.date).toLocaleString('pt-BR')}
+
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div>
+                        {new Date(item.generatedAt).toLocaleString('pt-BR')}
+                      </div>
+                      {item.startDate && item.endDate && (
+                        <div>
+                          Período: {new Date(item.startDate).toLocaleDateString('pt-BR')} - {new Date(item.endDate).toLocaleDateString('pt-BR')}
+                        </div>
+                      )}
+                      {item.sellerName && (
+                        <div>
+                          Vendedor: {item.sellerName}
+                        </div>
+                      )}
+                      <div>
+                        Tamanho: {formatFileSize(item.fileSize)}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {(item.size / 1024).toFixed(2)} KB
-                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleRegenerate(item.id)}
+                      disabled={loading}
+                    >
+                      <Download className="w-3 h-3 mr-1" />
+                      Baixar Novamente
+                    </Button>
                   </div>
                 ))
+              )}
+
+              {pagination?.hasMore && (
+                <Button
+                  variant="outline"
+                  className="w-full mt-2"
+                  onClick={() => setPage((prev) => prev + 1)}
+                  disabled={historyLoading}
+                >
+                  {historyLoading ? 'Carregando...' : 'Carregar Mais'}
+                </Button>
               )}
             </div>
           </CardContent>

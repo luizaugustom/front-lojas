@@ -195,7 +195,7 @@ export function CustomerDebtPaymentDialog({
     setSelection(initialSelection);
   }, [data, open]);
 
-  const installments = data?.installments ?? [];
+  const installments = useMemo(() => data?.installments ?? [], [data]);
 
   const filteredInstallments = useMemo(() => {
     return filterInstallmentsByDueDate(installments, debtFilter);
