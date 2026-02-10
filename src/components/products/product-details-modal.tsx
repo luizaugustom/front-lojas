@@ -17,6 +17,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { getImageUrl } from '@/lib/image-utils';
 import type { Product } from '@/types';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProductDetailsModalProps {
   open: boolean;
@@ -55,6 +56,7 @@ export function ProductDetailsModal({
   canEdit = false
 }: ProductDetailsModalProps) {
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const { user } = useAuth();
     const passthroughLoader = ({ src }: { src: string }) => src;
 
   if (!product) return null;
@@ -74,6 +76,7 @@ export function ProductDetailsModal({
   };
 
   const expirationStatus = getExpirationStatus();
+  const canViewCostPrice = user?.role !== 'vendedor';
 
   // Função para exibir valores com fallback
   const displayValue = (value: any, fallback = 'Não informado') => {
@@ -210,7 +213,7 @@ export function ProductDetailsModal({
                     </div>
                   )}
 
-                  {product.costPrice && (
+                  {product.costPrice && canViewCostPrice && (
                     <div>
                       <span className="text-xs text-muted-foreground">Preço de Custo</span>
                       <div className="text-lg font-medium text-muted-foreground">
