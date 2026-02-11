@@ -27,18 +27,20 @@ import { saleApi } from '@/lib/api-endpoints';
 import type { DataPeriodFilter } from '@/types';
 
 const COMPANY_PERIOD_OPTIONS: Array<{ value: DataPeriodFilter; label: string }> = [
-  { value: 'ALL', label: 'Todos os dados' },
-  { value: 'THIS_YEAR', label: 'Este ano' },
-  { value: 'LAST_6_MONTHS', label: 'Últimos 6 meses' },
-  { value: 'LAST_3_MONTHS', label: 'Últimos 3 meses' },
-  { value: 'LAST_1_MONTH', label: 'Último mês' },
-  { value: 'LAST_15_DAYS', label: 'Últimos 15 dias' },
+  { value: 'TODAY', label: 'Hoje' },
   { value: 'THIS_WEEK', label: 'Esta semana' },
+  { value: 'LAST_15_DAYS', label: 'Últimos 15 dias' },
+  { value: 'LAST_1_MONTH', label: 'Último mês' },
+  { value: 'LAST_3_MONTHS', label: 'Últimos 3 meses' },
+  { value: 'LAST_6_MONTHS', label: 'Últimos 6 meses' },
+  { value: 'THIS_YEAR', label: 'Este ano' },
+  { value: 'ALL', label: 'Todos os dados' },
 ];
 
 const SELLER_PERIOD_OPTIONS: Array<{ value: DataPeriodFilter; label: string }> = [
-  { value: 'LAST_3_MONTHS', label: 'Últimos 3 meses' },
+  { value: 'TODAY', label: 'Hoje' },
   { value: 'LAST_1_MONTH', label: 'Último mês' },
+  { value: 'LAST_3_MONTHS', label: 'Últimos 3 meses' },
 ];
 
 function resolveDateRange(period: DataPeriodFilter): { startDate?: string; endDate?: string } {
@@ -50,6 +52,8 @@ function resolveDateRange(period: DataPeriodFilter): { startDate?: string; endDa
   start.setHours(0, 0, 0, 0);
 
   switch (period) {
+    case 'TODAY':
+      return { startDate: start.toISOString(), endDate: end.toISOString() };
     case 'ALL': {
       const min = new Date(0);
       min.setHours(0, 0, 0, 0);

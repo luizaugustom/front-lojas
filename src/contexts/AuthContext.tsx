@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '@/types';
 import {
   authLogin,
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const isAuthenticated = !!token && !!user;
+  const queryClient = useQueryClient();
 
   // Inicializa token e user do storage se existirem
   useEffect(() => {
@@ -246,9 +248,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       // Limpa também o localStorage (token e user)
       removeAuthToken();
+      // Limpa cache do React Query para evitar dados de outro usuário
+      queryClient.clear();
       console.log('[AuthContext.logout] Logout concluído');
     }
-  }, []);
+  }, [queryClient]);
 
   const getAccessToken = useCallback(() => getMemToken(), []);
 

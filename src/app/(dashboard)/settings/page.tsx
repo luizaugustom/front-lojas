@@ -58,6 +58,10 @@ export default function SettingsPage() {
     phone: '',
     login: '',
   });
+
+  // Estado do apelido da empresa
+  const [companyNickname, setCompanyNickname] = useState('');
+  const [savingNickname, setSavingNickname] = useState(false);
   
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -180,6 +184,9 @@ export default function SettingsPage() {
         setBrandColor(response.data.brandColor);
         setCompanyColor(response.data.brandColor);
       }
+      if (response.data?.nickname) {
+        setCompanyNickname(response.data.nickname);
+      }
     } catch (error) {
       console.error('Erro ao carregar dados da empresa:', error);
       setCompanyData(null);
@@ -198,6 +205,19 @@ export default function SettingsPage() {
       handleApiError(error);
     } finally {
       setSavingBrandColor(false);
+    }
+  };
+
+  const handleSaveCompanyNickname = async () => {
+    try {
+      setSavingNickname(true);
+      await companyApi.updateMyCompany({ nickname: companyNickname });
+      toast.success('Apelido da empresa atualizado!');
+      await loadCompanyData();
+    } catch (error: any) {
+      handleApiError(error);
+    } finally {
+      setSavingNickname(false);
     }
   };
 
@@ -1288,13 +1308,6 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {profile?.plan && (
-              <div className="space-y-2">
-                <Label>Plano</Label>
-                <Input value={profile.plan} disabled className="capitalize bg-muted" />
-              </div>
-            )}
-
             <Button 
               onClick={handleUpdateProfile} 
               disabled={updatingProfile}
@@ -1626,6 +1639,34 @@ export default function SettingsPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">Essa cor será aplicada como primária (botões, destaques e gráficos).</p>
+              </div>
+
+              {/* Apelido da empresa */}
+              <div className="space-y-2">
+                <Label htmlFor="company-nickname">Apelido da Empresa</Label>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <Input
+                    id="company-nickname"
+                    value={companyNickname}
+                    onChange={(e) => setCompanyNickname(e.target.value)}
+                    placeholder="Digite um apelido para a empresa"
+                    className="flex-1"
+                  />
+                  <Button onClick={handleSaveCompanyNickname} disabled={savingNickname}>
+                    {savingNickname ? (
+                      <>
+                        <Save className="mr-2 h-4 w-4 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Salvar apelido
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Define um nome amigável para identificar a empresa no sistema.</p>
               </div>
 
               {/* Informações */}

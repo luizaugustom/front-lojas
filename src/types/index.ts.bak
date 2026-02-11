@@ -31,13 +31,14 @@ export interface LoginDto {
 // Data Period Filter Types
 export type DataPeriodFilter =
   | 'TODAY'
-  | 'THIS_WEEK'
-  | 'LAST_15_DAYS'
-  | 'LAST_1_MONTH'
-  | 'LAST_3_MONTHS'
-  | 'LAST_6_MONTHS'
+  | 'ALL'
   | 'THIS_YEAR'
-  | 'ALL';
+  | 'LAST_6_MONTHS'
+  | 'LAST_3_MONTHS'
+  | 'LAST_1_MONTH'
+  | 'LAST_15_DAYS'
+  | 'THIS_WEEK';
+  | 'THIS_WEEK'
 
 // Company Types
 export interface Company {

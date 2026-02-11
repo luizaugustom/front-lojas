@@ -226,7 +226,7 @@ export default function CashClosurePage() {
 
   // Buscar caixa atual
   const { data: currentClosure, isLoading: isLoadingCurrent, refetch: refetchCurrent } = useQuery<CashClosure | null>({
-    queryKey: ['current-cash-closure'],
+    queryKey: ['current-cash-closure', user?.id],
     queryFn: async () => {
       try {
         const response = await api.get('/cash-closure/current');
@@ -242,7 +242,7 @@ export default function CashClosurePage() {
 
   // Buscar estatísticas do caixa
   const { data: stats, refetch: refetchStats } = useQuery<CashStats>({
-    queryKey: ['cash-stats'],
+    queryKey: ['cash-stats', user?.id],
     queryFn: async () => (await api.get('/cash-closure/stats')).data,
     enabled: !!currentClosure,
     refetchInterval: 30000, // Atualiza a cada 30 segundos
