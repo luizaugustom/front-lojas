@@ -75,19 +75,10 @@ export default function DashboardPage() {
     return [];
   };
 
-  // Sales last 7 days (for chart) - usa filtro global se disponível, senão últimos 7 dias
+  // Sales last 7 days (for chart) - sempre últimos 7 dias da data atual
   const now = new Date();
-  const chartStartDate = dateRange.startDate || new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 0, 0, 0);
-  const chartEndDate = dateRange.endDate || new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-  
-  // Para o gráfico, sempre mostra os últimos 7 dias dentro do período filtrado ou últimos 7 dias globais
-  const start7 = new Date(Math.max(
-    chartEndDate.getTime() - 6 * 24 * 60 * 60 * 1000,
-    chartStartDate?.getTime() || 0
-  ));
-  start7.setHours(0, 0, 0, 0);
-  const end7 = chartEndDate;
-  end7.setHours(23, 59, 59, 999);
+  const start7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 0, 0, 0);
+  const end7 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
   const start7Iso = start7.toISOString();
   const end7Iso = end7.toISOString();
   

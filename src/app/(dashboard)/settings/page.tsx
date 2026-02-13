@@ -184,8 +184,8 @@ export default function SettingsPage() {
         setBrandColor(response.data.brandColor);
         setCompanyColor(response.data.brandColor);
       }
-      if (response.data?.nickname) {
-        setCompanyNickname(response.data.nickname);
+      if (response.data?.fantasyName) {
+        setCompanyNickname(response.data.fantasyName);
       }
     } catch (error) {
       console.error('Erro ao carregar dados da empresa:', error);
@@ -211,7 +211,7 @@ export default function SettingsPage() {
   const handleSaveCompanyNickname = async () => {
     try {
       setSavingNickname(true);
-      await companyApi.updateMyCompany({ nickname: companyNickname });
+      await companyApi.updateMyCompany({ fantasyName: companyNickname });
       toast.success('Apelido da empresa atualizado!');
       await loadCompanyData();
     } catch (error: any) {
@@ -2271,26 +2271,6 @@ export default function SettingsPage() {
                         Exemplo: se você digitar "masolucoes", sua página será acessível em {`${PUBLIC_SITE_URL}/catalog/masolucoes`}
                       </p>
                     </div>
-
-                    {catalogPublicUrl && (
-                      <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                        <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">
-                          ✅ Sua página está disponível
-                        </p>
-                        <a
-                          href={catalogPublicUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-start gap-2 text-green-700 dark:text-green-300 hover:underline"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          <span className="flex flex-col">
-                            <span className="font-medium">Abrir página pública</span>
-                            <span className="text-xs break-all">{catalogPublicUrl}</span>
-                          </span>
-                        </a>
-                      </div>
-                    )}
 
                     {/* Aviso se não tiver permissão */}
                     {catalogPageConfig?.catalogPageAllowed === false && (

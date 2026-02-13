@@ -941,7 +941,7 @@ export const taskApi = {
   /**
    * POST /task
    * Roles: COMPANY, SELLER - Criar tarefa
-   * Body: { title, description?, dueDate, type, assignedToId? }
+   * Body: { title, description?, dueDate, type, assignedToId?, assignedToIds?, hasExplicitTime? }
    */
   create: (data: {
     title: string;
@@ -949,6 +949,8 @@ export const taskApi = {
     dueDate: string;
     type: 'PERSONAL' | 'WORK';
     assignedToId?: string;
+    assignedToIds?: string[];
+    hasExplicitTime?: boolean;
   }) => api.post('/task', data),
 
   /**
@@ -974,7 +976,7 @@ export const taskApi = {
   /**
    * PATCH /task/:id
    * Roles: COMPANY, SELLER - Atualizar tarefa
-   * Body: { title?, description?, dueDate?, type?, assignedToId? }
+   * Body: { title?, description?, dueDate?, type?, assignedToId?, assignedToIds?, hasExplicitTime? }
    */
   update: (
     id: string,
@@ -984,6 +986,8 @@ export const taskApi = {
       dueDate?: string;
       type?: 'PERSONAL' | 'WORK';
       assignedToId?: string;
+      assignedToIds?: string[];
+      hasExplicitTime?: boolean;
     },
   ) => api.patch(`/task/${id}`, data),
 

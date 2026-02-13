@@ -10,17 +10,27 @@ import {
 } from '@/components/ui/popover';
 import { NotificationPanel } from './NotificationPanel';
 import { api } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { requestNotificationPermission, showNotification } from '@/lib/electron-adapter';
 
 export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
+  const [lastNotifiedAt, setLastNotifiedAt] = useState<string | null>(null);
 
   useEffect(() => {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('lastNotificationAt') : null;
+    const initial = stored || new Date().toISOString();
+    setLastNotifiedAt(initial);
+    requestNotificationPermission();
+
     loadUnreadCount();
-    
-    // Atualizar contador a cada 30 segundos
-    const interval = setInterval(loadUnreadCount, 30000);
+    checkNewNotifications(initial);
+
+    // Atualizar contador e notificacoes a cada 30 segundos
+    const interval = setInterval(() => {
+      loadUnreadCount();
+      checkNewNotifications();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -30,6 +40,32 @@ export function NotificationBell() {
       setUnreadCount(data.count || 0);
     } catch (error) {
       console.error('Erro ao carregar contador de notificações:', error);
+    }
+  };
+
+  const checkNewNotifications = async (initialAt?: string) => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('lastNotificationAt') : null;
+      const since = initialAt || stored || lastNotifiedAt || new Date().toISOString();
+      const data = await api.getNotifications(true);
+      const notifications = Array.isArray(data) ? data : data?.notifications || [];
+
+      const newOnes = notifications
+        .filter((notification: any) => new Date(notification.createdAt) > new Date(since))
+        .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      if (newOnes.length > 0) {
+        newOnes.forEach((notification: any) => {
+          showNotification(notification.title, notification.message);
+        });
+        const latest = newOnes[newOnes.length - 1].createdAt;
+        setLastNotifiedAt(latest);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('lastNotificationAt', latest);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar novas notificações:', error);
     }
   };
 
