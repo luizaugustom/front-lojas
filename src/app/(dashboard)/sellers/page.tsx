@@ -6,7 +6,6 @@ import { Plus, Search, Users, TrendingUp, TrendingDown, HelpCircle } from 'lucid
 import { Button } from '@/components/ui/button';
 import { InputWithIcon } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { sellerApi } from '@/lib/api-endpoints';
 import { SellersTable } from '@/components/sellers/sellers-table';
@@ -41,31 +40,44 @@ export default function SellersPage() {
         throw error;
       }
     },
-    enabled: !!user?.companyId, // Só executa se tiver companyId
+    enabled: !!user?.companyId,
   });
 
-  // A API retorna um objeto único ou array, vamos normalizar
-  const sellers = Array.isArray(sellersResponse) 
-    ? sellersResponse 
-    : sellersResponse?.data 
-    ? sellersResponse.data 
-    : (sellersResponse as any)?.sellers 
-    ? (sellersResponse as any).sellers 
-    : sellersResponse 
-    ? [sellersResponse] 
-    : [];
+  let sellers: Seller[] = [];
+  if (Array.isArray(sellersResponse)) {
+    sellers = sellersResponse;
+  } else if (sellersResponse?.data) {
+    const data = sellersResponse.data;
+    if (Array.isArray(data)) {
+      sellers = data;
+    } else if ((data as any)?.sellers) {
+      sellers = (data as any).sellers;
+    } else if (data && typeof data === 'object' && 'id' in data) {
+      sellers = [data as unknown as Seller];
+    }
+  } else if ((sellersResponse as any)?.sellers) {
+    sellers = (sellersResponse as any).sellers;
+  } else if (sellersResponse && typeof sellersResponse === 'object' && 'id' in sellersResponse) {
+    sellers = [sellersResponse as unknown as Seller];
+  }
 
-  // Calcular estatísticas gerais
   const totalSellers = sellers.length;
   
-  // Calcular vendedor com melhor e pior performance (baseado nas vendas do mês)
-  const topSeller = sellers.length > 0 ? sellers.reduce((prev: Seller, current: Seller) => 
-    Number((prev as any).monthlySalesValue || 0) > Number((current as any).monthlySalesValue || 0) ? prev : current
-  ) : null;
+  const topSeller = sellers.length > 0 
+    ? sellers.reduce((prev: Seller, current: Seller) => {
+        const prevValue = Number((prev as any).monthlySalesValue || 0);
+        const currentValue = Number((current as any).monthlySalesValue || 0);
+        return prevValue > currentValue ? prev : current;
+      })
+    : null;
   
-  const bottomSeller = sellers.length > 0 ? sellers.reduce((prev: Seller, current: Seller) => 
-    Number((prev as any).monthlySalesValue || 0) < Number((current as any).monthlySalesValue || 0) ? prev : current
-  ) : null;
+  const bottomSeller = sellers.length > 0 
+    ? sellers.reduce((prev: Seller, current: Seller) => {
+        const prevValue = Number((prev as any).monthlySalesValue || 0);
+        const currentValue = Number((current as any).monthlySalesValue || 0);
+        return prevValue < currentValue ? prev : current;
+      })
+    : null;
 
   const handleEdit = (seller: Seller) => {
     setSelectedSeller(seller);
@@ -91,8 +103,6 @@ export default function SellersPage() {
 
   const handleCloseDetails = () => {
     setDetailsOpen(false);
-
-    // Se não estivermos abrindo o modal de edição, podemos limpar o vendedor selecionado
     if (!dialogOpen) {
       setSelectedSeller(null);
     }
@@ -100,7 +110,6 @@ export default function SellersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Vendedores</h1>
@@ -111,12 +120,12 @@ export default function SellersPage() {
             <HelpCircle className="h-5 w-5" />
           </Button>
           <Button onClick={handleCreate} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Vendedor
-        </Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Vendedor
+          </Button>
+        </div>
       </div>
 
-      {/* Estatísticas Gerais */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="p-4 bg-card border-border">
           <div className="flex items-center gap-2">
@@ -177,8 +186,6 @@ export default function SellersPage() {
         </Card>
       </div>
 
-
-      {/* Busca */}
       <Card className="p-4 bg-card border-border">
         <InputWithIcon
           placeholder="Buscar por nome, email ou CPF..."
@@ -190,7 +197,6 @@ export default function SellersPage() {
         />
       </Card>
 
-      {/* Tabela de Vendedores */}
       <SellersTable
         sellers={sellers}
         isLoading={isLoading}
@@ -199,7 +205,6 @@ export default function SellersPage() {
         onRefetch={refetch}
       />
 
-      {/* Modais */}
       <SellerDialog
         isOpen={dialogOpen}
         onClose={handleCloseDialog}

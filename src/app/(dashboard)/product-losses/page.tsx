@@ -35,6 +35,7 @@ interface ProductLoss {
 export default function ProductLossesPage() {
   const { api, user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
