@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, ShoppingCart, Info, HelpCircle } from 'lucide-react';
+import { Search, FileText, ShoppingCart, HelpCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -438,15 +438,6 @@ export default function SalesPage() {
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
             <h1 className="text-2xl font-bold tracking-tight">Vendas</h1>
-            <button
-              type="button"
-              onClick={() => setHelpDialogOpen(true)}
-              className="inline-flex items-center justify-center rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              aria-label="Ver atalhos de teclado"
-              title="Ver atalhos de teclado"
-            >
-              <Info className="h-5 w-5" />
-            </button>
             <Button variant="outline" size="icon" onClick={() => setPageHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
               <HelpCircle className="h-5 w-5" />
             </Button>
