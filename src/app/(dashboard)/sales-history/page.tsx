@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -566,56 +566,56 @@ export default function SalesHistoryPage() {
       {/* Estatísticas - apenas para empresas */}
       {isCompany && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-              <CardTitle className="text-sm font-medium">Total de Vendas</CardTitle>
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+          <Card className="p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-muted-foreground">Total de Vendas</p>
+                <p className="text-xl font-bold mt-1 truncate">{stats.totalSales}</p>
+              </div>
+              <div className="h-9 w-9 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
                 <TrendingUp className="h-4 w-4 text-primary" />
               </div>
-            </CardHeader>
-            <CardContent className="px-4 py-1 pt-0">
-              <div className="text-xl font-bold">{stats.totalSales}</div>
-            </CardContent>
+            </div>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-              <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-              <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center">
+          <Card className="p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-muted-foreground">Receita Total</p>
+                <p className="text-xl font-bold mt-1 truncate">{formatCurrency(stats.totalRevenue)}</p>
+              </div>
+              <div className="h-9 w-9 shrink-0 rounded-full bg-green-500/10 flex items-center justify-center">
                 <TrendingUp className="h-4 w-4 text-green-600" />
               </div>
-            </CardHeader>
-            <CardContent className="px-4 py-1 pt-0">
-              <div className="text-xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
-            </CardContent>
+            </div>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-              <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-              <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+          <Card className="p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-muted-foreground">Ticket Médio</p>
+                <p className="text-xl font-bold mt-1 truncate">{formatCurrency(stats.averageTicket)}</p>
+              </div>
+              <div className="h-9 w-9 shrink-0 rounded-full bg-blue-500/10 flex items-center justify-center">
                 <Calendar className="h-4 w-4 text-blue-600" />
               </div>
-            </CardHeader>
-            <CardContent className="px-4 py-1 pt-0">
-              <div className="text-xl font-bold">{formatCurrency(stats.averageTicket)}</div>
-            </CardContent>
+            </div>
           </Card>
 
           {netProfit !== null && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-                <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+            <Card className="p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-muted-foreground">Lucro Líquido</p>
+                  <p className={`text-xl font-bold mt-1 truncate ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(netProfit)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Receita - COGS - Contas - Perdas - Juros</p>
+                </div>
+                <div className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
                   <DollarSign className={`h-4 w-4 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
                 </div>
-              </CardHeader>
-              <CardContent className="px-4 py-1 pt-0">
-                <div className={`text-xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(netProfit)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Receita - COGS - Contas - Perdas - Juros</p>
-              </CardContent>
+              </div>
             </Card>
           )}
         </div>

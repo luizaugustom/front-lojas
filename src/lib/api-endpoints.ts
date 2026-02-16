@@ -709,9 +709,56 @@ export const fiscalApi = {
   /**
    * POST /fiscal/:id/cancel
    * Roles: COMPANY - Cancelar documento
-   * Body: { reason }
+   * Body: { reason } (mín. 15 caracteres - exigência SEFAZ)
    */
-  cancel: (id: string, data: any) => api.post(`/fiscal/${id}/cancel`, data),
+  cancel: (id: string, data: { reason: string }) => api.post(`/fiscal/${id}/cancel`, data),
+
+  /**
+   * POST /fiscal/inutilizacao
+   * Roles: COMPANY - Inutilizar numeração NF-e ou NFC-e
+   * Body: { serie, numeroInicial, numeroFinal, justificativa (mín. 15), modelo: '55'|'65' }
+   */
+  inutilizarNumeracao: (data: {
+    serie: string;
+    numeroInicial: number;
+    numeroFinal: number;
+    justificativa: string;
+    modelo: '55' | '65';
+  }) => api.post('/fiscal/inutilizacao', data),
+
+  /**
+   * POST /fiscal/:id/carta-correcao
+   * Roles: COMPANY - Enviar Carta de Correção Eletrônica (CC-e) para NF-e autorizada
+   * Body: { correcao } (mín. 15, máx. 1000 caracteres)
+   */
+  enviarCartaCorrecao: (id: string, data: { correcao: string }) =>
+    api.post(`/fiscal/${id}/carta-correcao`, data),
+
+  /**
+   * POST /fiscal/contingencia/ativar
+   * Roles: COMPANY - Ativar modo contingência NFC-e
+   * Body: { motivo? }
+   */
+  ativarContingencia: (data?: { motivo?: string }) =>
+    api.post('/fiscal/contingencia/ativar', data ?? {}),
+
+  /**
+   * POST /fiscal/contingencia/desativar
+   * Roles: COMPANY - Desativar modo contingência NFC-e
+   */
+  desativarContingencia: () => api.post('/fiscal/contingencia/desativar'),
+
+  /**
+   * GET /fiscal/contingencia/status
+   * Roles: COMPANY - Status do modo contingência (contingenciaEnabled, contingenciaInicio, contingenciaMotivo)
+   */
+  getContingenciaStatus: () => api.get('/fiscal/contingencia/status'),
+
+  /**
+   * GET /fiscal/contingencia/pendentes
+   * Roles: COMPANY - Listar NFC-e em contingência pendentes de sincronização
+   */
+  listarContingenciaPendentes: () => api.get('/fiscal/contingencia/pendentes'),
 };
 
 // ============================================================================

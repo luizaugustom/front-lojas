@@ -69,6 +69,18 @@ export function NotificationPanel() {
     }
   };
 
+  const handleDeleteRead = async () => {
+    if (!window.confirm('Remover todas as notificações lidas?')) return;
+    try {
+      await api.deleteReadNotifications();
+      setNotifications(prev => prev.filter(n => !n.isRead));
+      toast.success('Notificações lidas removidas');
+    } catch (error: any) {
+      console.error('Erro ao remover notificações lidas:', error);
+      toast.error('Erro ao remover notificações lidas');
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       await api.deleteNotification(id);
@@ -91,6 +103,7 @@ export function NotificationPanel() {
   });
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
+  const readCount = notifications.length - unreadCount;
 
   if (loading) {
     return (
@@ -125,6 +138,17 @@ export function NotificationPanel() {
             >
               <CheckCheck className="h-4 w-4 mr-2" />
               Marcar todas
+            </Button>
+          )}
+          {readCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDeleteRead}
+              title="Remover notificações lidas"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Remover lidas
             </Button>
           )}
         </div>

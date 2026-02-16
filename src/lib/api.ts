@@ -735,6 +735,16 @@ class ApiClient {
   }
 
   /**
+   * DELETE /notification/read
+   * Remover todas as notificações lidas
+   * Autenticação: Requerida (Bearer token)
+   */
+  async deleteReadNotifications() {
+    const response = await this.client.delete('/notification/read');
+    return response.data;
+  }
+
+  /**
    * DELETE /notification/:id
    * Deletar notificação
    * Autenticação: Requerida (Bearer token)

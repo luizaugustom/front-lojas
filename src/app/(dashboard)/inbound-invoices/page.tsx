@@ -91,7 +91,12 @@ export default function InboundInvoicesPage() {
   const { queryKeyPart } = useDateRange();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['inbound-fiscal', queryKeyPart, search],
-    queryFn: async () => (await api.get('/fiscal', { params: { search, documentType: 'inbound' } })).data,
+    queryFn: async () =>
+      (
+        await api.get('/fiscal', {
+          params: { page: 1, limit: 100, documentType: 'inbound' },
+        })
+      ).data,
   });
 
   const { data: productsData } = useQuery({

@@ -124,7 +124,8 @@ export default function CatalogPageClient() {
   // Atualizar título da página com nome fantasia da empresa do catálogo
   useEffect(() => {
     if (data?.company) {
-      document.title = data.company.fantasyName || data.company.name;
+      const displayName = data.company.fantasyName || data.company.name;
+      document.title = displayName;
     } else {
       // Manter título padrão enquanto carrega
       document.title = 'Sistema Montshop - Gestão Lojas';
@@ -194,6 +195,7 @@ export default function CatalogPageClient() {
   }
 
   const { company } = data;
+  const companyDisplayName = company.fantasyName || company.name;
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -237,7 +239,7 @@ export default function CatalogPageClient() {
     if (cart.length === 0) return;
 
     const lines = [
-      `Olá! Tenho interesse nos seguintes produtos da ${company.name}:`,
+      `Olá! Tenho interesse nos seguintes produtos da ${companyDisplayName}:`,
       '',
       ...cart.map(item => {
         // Usar preço promocional se disponível
@@ -273,7 +275,7 @@ export default function CatalogPageClient() {
               {company.logoUrl && (
                 <Image
                   src={getImageUrl(company.logoUrl)}
-                  alt={company.name}
+                  alt={companyDisplayName}
                   width={120}
                   height={120}
                   className="rounded-lg object-contain"
@@ -281,7 +283,7 @@ export default function CatalogPageClient() {
               )}
               <div>
                 <h1 className="text-3xl font-bold text-white">
-                  {company.fantasyName || company.name}
+                  {companyDisplayName}
                 </h1>
               </div>
             </div>
@@ -583,7 +585,7 @@ export default function CatalogPageClient() {
 
           {/* Botão WhatsApp direto (contato) - mantém opção original */}
           <a
-            href={`https://wa.me/${company.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Gostaria de saber mais sobre os produtos da ${company.name}.`)}`}
+            href={`https://wa.me/${company.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Gostaria de saber mais sobre os produtos da ${companyDisplayName}.`)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="group relative flex items-center justify-center w-14 h-14 bg-green-500 hover:bg-green-600 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
