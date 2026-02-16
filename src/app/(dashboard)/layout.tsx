@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { useUIStore } from '@/store/ui-store';
 import { Header } from '@/components/layout/header';
 import { TrialConversionModal } from '@/components/trial/trial-conversion-modal';
+import { TermsAcceptanceModal } from '@/components/terms/terms-acceptance-modal';
 import { PlanType } from '@/types';
 import { getAuthToken, getUser } from '@/lib/auth';
 
@@ -18,6 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { company } = useCompany();
   const { sidebarCollapsed } = useUIStore();
   const [showTrialModal, setShowTrialModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   
 
@@ -58,9 +60,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isAuthenticated, user, company?.name, pathname]);
 
+  // Verificar se deve mostrar o modal de termos de uso
+  useEffect(() => {
+    if (isAuthenticated && user && company) {
+      // Verificar se a empresa já aceitou os termos
+      // termsAccepted pode ser false, null ou undefined (todos significam não aceito)
+      if (company.termsAccepted !== true) {
+        // Mostrar modal de termos imediatamente (obrigatório)
+        setShowTermsModal(true);
+        return;
+      }
+    }
+  }, [isAuthenticated, user, company]);
+
   // Verificar se deve mostrar o modal de conversão do plano TRIAL
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && company?.termsAccepted === true) {
+      // Só mostrar modal de trial se os termos já foram aceitos
       // Verificar se o usuário tem plano TRIAL e se já não foi mostrado hoje
       const hideUntil = localStorage.getItem('trialModalHideUntil');
       if (hideUntil) {
@@ -83,7 +99,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return () => clearTimeout(timer);
       }
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, company]);
 
   // Mostrar nada enquanto inicializa ou não estiver autenticado
   if (isInitializing || !isAuthenticated) {
@@ -104,8 +120,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
       {/* Monitor de Status de Impressoras */}
+      {/* Modal de Aceitação de Termos de Uso */}
+      <TermsAcceptanceModal
+        open={showTermsModal}
+        companyName={company?.name}
+        onAccept={() => {
+          setShowTermsModal(false);
+          // Recarregar dados da empresa para atualizar o estado
+          window.location.reload();
+        }}
+      />
       {/* Modal de Conversão do Plano TRIAL */}
-      {user?.plan === PlanType.TRIAL_7_DAYS && (
+      {user?.plan === PlanType.TRIAL_7_DAYS && company?.termsAccepted === true && (
         <TrialConversionModal
           open={showTrialModal}
           onOpenChange={setShowTrialModal}

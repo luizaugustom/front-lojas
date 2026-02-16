@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
-import { Eye, EyeOff, MessageCircle } from 'lucide-react';
+import { Eye, EyeOff, MessageCircle, FileText } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -192,6 +193,18 @@ export default function LoginPage() {
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
+
+          {/* Link para Termos de Uso */}
+          <div className="mt-3 text-center">
+            <Link
+              href="/termos-de-uso"
+              target="_blank"
+              className="text-xs sm:text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 transition-colors"
+            >
+              <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              Termos de Uso
+            </Link>
+          </div>
 
           {/* versão removida conforme solicitado */}
           {verse && (

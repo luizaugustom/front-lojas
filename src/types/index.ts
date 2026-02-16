@@ -77,6 +77,10 @@ export interface Company {
   // Installment Configuration
   installmentInterestRates?: Record<string, number>;
   maxInstallments?: number;
+  // Terms of Use Acceptance
+  termsAccepted?: boolean;
+  termsAcceptedAt?: string | null;
+  termsRejectedAt?: string | null;
 }
 
 export interface CreateCompanyDto {
