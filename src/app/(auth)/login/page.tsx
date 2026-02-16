@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
-import { Eye, EyeOff, MessageCircle, FileText } from 'lucide-react';
+import { Eye, EyeOff, MessageCircle, FileText, Mail } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -97,6 +97,7 @@ export default function LoginPage() {
   };
 
   const [showSavedEmailsDialog, setShowSavedEmailsDialog] = useState(false);
+  const [showSACDialog, setShowSACDialog] = useState(false);
   const [emailSearchTerm, setEmailSearchTerm] = useState('');
 
   const filteredSavedEmails = (emailSearchTerm
@@ -250,10 +251,8 @@ export default function LoginPage() {
         </DialogContent>
       </Dialog>
       {/* Botão SAC no canto inferior esquerdo */}
-      <a
-        href="https://wa.me/5548998482590?text=Eu%20sou%20usuario%20do%20MontShop%20e%20preciso%20de%20atendimento"
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        onClick={() => setShowSACDialog(true)}
         className="fixed left-2 sm:left-4 bottom-2 sm:bottom-4 bg-primary hover:bg-primary/90 text-primary-foreground p-2 sm:p-3 rounded-full shadow-lg transition-all hover:scale-110 group"
         title="Serviço de Atendimento ao Consumidor"
       >
@@ -261,7 +260,42 @@ export default function LoginPage() {
         <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 sm:ml-3 px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-900 text-white text-[10px] sm:text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-2 transition-all duration-300 pointer-events-none">
           Serviço de Atendimento ao Consumidor
         </span>
-      </a>
+      </button>
+      
+      {/* Modal de escolha SAC */}
+      <Dialog open={showSACDialog} onOpenChange={setShowSACDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Serviço de Atendimento ao Consumidor</DialogTitle>
+            <DialogDescription>
+              Escolha como deseja entrar em contato conosco:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-4">
+            <Button
+              onClick={() => {
+                window.open('https://wa.me/5548998482590?text=Eu%20sou%20usuario%20do%20MontShop%20e%20preciso%20de%20atendimento', '_blank');
+                setShowSACDialog(false);
+              }}
+              className="w-full flex items-center justify-center gap-2 h-12"
+            >
+              <MessageCircle className="h-5 w-5" />
+              Enviar mensagem para WhatsApp
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                window.location.href = 'mailto:montsoftwares@gmail.com?subject=Atendimento MontShop';
+                setShowSACDialog(false);
+              }}
+              className="w-full flex items-center justify-center gap-2 h-12"
+            >
+              <Mail className="h-5 w-5" />
+              Enviar e-mail
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       
       {/* Marca fixa no canto inferior direito */}
       <div className="fixed right-2 sm:right-4 bottom-2 sm:bottom-4 select-none flex flex-col items-center">
