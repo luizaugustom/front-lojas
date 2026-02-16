@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, HelpCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { InputWithIcon } from '@/components/ui/input';
@@ -17,6 +17,8 @@ import { applyProductFilters, getActiveFiltersCount, type ProductFilters as Prod
 import type { Product, PlanUsageStats } from '@/types';
 import { AlertTriangle } from 'lucide-react';
 import { handleApiError } from '@/lib/handleApiError';
+import { PageHelpModal } from '@/components/help';
+import { productsHelpTitle, productsHelpDescription, productsHelpIcon, getProductsHelpTabs } from '@/components/help/contents/products-help';
 
 export default function ProductsPage() {
   const { api, user } = useAuth();
@@ -30,6 +32,7 @@ export default function ProductsPage() {
     expiringSoon: false,
     lowStock: false,
   });
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const canManageProducts = user ? user.role !== 'vendedor' : false;
 
@@ -140,7 +143,11 @@ export default function ProductsPage() {
             )}
           </p>
         </div>
-        {canManageProducts && (
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+          {canManageProducts && (
           <Button 
             onClick={handleCreate}
             disabled={planUsage?.usage.products.max ? planUsage.usage.products.current >= planUsage.usage.products.max : false}
@@ -151,7 +158,8 @@ export default function ProductsPage() {
               <AlertTriangle className="ml-2 h-4 w-4 text-yellow-500" />
             )}
           </Button>
-        )}
+          )}
+        </div>
       </div>
 
       <Card className="p-4">
@@ -194,6 +202,7 @@ export default function ProductsPage() {
         onClose={handleLossClose}
         initialProduct={productForLoss}
       />
+      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={productsHelpTitle} description={productsHelpDescription} icon={productsHelpIcon} tabs={getProductsHelpTabs()} />
     </div>
   );
 }

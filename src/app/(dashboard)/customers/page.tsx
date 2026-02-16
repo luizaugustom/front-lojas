@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InputWithIcon } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -12,6 +12,8 @@ import { customerApi } from '@/lib/api-endpoints';
 import { CustomersTable } from '@/components/customers/customers-table';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import type { Customer } from '@/types';
+import { PageHelpModal } from '@/components/help';
+import { customersHelpTitle, customersHelpDescription, customersHelpIcon, getCustomersHelpTabs } from '@/components/help/contents/customers-help';
 
 export default function CustomersPage() {
   const { user } = useAuth();
@@ -19,6 +21,7 @@ export default function CustomersPage() {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const { data: customersResponse, isLoading, refetch, error } = useQuery({
     queryKey: ['customers', queryKeyPart, search, user?.companyId],
@@ -100,12 +103,17 @@ export default function CustomersPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Clientes</h1>
           <p className="text-muted-foreground">Gerencie seus clientes</p>
         </div>
-        {user?.role !== 'vendedor' && (
-          <Button onClick={handleCreate} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Cliente
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+            <HelpCircle className="h-5 w-5" />
           </Button>
-        )}
+          {user?.role !== 'vendedor' && (
+            <Button onClick={handleCreate} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Cliente
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="p-4 bg-card border-border">
@@ -147,6 +155,7 @@ export default function CustomersPage() {
         onClose={handleClose}
         customer={selectedCustomer}
       />
+      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={customersHelpTitle} description={customersHelpDescription} icon={customersHelpIcon} tabs={getCustomersHelpTabs()} />
     </div>
   );
 }

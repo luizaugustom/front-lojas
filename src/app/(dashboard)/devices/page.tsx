@@ -11,12 +11,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Printer, Search, RefreshCw, Download, Settings, Scale as ScaleIcon, Usb, Bluetooth, Wifi, CheckCircle2, AlertTriangle, TestTube } from 'lucide-react';
+import { Printer, Search, RefreshCw, Download, Settings, Scale as ScaleIcon, Usb, Bluetooth, Wifi, CheckCircle2, AlertTriangle, TestTube, HelpCircle } from 'lucide-react';
 import { scaleApi } from '@/lib/api-endpoints';
 import { handleApiError } from '@/lib/error-handler';
 import { toast } from 'sonner';
+import { PageHelpModal } from '@/components/help';
+import { devicesHelpTitle, devicesHelpDescription, devicesHelpIcon, getDevicesHelpTabs } from '@/components/help/contents/devices-help';
 
 export default function DevicesPage() {
+  const [helpOpen, setHelpOpen] = useState(false);
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -24,6 +27,9 @@ export default function DevicesPage() {
           <h1 className="text-3xl font-bold">Dispositivos</h1>
           <p className="text-muted-foreground">Gerencie suas balanças</p>
         </div>
+        <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+          <HelpCircle className="h-5 w-5" />
+        </Button>
       </div>
       <Tabs defaultValue="scales">
         <TabsList>
@@ -33,6 +39,7 @@ export default function DevicesPage() {
           <ScalesTab />
         </TabsContent>
       </Tabs>
+      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={devicesHelpTitle} description={devicesHelpDescription} icon={devicesHelpIcon} tabs={getDevicesHelpTabs()} />
     </div>
   );
 }

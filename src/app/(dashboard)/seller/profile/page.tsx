@@ -14,6 +14,7 @@ import {
   TrendingUp,
   DollarSign,
   ShoppingCart,
+  HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,8 @@ import { SellerCharts } from '@/components/sellers/seller-charts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { sellerApi } from '@/lib/api-endpoints';
 import type { Seller, SellerStats, Sale, UpdateSellerProfileDto, DataPeriodFilter } from '@/types';
+import { PageHelpModal } from '@/components/help';
+import { sellerProfileHelpTitle, sellerProfileHelpDescription, sellerProfileHelpIcon, getSellerProfileHelpTabs } from '@/components/help/contents/seller-profile-help';
 
 const SELLER_PERIOD_OPTIONS: Array<{ value: DataPeriodFilter; label: string }> = [
   { value: 'LAST_1_MONTH', label: 'Último mês' },
@@ -65,6 +68,7 @@ export default function SellerProfilePage() {
     resolveSellerPeriod((user?.dataPeriod as DataPeriodFilter | null) ?? null),
   );
   const [isUpdatingDataPeriod, setIsUpdatingDataPeriod] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const {
     register,
@@ -219,6 +223,9 @@ export default function SellerProfilePage() {
           <p className="text-muted-foreground">Visualize suas informações pessoais</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+            <HelpCircle className="h-5 w-5" />
+          </Button>
           <Select
             value={dataPeriod}
             onValueChange={handleDataPeriodChange}
@@ -485,6 +492,7 @@ export default function SellerProfilePage() {
           </div>
         )}
       </Card>
+      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={sellerProfileHelpTitle} description={sellerProfileHelpDescription} icon={sellerProfileHelpIcon} tabs={getSellerProfileHelpTabs()} />
     </div>
   );
 }

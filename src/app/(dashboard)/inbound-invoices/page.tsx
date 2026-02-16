@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileText, RefreshCw, Search, Download, Upload, PlusCircle, Trash2, Pencil, Loader2, RotateCcw, FileCode2 } from 'lucide-react';
+import { FileText, RefreshCw, Search, Download, Upload, PlusCircle, Trash2, Pencil, Loader2, RotateCcw, FileCode2, HelpCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -17,6 +17,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency, formatDateTime, downloadFile } from '@/lib/utils';
 import { handleApiError } from '@/lib/handleApiError';
 import { fiscalApi, productApi, billToPayApi } from '@/lib/api-endpoints';
+import { PageHelpModal } from '@/components/help';
+import { inboundInvoicesHelpTitle, inboundInvoicesHelpDescription, inboundInvoicesHelpIcon, getInboundInvoicesHelpTabs } from '@/components/help/contents/inbound-invoices-help';
 
 interface InboundDoc {
   id: string;
@@ -53,6 +55,7 @@ type ParsedData = { form: ParsedForm; items: ParsedItem[]; duplicatas: ParsedDup
 export default function InboundInvoicesPage() {
   const { api, user } = useAuth();
   const [search, setSearch] = useState('');
+  const [helpOpen, setHelpOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editingDoc, setEditingDoc] = useState<InboundDoc | null>(null);
@@ -248,6 +251,9 @@ export default function InboundInvoicesPage() {
           <p className="text-muted-foreground">Acompanhe as notas de compra/entrada (XML) recebidas</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+            <HelpCircle className="h-5 w-5" />
+          </Button>
           {user?.role === 'empresa' && (
             <Button onClick={() => setAddOpen(true)}>
               <PlusCircle className="mr-2 h-4 w-4" /> Adicionar
@@ -964,6 +970,7 @@ export default function InboundInvoicesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={inboundInvoicesHelpTitle} description={inboundInvoicesHelpDescription} icon={inboundInvoicesHelpIcon} tabs={getInboundInvoicesHelpTabs()} />
     </div>
   );
 }

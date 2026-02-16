@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, ShoppingCart, Info } from 'lucide-react';
+import { Search, FileText, ShoppingCart, Info, HelpCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,8 @@ import { CheckoutDialog } from '@/components/sales/checkout-dialog';
 import { BudgetDialog } from '@/components/sales/budget-dialog';
 import { BarcodeScanner } from '@/components/sales/barcode-scanner';
 import { KeyboardShortcutsHelpDialog } from '@/components/sales/keyboard-shortcuts-help-dialog';
+import { PageHelpModal } from '@/components/help';
+import { salesHelpTitle, salesHelpDescription, salesHelpIcon, getSalesHelpTabs } from '@/components/help/contents/sales-help';
 import { handleNumberInputChange, isValidId } from '@/lib/utils-clean';
 import { useDeviceStore } from '@/store/device-store';
 import type { Product } from '@/types';
@@ -68,6 +70,7 @@ export default function SalesPage() {
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
+  const [pageHelpOpen, setPageHelpOpen] = useState(false);
   const { addItem, items, clearCart } = useCartStore();
   const [lastScanned, setLastScanned] = useState(0);
   const [selectedProductIndex, setSelectedProductIndex] = useState<number | null>(null);
@@ -324,7 +327,7 @@ export default function SalesPage() {
   };
 
   // Quando qualquer modal está aberto, atalhos da página não devem interferir (apenas o modal responde)
-  const anyModalOpen = checkoutOpen || budgetOpen || openingDialogOpen || helpDialogOpen || scannerOpen || mobileCartOpen;
+  const anyModalOpen = checkoutOpen || budgetOpen || openingDialogOpen || helpDialogOpen || pageHelpOpen || scannerOpen || mobileCartOpen;
 
   // Atalhos de teclado para página de vendas (desabilitados quando há modal aberto)
   useKeyboardShortcuts({
@@ -444,6 +447,9 @@ export default function SalesPage() {
             >
               <Info className="h-5 w-5" />
             </button>
+            <Button variant="outline" size="icon" onClick={() => setPageHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+              <HelpCircle className="h-5 w-5" />
+            </Button>
           </div>
           <InputWithIcon
             ref={searchInputRef}
@@ -568,6 +574,7 @@ export default function SalesPage() {
         open={helpDialogOpen}
         onClose={() => setHelpDialogOpen(false)}
       />
+      <PageHelpModal open={pageHelpOpen} onClose={() => setPageHelpOpen(false)} title={salesHelpTitle} description={salesHelpDescription} icon={salesHelpIcon} tabs={getSalesHelpTabs()} />
 
       {/* Mobile Cart Dialog */}
       <Dialog open={mobileCartOpen} onOpenChange={setMobileCartOpen}>

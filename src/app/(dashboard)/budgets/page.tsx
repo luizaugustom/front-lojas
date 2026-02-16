@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Search, Printer, Download, Eye, Trash2, CheckCircle, XCircle, Clock, Edit } from 'lucide-react';
+import { FileText, Search, Printer, Download, Eye, Trash2, CheckCircle, XCircle, Clock, Edit, HelpCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +32,8 @@ import { formatCurrency } from '@/lib/utils-clean';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { printContent } from '@/lib/print-service';
+import { PageHelpModal } from '@/components/help';
+import { budgetsHelpTitle, budgetsHelpDescription, budgetsHelpIcon, getBudgetsHelpTabs } from '@/components/help/contents/budgets-help';
 
 interface Budget {
   id: string;
@@ -76,6 +78,7 @@ export default function BudgetsPage() {
   const [statusNotes, setStatusNotes] = useState<string>('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [printingBudgetId, setPrintingBudgetId] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   
   const isCompany = user?.role === 'empresa';
 
@@ -261,6 +264,9 @@ export default function BudgetsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Orçamentos</h1>
           <p className="text-muted-foreground">Gerencie seus orçamentos</p>
         </div>
+        <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+          <HelpCircle className="h-5 w-5" />
+        </Button>
       </div>
 
       <Card>
@@ -582,6 +588,7 @@ export default function BudgetsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={budgetsHelpTitle} description={budgetsHelpDescription} icon={budgetsHelpIcon} tabs={getBudgetsHelpTabs()} />
     </div>
   );
 }

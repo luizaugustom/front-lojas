@@ -18,6 +18,7 @@ import {
   Eye,
   Loader2,
   ArrowDownCircle,
+  HelpCircle,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,8 @@ import { useDateRange } from '@/hooks/useDateRange';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils';
 import { printContent } from '@/lib/print-service';
+import { PageHelpModal } from '@/components/help';
+import { cashClosureHelpTitle, cashClosureHelpDescription, cashClosureHelpIcon, getCashClosureHelpTabs } from '@/components/help/contents/cash-closure-help';
 
 interface PaymentSummaryEntry {
   method: string;
@@ -215,6 +218,7 @@ export default function CashClosurePage() {
   const [loading, setLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [closeConfirmationOpen, setCloseConfirmationOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [includeSaleDetails, setIncludeSaleDetails] = useState(false);
   const [detailsDialog, setDetailsDialog] = useState<{ open: boolean; data?: CashClosureDetailsDialogData | null; title?: string }>({ open: false });
   const [detailsLoadingId, setDetailsLoadingId] = useState<string | null>(null);
@@ -884,12 +888,17 @@ export default function CashClosurePage() {
               Gerencie a abertura e fechamento do caixa
             </p>
           </div>
-          {currentClosure && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+              <HelpCircle className="h-5 w-5" />
+            </Button>
+            {currentClosure && (
             <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
               <Unlock className="h-4 w-4 mr-1" />
               Caixa Aberto
             </Badge>
           )}
+          </div>
         </div>
 
         {!currentClosure ? (
@@ -979,68 +988,82 @@ export default function CashClosurePage() {
           <>
             {/* Cards de Estatísticas */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-                  <CardTitle className="text-sm font-medium">Saldo Inicial</CardTitle>
-                  <Wallet className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent className="px-4 py-1 pt-0">
-                  <div className="text-xl font-bold">
-                    {formatCurrency(currentClosure.openingAmount || 0)}
+              <Card className="p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Saldo Inicial</p>
+                    <p className="text-xl font-bold mt-1 truncate">
+                      {formatCurrency(currentClosure.openingAmount || 0)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Abertura em {formatDateTime(currentClosure.openingDate)}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Abertura em {formatDateTime(currentClosure.openingDate)}
-                  </p>
-                </CardContent>
+                  <div className="h-9 w-9 shrink-0 rounded-full bg-muted flex items-center justify-center">
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
               </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-                  <CardTitle className="text-sm font-medium">Vendas em Dinheiro</CardTitle>
-                  <Wallet className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent className="px-4 py-1 pt-0">
-                  <div className="text-xl font-bold text-green-600">
-                    {formatCurrency(stats?.totalCashSales || 0)}
+              <Card className="p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Vendas em Dinheiro</p>
+                    <p className="text-xl font-bold text-green-600 mt-1 truncate">
+                      {formatCurrency(stats?.totalCashSales || 0)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Para o caixa físico
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Para o caixa físico
-                  </p>
-                </CardContent>
+                  <div className="h-9 w-9 shrink-0 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <Wallet className="h-4 w-4 text-green-600" />
+                  </div>
+                </div>
               </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-                  <CardTitle className="text-sm font-medium">Saldo Esperado</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent className="px-4 py-1 pt-0">
-                  <div className="text-xl font-bold">
-                    {formatCurrency(expectedClosing)}
+              <Card className="p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Saldo Esperado</p>
+                    <p className="text-xl font-bold mt-1 truncate">
+                      {formatCurrency(expectedClosing)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Inicial + Vendas - Saques
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Inicial + Vendas - Saques
-                  </p>
-                </CardContent>
+                  <div className="h-9 w-9 shrink-0 rounded-full bg-muted flex items-center justify-center">
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
               </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-                  <CardTitle className="text-sm font-medium">Diferença</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent className="px-4 py-1 pt-0">
-                  <div className={`text-xl font-bold ${
-                    Math.abs(difference) < 0.01 ? 'text-green-600' :
-                    difference > 0 ? 'text-blue-600' : 'text-red-600'
+              <Card className="p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Diferença</p>
+                    <p className={`text-xl font-bold mt-1 truncate ${
+                      Math.abs(difference) < 0.01 ? 'text-green-600' :
+                      difference > 0 ? 'text-blue-600' : 'text-red-600'
+                    }`}>
+                      {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {Math.abs(difference) < 0.01 ? 'Caixa correto ✓' :
+                       difference > 0 ? 'Sobra' : 'Falta'}
+                    </p>
+                  </div>
+                  <div className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${
+                    Math.abs(difference) < 0.01 ? 'bg-green-500/10' :
+                    difference > 0 ? 'bg-blue-500/10' : 'bg-red-500/10'
                   }`}>
-                    {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
+                    <DollarSign className={`h-4 w-4 ${
+                      Math.abs(difference) < 0.01 ? 'text-green-600' :
+                      difference > 0 ? 'text-blue-600' : 'text-red-600'
+                    }`} />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {Math.abs(difference) < 0.01 ? 'Caixa correto ✓' :
-                     difference > 0 ? 'Sobra' : 'Falta'}
-                  </p>
-                </CardContent>
+                </div>
               </Card>
             </div>
 
@@ -1460,6 +1483,7 @@ export default function CashClosurePage() {
           </Card>
         )}
       </div>
+      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={cashClosureHelpTitle} description={cashClosureHelpDescription} icon={cashClosureHelpIcon} tabs={getCashClosureHelpTabs()} />
     </>
   );
 }

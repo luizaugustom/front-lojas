@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ShoppingCart, Package, Users, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Building2 } from 'lucide-react';
+import { ShoppingCart, Package, Users, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Building2, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,6 +16,8 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { companyApi, customerApi } from '@/lib/api-endpoints';
 import { PlanWarningBanner } from '@/components/plan-limits/plan-warning-banner';
 import { PlanUsageCard } from '@/components/plan-limits/plan-usage-card';
+import { PageHelpModal } from '@/components/help';
+import { dashboardHelpTitle, dashboardHelpDescription, dashboardHelpIcon, getDashboardHelpTabs } from '@/components/help/contents/dashboard-help';
 
 interface MetricCardProps {
   title: string;
@@ -27,24 +29,26 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, change, icon: Icon, trend = 'neutral' }: MetricCardProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent className="px-4 py-1 pt-0">
-        <div className="text-xl font-bold">{value}</div>
-        {change !== undefined && (
-          <p className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-            {trend === 'up' && <TrendingUp className="h-3 w-3 text-green-500" />}
-            {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-500" />}
-            <span className={trend === 'up' ? 'text-green-500' : trend === 'down' ? 'text-red-500' : ''}>
-              {change > 0 ? '+' : ''}{change}%
-            </span>
-            <span>vs. mês anterior</span>
-          </p>
-        )}
-      </CardContent>
+    <Card className="p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-xl font-bold mt-1 truncate">{value}</p>
+          {change !== undefined && (
+            <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+              {trend === 'up' && <TrendingUp className="h-3 w-3 text-green-500 shrink-0" />}
+              {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-500 shrink-0" />}
+              <span className={trend === 'up' ? 'text-green-500' : trend === 'down' ? 'text-red-500' : ''}>
+                {change > 0 ? '+' : ''}{change}%
+              </span>
+              <span>vs. mês anterior</span>
+            </p>
+          )}
+        </div>
+        <div className="h-9 w-9 shrink-0 rounded-full bg-muted flex items-center justify-center">
+          <Icon className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </div>
     </Card>
   );
 }
@@ -53,6 +57,7 @@ export default function DashboardPage() {
   const { api, isAuthenticated, user } = useAuth();
   const router = useRouter();
   const { queryParams, queryKeyPart, dateRange } = useDateRange();
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Sales com filtro global de data
   const { data: salesData, isLoading: isSalesLoading, error: salesError } = useQuery({
@@ -314,9 +319,14 @@ export default function DashboardPage() {
     
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard Administrativo</h1>
-          <p className="text-muted-foreground">Visão geral do sistema</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard Administrativo</h1>
+            <p className="text-muted-foreground">Visão geral do sistema</p>
+          </div>
+          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+            <HelpCircle className="h-5 w-5" />
+          </Button>
         </div>
 
         <div className="grid gap-4 md:grid-cols-1">
@@ -350,15 +360,21 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+        <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={dashboardHelpTitle} description={dashboardHelpDescription} icon={dashboardHelpIcon} tabs={getDashboardHelpTabs()} />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Visão geral do seu negócio</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">Visão geral do seu negócio</p>
+        </div>
+        <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+          <HelpCircle className="h-5 w-5" />
+        </Button>
       </div>
 
 
@@ -541,6 +557,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={dashboardHelpTitle} description={dashboardHelpDescription} icon={dashboardHelpIcon} tabs={getDashboardHelpTabs()} />
     </div>
   );
 }

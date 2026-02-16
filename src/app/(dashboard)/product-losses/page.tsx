@@ -2,13 +2,15 @@
 
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, AlertTriangle } from 'lucide-react';
+import { Plus, AlertTriangle, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { ProductLossDialog } from '@/components/product-losses/product-loss-dialog';
 import { ProductLossesTable } from '@/components/product-losses/product-losses-table';
 import { formatCurrency } from '@/lib/utils';
+import { PageHelpModal } from '@/components/help';
+import { productLossesHelpTitle, productLossesHelpDescription, productLossesHelpIcon, getProductLossesHelpTabs } from '@/components/help/contents/product-losses-help';
 
 interface ProductLoss {
   id: string;
@@ -83,12 +85,17 @@ export default function ProductLossesPage() {
             Registre e gerencie perdas de produtos (vencimento, quebra, etc.)
           </p>
         </div>
-        {canManage && (
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+          {canManage && (
           <Button onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" />
             Registrar Perda
           </Button>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Resumo */}
@@ -152,6 +159,7 @@ export default function ProductLossesPage() {
       {canManage && (
         <ProductLossDialog open={dialogOpen} onClose={handleClose} />
       )}
+      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={productLossesHelpTitle} description={productLossesHelpDescription} icon={productLossesHelpIcon} tabs={getProductLossesHelpTabs()} />
     </div>
   );
 }

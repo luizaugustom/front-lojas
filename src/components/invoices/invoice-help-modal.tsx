@@ -4,7 +4,8 @@ import { useState } from 'react';
 import {
   HelpCircle, FileText, Download, RefreshCw, XCircle,
   PlusCircle, Link2, FileEdit, CheckCircle, AlertTriangle,
-  Monitor, Globe, Zap, Clock, Package, CheckCircle2
+  Monitor, Globe, Zap, Clock, Package, CheckCircle2,
+  FileX, WifiOff, Wifi, Receipt, Percent
 } from 'lucide-react';
 import {
   Dialog,
@@ -122,7 +123,7 @@ export function InvoiceHelpModal({ open, onClose }: InvoiceHelpModalProps) {
             <div>
               <DialogTitle className="text-2xl">Central de Ajuda - Notas Fiscais</DialogTitle>
               <DialogDescription>
-                Aprenda a usar todas as funcionalidades da página de NF-e
+                Guia completo: emissão, cancelamento, CC-e, inutilização, contingência e Reforma Tributária (CBS/IBS)
               </DialogDescription>
             </div>
           </div>
@@ -143,9 +144,9 @@ export function InvoiceHelpModal({ open, onClose }: InvoiceHelpModalProps) {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-xl">Bem-vindo à Central de NF-e</CardTitle>
+                    <CardTitle className="text-xl">Bem-vindo à Central de NF-e / NFC-e</CardTitle>
                     <CardDescription>
-                      Sistema completo para emissão e gerenciamento de Notas Fiscais Eletrônicas
+                      Emissão, gerenciamento, inutilização, CC-e, contingência e valores CBS/IBS (Reforma Tributária)
                     </CardDescription>
                   </div>
                   <FileText className="h-12 w-12 text-blue-500 animate-pulse" />
@@ -158,26 +159,50 @@ export function InvoiceHelpModal({ open, onClose }: InvoiceHelpModalProps) {
               <FeatureCard
                 icon={<PlusCircle className="h-5 w-5 text-green-500" />}
                 title="Emitir NF-e"
-                description="Dois modos: vincular à venda existente ou preencher manualmente"
+                description="Dois modos: vincular à venda existente ou preencher manualmente (dados, itens, pagamento)"
                 badge="2 Modos"
               />
               <FeatureCard
                 icon={<Download className="h-5 w-5 text-blue-500" />}
                 title="Download"
-                description="Baixe PDF para impressão ou XML para importação"
+                description="Baixe PDF para impressão ou XML para importação em sistemas contábeis"
                 badge="PDF/XML"
               />
               <FeatureCard
                 icon={<RefreshCw className="h-5 w-5 text-purple-500" />}
                 title="Consultar Status"
-                description="Verifique o status da nota direto na SEFAZ"
+                description="Verifique o status da nota direto na SEFAZ (botão Status na linha da nota)"
                 badge="Tempo Real"
               />
               <FeatureCard
                 icon={<XCircle className="h-5 w-5 text-red-500" />}
                 title="Cancelamento"
-                description="Cancele notas autorizadas com justificativa"
-                badge="Seguro"
+                description="Cancele notas autorizadas com justificativa (mín. 15 caracteres). NFC-e: 30 min; NF-e: 24 h"
+                badge="Prazo Legal"
+              />
+              <FeatureCard
+                icon={<FileX className="h-5 w-5 text-amber-500" />}
+                title="Inutilizar Numeração"
+                description="Inutilize faixas de numeração de NF-e (55) ou NFC-e (65) na SEFAZ, com justificativa"
+                badge="SEFAZ"
+              />
+              <FeatureCard
+                icon={<FileEdit className="h-5 w-5 text-teal-500" />}
+                title="Carta de Correção (CC-e)"
+                description="Corrija informações textuais em NF-e já autorizada (mín. 15, máx. 1000 caracteres; até 20 CC-e por nota)"
+                badge="Só NF-e"
+              />
+              <FeatureCard
+                icon={<WifiOff className="h-5 w-5 text-orange-500" />}
+                title="Contingência NFC-e"
+                description="Quando a SEFAZ estiver indisponível, ative o modo contingência para continuar emitindo"
+                badge="NFC-e"
+              />
+              <FeatureCard
+                icon={<Percent className="h-5 w-5 text-indigo-500" />}
+                title="CBS e IBS (Reforma Tributária)"
+                description="Valores de Contribuição sobre Bens e Serviços e Imposto sobre Bens e Serviços exibidos na coluna Total quando disponíveis"
+                badge="2026"
               />
             </div>
 
@@ -212,8 +237,11 @@ export function InvoiceHelpModal({ open, onClose }: InvoiceHelpModalProps) {
                   <h4 className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
                     Antes de Emitir
                   </h4>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-2">
+                    Certifique-se de que a empresa possui configuração fiscal completa (CNPJ, IE, Código IBGE, CEP, API Key Focus NFe, etc.)
+                  </p>
                   <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                    Certifique-se de que a empresa possui configuração fiscal completa (CNPJ, IE, API Key Focus NFe, etc.)
+                    Para NFC-e emitidas na venda: acima do valor configurado pela empresa (ex.: R$ 200), o CPF ou CNPJ do cliente é obrigatório por lei.
                   </p>
                 </div>
               </div>
@@ -389,12 +417,112 @@ export function InvoiceHelpModal({ open, onClose }: InvoiceHelpModalProps) {
                 <StepItem number={3} text="Digite o motivo do cancelamento (mínimo 15 caracteres)" />
                 <StepItem number={4} text="Confirme o cancelamento" />
 
-                <div className="p-3 bg-muted rounded-lg mt-4">
+                <div className="p-3 bg-muted rounded-lg mt-4 space-y-1">
                   <p className="text-sm text-muted-foreground">
                     <AlertTriangle className="inline h-4 w-4 mr-1 text-yellow-500" />
-                    Prazo legal: 24 horas para cancelamento após autorização
+                    <strong>Prazo legal:</strong> NFC-e — 30 minutos após autorização; NF-e — 24 horas após autorização.
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Inutilizar Numeração */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <FileX className="h-5 w-5 text-amber-500" />
+                  <CardTitle>Inutilizar Numeração</CardTitle>
+                  <Badge variant="secondary">SEFAZ</Badge>
+                </div>
+                <CardDescription>
+                  Use quando houver perda de sequência ou números que não serão utilizados (NF-e ou NFC-e)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <StepItem number={1} text="Clique em 'Inutilizar Numeração' no topo da página" />
+                <StepItem number={2} text="Escolha a Série e o Modelo (55 = NF-e, 65 = NFC-e)" />
+                <StepItem number={3} text="Informe o número inicial e o número final da faixa" />
+                <StepItem number={4} text="Digite a justificativa (mínimo 15 caracteres)" />
+                <StepItem number={5} text="Clique em 'Inutilizar'" />
+                <p className="text-xs text-muted-foreground mt-2">
+                  A inutilização é registrada na SEFAZ e evita rejeição por uso de números fora de sequência.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Carta de Correção (CC-e) */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <FileEdit className="h-5 w-5 text-teal-500" />
+                  <CardTitle>Carta de Correção Eletrônica (CC-e)</CardTitle>
+                  <Badge variant="secondary">Apenas NF-e</Badge>
+                </div>
+                <CardDescription>
+                  Corrija apenas informações textuais em NF-e já autorizada (não altera valores, alíquotas ou dados de emitente/destinatário)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <StepItem number={1} text="Localize a NF-e autorizada na tabela" />
+                <StepItem number={2} text="Clique no botão 'CC-e' na linha da nota" />
+                <StepItem number={3} text="Digite o texto da correção (entre 15 e 1000 caracteres)" />
+                <StepItem number={4} text="Clique em 'Enviar CC-e'" />
+                <div className="p-3 bg-muted rounded-lg mt-2">
+                  <p className="text-sm text-muted-foreground">
+                    <AlertTriangle className="inline h-4 w-4 mr-1 text-yellow-500" />
+                    Máximo de 20 Cartas de Correção por NF-e. Não é permitido alterar valores ou dados fiscais.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Contingência NFC-e */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <WifiOff className="h-5 w-5 text-orange-500" />
+                  <CardTitle>Modo Contingência NFC-e</CardTitle>
+                  <Badge variant="secondary">NFC-e</Badge>
+                </div>
+                <CardDescription>
+                  Quando o ambiente da SEFAZ estiver indisponível, ative a contingência para continuar registrando as vendas
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  O card de <strong>Status da contingência</strong> aparece no topo da página (apenas para empresas). Use:
+                </p>
+                <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
+                  <li><strong>Ativar contingência</strong> — quando a SEFAZ não estiver respondendo</li>
+                  <li><strong>Desativar contingência</strong> — quando a SEFAZ voltar ao normal; as NFC-e pendentes serão transmitidas conforme o processo configurado</li>
+                </ul>
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted">
+                  <Wifi className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Conexão normal = SEFAZ disponível</span>
+                </div>
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                  <WifiOff className="h-4 w-4 text-amber-600" />
+                  <span className="text-sm">Modo contingência ativo = emissão em contingência</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* CBS / IBS na tabela */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Receipt className="h-5 w-5 text-indigo-500" />
+                  <CardTitle>Coluna Total e CBS/IBS</CardTitle>
+                  <Badge variant="secondary">Reforma 2026</Badge>
+                </div>
+                <CardDescription>
+                  Valores de Contribuição (CBS) e Imposto (IBS) sobre Bens e Serviços aparecem abaixo do total quando a nota tiver esses dados
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Na coluna <strong>Total</strong> da tabela, além do valor total da nota você pode ver <strong>CBS</strong> e <strong>IBS</strong> (Reforma Tributária). Esses campos são preenchidos automaticamente conforme a legislação.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -463,12 +591,20 @@ export function InvoiceHelpModal({ open, onClose }: InvoiceHelpModalProps) {
                     text="Sempre salve o XML e PDF em local seguro para arquivo"
                   />
                   <TipItem
+                    icon={<FileEdit className="h-4 w-4 text-teal-500" />}
+                    text="Para NF-e: use CC-e (Carta de Correção) para corrigir apenas texto, sem cancelar a nota"
+                  />
+                  <TipItem
                     icon={<AlertTriangle className="h-4 w-4 text-yellow-500" />}
-                    text="Confira todos os dados antes de emitir, correções exigem cancelamento"
+                    text="Confira todos os dados antes de emitir; para alterar valores ou dados fiscais é necessário cancelar e reemitir"
+                  />
+                  <TipItem
+                    icon={<WifiOff className="h-4 w-4 text-orange-500" />}
+                    text="Se a SEFAZ estiver fora: ative a contingência NFC-e no card do topo para não parar as vendas"
                   />
                   <TipItem
                     icon={<RefreshCw className="h-4 w-4 text-purple-500" />}
-                    text="Consulte o status regularmente para garantir que está tudo ok"
+                    text="Consulte o status na SEFAZ regularmente; confira CBS/IBS na coluna Total quando disponível"
                   />
                 </ul>
               </CardContent>
@@ -499,6 +635,18 @@ export function InvoiceHelpModal({ open, onClose }: InvoiceHelpModalProps) {
                   <TroubleshootItem
                     problem="Botão 'Status' desabilitado"
                     solution="Somente notas com Chave de Acesso podem ter o status consultado. Notas sem chave ainda não foram processadas."
+                  />
+                  <TroubleshootItem
+                    problem="Não consigo enviar CC-e"
+                    solution="CC-e só aparece para NF-e (não NFC-e) e apenas quando o status é Autorizada/Autorizado. Máximo 20 CC-e por nota; texto entre 15 e 1000 caracteres."
+                  />
+                  <TroubleshootItem
+                    problem="Inutilização rejeitada"
+                    solution="Verifique se a faixa (número inicial e final) está correta e se a justificativa tem pelo menos 15 caracteres. Modelo 55 = NF-e, 65 = NFC-e."
+                  />
+                  <TroubleshootItem
+                    problem="Contingência não ativa ou pendentes"
+                    solution="Contingência é só para NFC-e. Ative no card do topo quando a SEFAZ estiver indisponível. Após desativar, as pendentes são transmitidas conforme configuração."
                   />
                 </div>
               </CardContent>

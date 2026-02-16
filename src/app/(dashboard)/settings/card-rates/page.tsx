@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CreditCard, Plus, Edit2, Trash2, Save, X, AlertCircle } from 'lucide-react';
+import { CreditCard, Plus, Edit2, Trash2, Save, X, AlertCircle, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,8 @@ import { handleApiError } from '@/lib/handleApiError';
 import { cardAcquirerRateApi } from '@/lib/api-endpoints';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
 import { getAcquirerList } from '@/lib/acquirer-cnpj-list';
+import { PageHelpModal } from '@/components/help';
+import { cardRatesHelpTitle, cardRatesHelpDescription, cardRatesHelpIcon, getCardRatesHelpTabs } from '@/components/help/contents/card-rates-help';
 
 interface CardAcquirerRate {
   id: string;
@@ -48,6 +50,7 @@ export default function CardRatesPage() {
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingRate, setEditingRate] = useState<CardAcquirerRate | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [formData, setFormData] = useState({
     acquirerCnpj: '',
     acquirerName: '',
@@ -206,10 +209,15 @@ export default function CardRatesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Taxas de Máquina de Cartão</h1>
           <p className="text-muted-foreground">Configure as taxas por credenciadora</p>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Taxa
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+          <Button onClick={() => handleOpenDialog()}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Taxa
+          </Button>
+        </div>
       </div>
 
       {rates.length === 0 ? (
@@ -477,6 +485,7 @@ export default function CardRatesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={cardRatesHelpTitle} description={cardRatesHelpDescription} icon={cardRatesHelpIcon} tabs={getCardRatesHelpTabs()} />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, Download, Eye, Filter, Printer, TrendingUp, DollarSign } from 'lucide-react';
+import { Calendar, Download, Eye, Filter, Printer, TrendingUp, DollarSign, HelpCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,6 +25,8 @@ import { SaleDetailsDialog } from '@/components/sales-history/sale-details-dialo
 import { CancelSaleDialog } from '@/components/sales/cancel-sale-dialog';
 import { saleApi } from '@/lib/api-endpoints';
 import type { DataPeriodFilter } from '@/types';
+import { PageHelpModal } from '@/components/help';
+import { salesHistoryHelpTitle, salesHistoryHelpDescription, salesHistoryHelpIcon, getSalesHistoryHelpTabs } from '@/components/help/contents/sales-history-help';
 
 const COMPANY_PERIOD_OPTIONS: Array<{ value: DataPeriodFilter; label: string }> = [
   { value: 'TODAY', label: 'Hoje' },
@@ -101,6 +103,7 @@ export default function SalesHistoryPage() {
   const [filterPayment, setFilterPayment] = useState('');
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const availableOptions = useMemo(
     () => (user?.role === 'vendedor' ? SELLER_PERIOD_OPTIONS : COMPANY_PERIOD_OPTIONS),
@@ -500,10 +503,15 @@ export default function SalesHistoryPage() {
             Visualize e gerencie todas as vendas realizadas
           </p>
         </div>
-        <Button onClick={handleExportSales} variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Exportar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+          <Button onClick={handleExportSales} variant="outline">
+            <Download className="mr-2 h-4 w-4" />
+            Exportar
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -656,6 +664,7 @@ export default function SalesHistoryPage() {
         onConfirm={handleConfirmCancel}
         loading={cancelling}
       />
+      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={salesHistoryHelpTitle} description={salesHistoryHelpDescription} icon={salesHistoryHelpIcon} tabs={getSalesHistoryHelpTabs()} />
     </div>
   );
 }
