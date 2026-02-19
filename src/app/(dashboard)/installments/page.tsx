@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { DollarSign, AlertTriangle, CheckCircle2, Filter, X, HelpCircle } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { DollarSign, AlertTriangle, CheckCircle2, Filter, X } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,8 +22,6 @@ import { CustomerDebtPaymentDialog } from '@/components/installments/customer-de
 import { formatCurrency } from '@/lib/utils';
 import { useDeviceStore } from '@/store/device-store';
 import toast from 'react-hot-toast';
-import { PageHelpModal } from '@/components/help';
-import { installmentsHelpTitle, installmentsHelpDescription, installmentsHelpIcon, getInstallmentsHelpTabs } from '@/components/help/contents/installments-help';
 
 type DateFilter = 'all' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'this-year';
 
@@ -39,7 +37,6 @@ export default function InstallmentsPage() {
   } | null>(null);
   const [dateFilter, setDateFilter] = useState<DateFilter>('this-month');
   const [lastScanned, setLastScanned] = useState(0);
-  const [helpOpen, setHelpOpen] = useState(false);
 
   const {
     barcodeBuffer,
@@ -361,9 +358,6 @@ export default function InstallmentsPage() {
             <h1 className="text-3xl font-bold tracking-tight">Clientes com Dívidas</h1>
             <p className="text-muted-foreground">Lista de clientes com pagamentos pendentes</p>
           </div>
-          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
-            <HelpCircle className="h-5 w-5" />
-          </Button>
         </div>
 
         <CustomersDebtList
@@ -384,7 +378,6 @@ export default function InstallmentsPage() {
           onClose={handlePaymentClose}
           installment={selectedInstallment}
         />
-        <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={installmentsHelpTitle} description={installmentsHelpDescription} icon={installmentsHelpIcon} tabs={getInstallmentsHelpTabs()} />
       </div>
     );
   }
@@ -398,57 +391,48 @@ export default function InstallmentsPage() {
             <h1 className="text-3xl font-bold tracking-tight">Pagamentos a Prazo</h1>
             <p className="text-muted-foreground">Gerencie parcelas e pagamentos dos clientes</p>
           </div>
-          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
-            <HelpCircle className="h-5 w-5" />
-          </Button>
         </div>
 
         {/* Cards de Estatísticas */}
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-muted-foreground">Total a Receber</p>
-                <p className="text-xl font-bold mt-1 truncate">
-                  {formatCurrency(stats?.totalReceivable || 0)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {stats?.pendingInstallments || 0} parcelas pendentes
-                </p>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
+              <CardTitle className="text-sm font-medium">Total a Receber</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="px-4 py-1 pt-0">
+              <div className="text-xl font-bold">
+                {formatCurrency(stats?.totalReceivable || 0)}
               </div>
-              <div className="h-9 w-9 shrink-0 rounded-full bg-muted flex items-center justify-center">
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
+              <p className="text-xs text-muted-foreground">
+                {stats?.pendingInstallments || 0} parcelas pendentes
+              </p>
+            </CardContent>
           </Card>
 
-          <Card className="p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-muted-foreground">Atrasados</p>
-                <p className="text-xl font-bold text-destructive mt-1 truncate">
-                  {formatCurrency(stats?.overdueAmount || 0)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {stats?.overdueInstallments || 0} parcelas vencidas
-                </p>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
+              <CardTitle className="text-sm font-medium">Atrasados</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent className="px-4 py-1 pt-0">
+              <div className="text-xl font-bold text-destructive">
+                {formatCurrency(stats?.overdueAmount || 0)}
               </div>
-              <div className="h-9 w-9 shrink-0 rounded-full bg-destructive/10 flex items-center justify-center">
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-              </div>
-            </div>
+              <p className="text-xs text-muted-foreground">
+                {stats?.overdueInstallments || 0} parcelas vencidas
+              </p>
+            </CardContent>
           </Card>
 
-          <Card className="p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-muted-foreground">Parcelas em Aberto</p>
-                <p className="text-xl font-bold mt-1 truncate">{stats?.pendingInstallments || 0}</p>
-              </div>
-              <div className="h-9 w-9 shrink-0 rounded-full bg-muted flex items-center justify-center">
-                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
+              <CardTitle className="text-sm font-medium">Parcelas em Aberto</CardTitle>
+              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="px-4 py-1 pt-0">
+              <div className="text-xl font-bold">{stats?.pendingInstallments || 0}</div>
+            </CardContent>
           </Card>
         </div>
 
@@ -549,7 +533,6 @@ export default function InstallmentsPage() {
           onClose={handlePaymentClose}
           installment={selectedInstallment}
         />
-        <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={installmentsHelpTitle} description={installmentsHelpDescription} icon={installmentsHelpIcon} tabs={getInstallmentsHelpTabs()} />
       </div>
     );
   }

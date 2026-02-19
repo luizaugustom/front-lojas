@@ -187,7 +187,16 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
                     onClick={() => handleImageClick(product)}
                   />
                 </TableCell>
-                <TableCell className="font-medium">{product.name}</TableCell>
+                <TableCell>
+                  <div>
+                    <div className="font-medium">{product.name}</div>
+                    {product.description && (
+                      <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                        {product.description}
+                      </div>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>{product.barcode}</TableCell>
                 <TableCell>{formatCurrency(product.price)}</TableCell>
                 <TableCell>

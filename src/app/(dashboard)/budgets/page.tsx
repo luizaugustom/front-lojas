@@ -31,7 +31,9 @@ import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency } from '@/lib/utils-clean';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
-import { printContent } from '@/lib/print-service';
+import { printContent as printContentService } from '@/lib/print-service';
+import { saleApi } from '@/lib/api-endpoints';
+import { PrintConfirmationDialog } from '@/components/sales/print-confirmation-dialog';
 import { PageHelpModal } from '@/components/help';
 import { budgetsHelpTitle, budgetsHelpDescription, budgetsHelpIcon, getBudgetsHelpTabs } from '@/components/help/contents/budgets-help';
 
@@ -79,6 +81,10 @@ export default function BudgetsPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [printingBudgetId, setPrintingBudgetId] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [showNfcPrintConfirmation, setShowNfcPrintConfirmation] = useState(false);
+  const [nfcPrintContent, setNfcPrintContent] = useState<{ content: string | { storeCopy: string; customerCopy: string; isInstallmentSale: boolean }; type: string } | null>(null);
+  const [createdSaleIdFromBudget, setCreatedSaleIdFromBudget] = useState<string | null>(null);
+  const [printingNfc, setPrintingNfc] = useState(false);
   
   const isCompany = user?.role === 'empresa';
 
@@ -128,7 +134,7 @@ export default function BudgetsPage() {
       }
 
       if (content) {
-        const result = await printContent(content);
+        const result = await printContentService(content);
 
         if (result.success) {
           toast.success('Orçamento enviado para impressão!');
@@ -207,17 +213,13 @@ export default function BudgetsPage() {
 
     setUpdatingStatus(true);
     try {
-      await api.patch(`/budget/${editingBudget.id}`, {
+      const response = await api.patch(`/budget/${editingBudget.id}`, {
         status: newStatus,
         notes: statusNotes || undefined,
       });
+      const data = response.data;
       
       toast.success('Status do orçamento atualizado com sucesso!');
-      
-      // Se o status foi alterado para aprovado, informar sobre a venda criada
-      if (newStatus === 'approved' && editingBudget.status !== 'approved') {
-        toast.success('Venda criada automaticamente com base no orçamento!');
-      }
       
       setEditStatusDialogOpen(false);
       setEditingBudget(null);
@@ -227,11 +229,68 @@ export default function BudgetsPage() {
       // Invalidar cache e recarregar
       queryClient.invalidateQueries({ queryKey: ['budgets'] });
       refetch();
+
+      // Se aprovou e a API retornou venda criada com NFC-e, mostrar modal de impressão
+      if (newStatus === 'approved' && editingBudget.status !== 'approved' && data?.createdSale?.printContent) {
+        toast.success('Venda criada automaticamente com base no orçamento!');
+        setNfcPrintContent({
+          content: data.createdSale.printContent,
+          type: data.createdSale.printType || 'nfce',
+        });
+        setCreatedSaleIdFromBudget(data.createdSale.id);
+        setShowNfcPrintConfirmation(true);
+      } else if (newStatus === 'approved' && editingBudget.status !== 'approved') {
+        toast.success('Venda criada automaticamente com base no orçamento!');
+      }
     } catch (error) {
       handleApiError(error);
     } finally {
       setUpdatingStatus(false);
     }
+  };
+
+  const handleNfcPrintConfirm = async () => {
+    if (!nfcPrintContent) return;
+    setPrintingNfc(true);
+    try {
+      const printContent = nfcPrintContent.content;
+      if (typeof printContent === 'object' && 'isInstallmentSale' in printContent) {
+        const printResult = await printContentService(printContent.storeCopy);
+        if (printResult.success) {
+          toast.success('Via da loja enviada para impressão!');
+          const custResult = await printContentService(printContent.customerCopy);
+          if (custResult.success) toast.success('Via do cliente enviada para impressão!');
+        } else if (createdSaleIdFromBudget) {
+          await saleApi.reprint(createdSaleIdFromBudget);
+          toast.success('NFC-e enviada para impressão no servidor!');
+        }
+      } else if (typeof printContent === 'string') {
+        const printResult = await printContentService(printContent);
+        if (printResult.success) {
+          toast.success('NFC-e enviada para impressão!');
+        } else if (createdSaleIdFromBudget) {
+          await saleApi.reprint(createdSaleIdFromBudget);
+          toast.success('NFC-e enviada para impressão no servidor!');
+        }
+      } else if (createdSaleIdFromBudget) {
+        await saleApi.reprint(createdSaleIdFromBudget);
+        toast.success('NFC-e enviada para impressão!');
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Erro ao imprimir NFC-e');
+    } finally {
+      setPrintingNfc(false);
+      setShowNfcPrintConfirmation(false);
+      setNfcPrintContent(null);
+      setCreatedSaleIdFromBudget(null);
+    }
+  };
+
+  const handleNfcPrintCancel = () => {
+    toast.success('Venda registrada sem impressão');
+    setShowNfcPrintConfirmation(false);
+    setNfcPrintContent(null);
+    setCreatedSaleIdFromBudget(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -588,6 +647,13 @@ export default function BudgetsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PrintConfirmationDialog
+        open={showNfcPrintConfirmation}
+        onConfirm={handleNfcPrintConfirm}
+        onCancel={handleNfcPrintCancel}
+        loading={printingNfc}
+        printType={nfcPrintContent?.type ?? null}
+      />
       <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={budgetsHelpTitle} description={budgetsHelpDescription} icon={budgetsHelpIcon} tabs={getBudgetsHelpTabs()} />
     </div>
   );

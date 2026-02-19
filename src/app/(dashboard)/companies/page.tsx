@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Plus, Building2, Search, Filter, HelpCircle } from 'lucide-react';
+import { Plus, Building2, Search, Filter } from 'lucide-react';
 import { InputWithIcon } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { CompaniesTable } from '@/components/companies/companies-table';
@@ -14,8 +14,6 @@ import { Company, CreateCompanyDto } from '@/types';
 import { companyApi } from '@/lib/api-endpoints';
 import { toast } from 'react-hot-toast';
 import { convertPrismaIdToUUID, isValidId } from '@/lib/utils';
-import { PageHelpModal } from '@/components/help';
-import { companiesHelpTitle, companiesHelpDescription, companiesHelpIcon, getCompaniesHelpTabs } from '@/components/help/contents/companies-help';
 
 export default function CompaniesPage() {
   const { user } = useAuth();
@@ -30,7 +28,6 @@ export default function CompaniesPage() {
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [isFocusNfeModalOpen, setIsFocusNfeModalOpen] = useState(false);
   const [companyForFocusNfe, setCompanyForFocusNfe] = useState<Company | null>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
 
   const fetchCompanies = async () => {
     try {
@@ -201,15 +198,10 @@ export default function CompaniesPage() {
             Gerencie todas as empresas cadastradas no sistema
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
-            <HelpCircle className="h-5 w-5" />
-          </Button>
-          <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nova Empresa
-          </Button>
-        </div>
+        <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Nova Empresa
+        </Button>
       </div>
 
       <Card className="p-6">
@@ -283,7 +275,6 @@ export default function CompaniesPage() {
           fetchCompanies();
         }}
       />
-      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={companiesHelpTitle} description={companiesHelpDescription} icon={companiesHelpIcon} tabs={getCompaniesHelpTabs()} />
     </div>
   );
 }

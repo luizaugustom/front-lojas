@@ -630,6 +630,20 @@ export const fiscalApi = {
     api.post('/fiscal/nfe-devolucao', { inboundDocumentId }),
 
   /**
+   * GET /fiscal/inbound-invoice/:id/return-preview
+   * Roles: COMPANY - Preview dos dados para NFe de devolução (sem emitir)
+   */
+  getInboundReturnPreview: (inboundDocumentId: string) =>
+    api.get(`/fiscal/inbound-invoice/${inboundDocumentId}/return-preview`),
+
+  /**
+   * GET /fiscal/inbound-invoice/:id/returns
+   * Roles: COMPANY - Listar NFe de devolução já emitidas para uma nota de entrada
+   */
+  getInboundReturns: (inboundDocumentId: string) =>
+    api.get(`/fiscal/inbound-invoice/${inboundDocumentId}/returns`),
+
+  /**
    * POST /fiscal/parse-inbound-xml
    * Roles: COMPANY - Parsear XML de NFe de entrada (somente leitura)
    * Body: { xml: string }

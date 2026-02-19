@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useRef } from 'react';
+import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Phone, Package, Search, ChevronDown, MessageCircle, X, Plus, Minus, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import { getImageUrl } from '@/lib/image-utils';
@@ -15,6 +15,7 @@ interface Product {
   stockQuantity: number;
   size: string | null;
   category: string | null;
+  description?: string | null;
   unitOfMeasure?: string;
   originalPrice?: string;
   promotionPrice?: string;
@@ -41,15 +42,22 @@ interface CatalogData {
 export default function CatalogPageClient() {
   const params = useParams();
   const url = params.url as string;
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [data, setData] = useState<CatalogData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('todas');
-  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [productModalPhotoIndex, setProductModalPhotoIndex] = useState(0);
   const [verse, setVerse] = useState<{ reference: string; text: string } | null>(null);
   const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const initialProductFromUrlApplied = useRef(false);
 
   useEffect(() => {
     const fetchCatalogData = async () => {
@@ -149,6 +157,54 @@ export default function CatalogPageClient() {
     setVerse(v);
   }, []);
 
+  // Fechar dropdown de categoria ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
+        setCategoryDropdownOpen(false);
+      }
+    };
+    if (categoryDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [categoryDropdownOpen]);
+
+  // Abrir produto a partir do ID na URL ao carregar (compartilhamento)
+  useEffect(() => {
+    if (initialProductFromUrlApplied.current || !data?.products) return;
+    const productId = searchParams.get('product');
+    if (!productId) return;
+    const product = data.products.find((p) => p.id === productId);
+    if (product) {
+      setSelectedProduct(product);
+      setProductModalPhotoIndex(0);
+      initialProductFromUrlApplied.current = true;
+    }
+  }, [data?.products, searchParams]);
+
+  // Sincronizar produto selecionado com a URL (para permitir compartilhar link)
+  useEffect(() => {
+    if (!pathname) return;
+    const next = new URLSearchParams(searchParams.toString());
+    if (selectedProduct) {
+      next.set('product', selectedProduct.id);
+      const newUrl = `${pathname}?${next.toString()}`;
+      const currentUrl = window.location.pathname + (window.location.search || '');
+      if (newUrl !== currentUrl) router.replace(newUrl, { scroll: false });
+    } else {
+      // Só remove ?product= da URL se não estivermos esperando abrir a partir da URL (primeira carga)
+      const hasProductInUrl = searchParams.get('product');
+      if (!hasProductInUrl || initialProductFromUrlApplied.current) {
+        next.delete('product');
+        const query = next.toString();
+        const newUrl = query ? `${pathname}?${query}` : pathname;
+        const currentUrl = window.location.pathname + (window.location.search || '');
+        if (newUrl !== currentUrl) router.replace(newUrl, { scroll: false });
+      }
+    }
+  }, [pathname, selectedProduct, router, searchParams]);
+
   // Filtrar produtos por termo de busca e categoria
   const filteredProducts = data?.products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -165,6 +221,13 @@ export default function CatalogPageClient() {
     acc[category].push(product);
     return acc;
   }, {} as Record<string, Product[]>);
+
+  // Abrir detalhes do produto (atualiza URL para compartilhamento)
+  const openProduct = (product: Product) => {
+    initialProductFromUrlApplied.current = true;
+    setProductModalPhotoIndex(0);
+    setSelectedProduct(product);
+  };
 
   // Obter todas as categorias únicas
   const allCategories = data?.products
@@ -308,7 +371,7 @@ export default function CatalogPageClient() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5" style={{ color: '#000000' }} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-800 pointer-events-none" strokeWidth={2.5} />
             <input
               type="text"
               placeholder="Buscar produtos..."
@@ -317,22 +380,41 @@ export default function CatalogPageClient() {
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
-          <div className="relative">
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="appearance-none px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white text-black font-medium shadow-sm hover:shadow-md transition-shadow cursor-pointer min-w-[200px]"
+          <div className="relative" ref={categoryDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setCategoryDropdownOpen((v) => !v)}
+              className="flex items-center justify-between w-full min-w-[200px] pl-4 pr-11 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-900 font-medium shadow-md hover:shadow-lg hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all duration-200 cursor-pointer text-left"
             >
-              <option value="todas">Todas as categorias</option>
-              {allCategories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-              <ChevronDown className="h-5 w-5 text-gray-500" />
-            </div>
+              <span>{selectedCategory === 'todas' ? 'Todas as categorias' : selectedCategory}</span>
+              <ChevronDown className={`absolute right-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 transition-transform duration-200 ${categoryDropdownOpen ? 'rotate-180' : ''}`} strokeWidth={2} />
+            </button>
+            {categoryDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-2 z-50 rounded-2xl border-2 border-gray-200 bg-white shadow-xl overflow-hidden min-w-[200px]">
+                <ul className="py-2 max-h-60 overflow-y-auto">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedCategory('todas'); setCategoryDropdownOpen(false); }}
+                      className={`w-full px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-gray-100 ${selectedCategory === 'todas' ? 'bg-primary/10 text-primary' : 'text-gray-900'}`}
+                    >
+                      Todas as categorias
+                    </button>
+                  </li>
+                  {allCategories.map((category) => (
+                    <li key={category}>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedCategory(category); setCategoryDropdownOpen(false); }}
+                        className={`w-full px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-gray-100 ${selectedCategory === category ? 'bg-primary/10 text-primary' : 'text-gray-900'}`}
+                      >
+                        {category}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -350,15 +432,16 @@ export default function CatalogPageClient() {
                 {data.promotedProducts.map((product) => (
                   <div
                     key={product.id}
-                    className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all flex-shrink-0"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openProduct(product)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProduct(product); } }}
+                    className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all flex-shrink-0 cursor-pointer"
                     style={{ width: '140px' }}
                   >
                     {/* Imagem do produto */}
                     {product.photos && product.photos.length > 0 ? (
-                      <div 
-                        className="relative h-20 bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => setEnlargedImage(getImageUrl(product.photos[0]))}
-                      >
+                      <div className="relative h-20 bg-gray-100 hover:opacity-90 transition-opacity">
                         <Image
                           src={getImageUrl(product.photos[0])}
                           alt={product.name}
@@ -403,7 +486,7 @@ export default function CatalogPageClient() {
                           <p className="text-[9px] text-red-600 mt-0.5">Indisp</p>
                         )}
                         <button
-                          onClick={() => addToCart(product)}
+                          onClick={(e) => { e.stopPropagation(); addToCart(product); }}
                           className="mt-1 w-full inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold text-white hover:opacity-90 transition"
                           style={{ backgroundColor: company.brandColor || '#3b82f6' }}
                           aria-label="Adicionar ao carrinho"
@@ -435,14 +518,15 @@ export default function CatalogPageClient() {
                 {products.map((product) => (
                   <div
                     key={product.id}
-                    className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openProduct(product)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProduct(product); } }}
+                    className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all cursor-pointer"
                   >
                     {/* Imagem do produto */}
                     {product.photos && product.photos.length > 0 ? (
-                      <div 
-                        className="relative h-16 bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => setEnlargedImage(getImageUrl(product.photos[0]))}
-                      >
+                      <div className="relative h-16 bg-gray-100 hover:opacity-90 transition-opacity">
                         <Image
                           src={getImageUrl(product.photos[0])}
                           alt={product.name}
@@ -487,7 +571,7 @@ export default function CatalogPageClient() {
                           <p className="text-[9px] text-red-600">Indisp</p>
                         )}
                         <button
-                          onClick={() => addToCart(product)}
+                          onClick={(e) => { e.stopPropagation(); addToCart(product); }}
                           className="mt-1 w-full inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold text-white hover:opacity-90 transition"
                           style={{ backgroundColor: company.brandColor || '#3b82f6' }}
                           aria-label="Adicionar ao carrinho"
@@ -544,28 +628,137 @@ export default function CatalogPageClient() {
         </div>
       </footer>
 
-      {/* Modal de Imagem Ampliada */}
-      {enlargedImage && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-          onClick={() => setEnlargedImage(null)}
+      {/* Modal de Detalhes do Produto */}
+      {selectedProduct && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setSelectedProduct(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="product-modal-title"
         >
-          <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
+          <div
+            className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Botão fechar */}
             <button
-              onClick={() => setEnlargedImage(null)}
-              className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10 bg-black bg-opacity-50 rounded-full p-2"
+              onClick={() => setSelectedProduct(null)}
+              className="absolute top-3 right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-md hover:bg-white transition-colors"
               aria-label="Fechar"
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5" />
             </button>
-            <div className="relative w-full h-full max-w-full max-h-full">
-              <Image
-                src={enlargedImage}
-                alt="Imagem ampliada"
-                fill
-                className="object-contain"
-                onClick={(e) => e.stopPropagation()}
-              />
+
+            {/* Foto em destaque */}
+            <div className="relative aspect-square bg-gray-100 shrink-0">
+              {selectedProduct.photos && selectedProduct.photos.length > 0 ? (
+                <>
+                  <Image
+                    src={getImageUrl(selectedProduct.photos[productModalPhotoIndex])}
+                    alt={selectedProduct.name}
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 512px) 100vw, 512px"
+                  />
+                  {selectedProduct.photos.length > 1 && (
+                    <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                      {selectedProduct.photos.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={(e) => { e.stopPropagation(); setProductModalPhotoIndex(i); }}
+                          className={`h-2 rounded-full transition-all ${
+                            i === productModalPhotoIndex
+                              ? 'w-6 bg-white shadow'
+                              : 'w-2 bg-white/60 hover:bg-white/80'
+                          }`}
+                          aria-label={`Foto ${i + 1}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Package className="h-24 w-24 text-gray-300" />
+                </div>
+              )}
+            </div>
+
+            {/* Conteúdo: nome, preço, descrição, CTA */}
+            <div className="flex flex-1 flex-col overflow-hidden p-5">
+              {selectedProduct.category && (
+                <span
+                  className="mb-1 text-xs font-medium uppercase tracking-wide"
+                  style={{ color: company.brandColor || '#3b82f6' }}
+                >
+                  {selectedProduct.category}
+                </span>
+              )}
+              <h2 id="product-modal-title" className="text-xl font-bold text-gray-900 mb-2 pr-8">
+                {selectedProduct.name}
+              </h2>
+
+              {/* Preço */}
+              <div className="mb-4">
+                {selectedProduct.isOnPromotion && selectedProduct.promotionPrice ? (
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="text-2xl font-bold text-red-600">
+                      {formatBRL(parseFloat(selectedProduct.promotionPrice))}
+                    </span>
+                    <span className="text-base text-gray-500 line-through">
+                      {formatBRL(parseFloat(selectedProduct.originalPrice || selectedProduct.price))}
+                    </span>
+                    {selectedProduct.promotionDiscount != null && (
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-sm font-semibold text-red-600">
+                        -{selectedProduct.promotionDiscount.toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span
+                    className="text-2xl font-bold"
+                    style={{ color: company.brandColor || '#3b82f6' }}
+                  >
+                    {formatBRL(parseFloat(selectedProduct.price))}
+                  </span>
+                )}
+                <span className="ml-1 text-sm text-gray-500">
+                  / {(selectedProduct.unitOfMeasure || 'un')}
+                </span>
+              </div>
+
+              {/* Descrição */}
+              <div className="flex-1 min-h-0 overflow-y-auto mb-4">
+                {selectedProduct.description && selectedProduct.description.trim() ? (
+                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                    {selectedProduct.description}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">Sem descrição.</p>
+                )}
+              </div>
+
+              {/* Estoque + Adicionar ao carrinho */}
+              <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100">
+                {selectedProduct.stockQuantity > 0 ? (
+                  <span className="text-sm text-green-600 font-medium">Em estoque</span>
+                ) : (
+                  <span className="text-sm text-red-600 font-medium">Indisponível</span>
+                )}
+                <button
+                  onClick={() => {
+                    addToCart(selectedProduct);
+                    setCartOpen(true);
+                    setSelectedProduct(null);
+                  }}
+                  disabled={selectedProduct.stockQuantity <= 0}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-base font-semibold text-white shadow-lg hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                  style={{ backgroundColor: company.brandColor || '#3b82f6' }}
+                >
+                  <Plus className="h-5 w-5" /> Adicionar ao carrinho
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -604,12 +797,12 @@ export default function CatalogPageClient() {
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4">
           <div className="bg-white rounded-t-2xl shadow-2xl border border-gray-200 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5 text-black" />
-                <h3 className="font-semibold text-black">Carrinho ({cart.reduce((s, i) => s + i.quantity, 0)} itens)</h3>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+              <div className="flex items-center gap-2 text-gray-900">
+                <ShoppingCart className="h-5 w-5 text-gray-900" strokeWidth={2} />
+                <h3 className="font-semibold text-gray-900">Carrinho ({cart.reduce((s, i) => s + i.quantity, 0)} itens)</h3>
               </div>
-              <button className="text-sm text-gray-600 hover:text-gray-900" onClick={() => setCartOpen(false)}>Fechar</button>
+              <button className="text-sm text-gray-700 hover:text-gray-900 font-medium" onClick={() => setCartOpen(false)}>Fechar</button>
             </div>
 
             {cart.length === 0 ? (
@@ -623,12 +816,12 @@ export default function CatalogPageClient() {
                       <p className="text-xs text-black">{formatBRL(Number.parseFloat(item.product.price || '0'))}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => decreaseItem(item.product.id)} className="p-1 rounded border hover:bg-gray-50" aria-label="Diminuir">
-                        <Minus className="h-3 w-3" />
+                      <button onClick={() => decreaseItem(item.product.id)} className="p-1 rounded border border-gray-300 hover:bg-gray-100 text-gray-900" aria-label="Diminuir">
+                        <Minus className="h-3 w-3 text-gray-900" strokeWidth={2.5} />
                       </button>
-                      <span className="w-6 text-center text-sm text-black">{item.quantity}</span>
-                      <button onClick={() => increaseItem(item.product.id)} className="p-1 rounded border hover:bg-gray-50" aria-label="Aumentar">
-                        <Plus className="h-3 w-3" />
+                      <span className="w-6 text-center text-sm font-medium text-gray-900">{item.quantity}</span>
+                      <button onClick={() => increaseItem(item.product.id)} className="p-1 rounded border border-gray-300 hover:bg-gray-100 text-gray-900" aria-label="Aumentar">
+                        <Plus className="h-3 w-3 text-gray-900" strokeWidth={2.5} />
                       </button>
                     </div>
                     <div className="w-24 text-right text-sm font-semibold text-black">{formatBRL(calcItemSubtotal(item))}</div>

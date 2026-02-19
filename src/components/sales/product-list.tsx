@@ -182,25 +182,30 @@ export function ProductList({ products, isLoading, onAddToCart, keyboardFocusAre
                   className="flex-none"
                   onClick={() => handleImageClick(product)}
                 />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <h3
-                          className="text-sm font-medium truncate cursor-pointer hover:text-primary transition-colors"
-                          onClick={() => {
-                            setSelectedProductForDetails(product);
-                            setDetailsModalOpen(true);
-                          }}
-                          title="Clique para ver detalhes"
-                        >
-                          {product.name}
-                        </h3>
-                        {product.isOnPromotion && (
-                          <Tag className="h-3 w-3 text-red-500 flex-shrink-0" />
-                        )}
-                      </div>
-                    </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <h3
+                              className="text-sm font-medium truncate cursor-pointer hover:text-primary transition-colors"
+                              onClick={() => {
+                                setSelectedProductForDetails(product);
+                                setDetailsModalOpen(true);
+                              }}
+                              title="Clique para ver detalhes"
+                            >
+                              {product.name}
+                            </h3>
+                            {product.isOnPromotion && (
+                              <Tag className="h-3 w-3 text-red-500 flex-shrink-0" />
+                            )}
+                          </div>
+                          {product.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                              {product.description}
+                            </p>
+                          )}
+                        </div>
                     <div className="flex flex-col items-end">
                       {product.isOnPromotion && product.promotionPrice !== undefined ? (
                         <>

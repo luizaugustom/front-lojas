@@ -32,7 +32,7 @@ import { getAcquirerList } from '@/lib/acquirer-cnpj-list';
 import { PageHelpModal } from '@/components/help';
 import { settingsHelpTitle, settingsHelpDescription, settingsHelpIcon, getSettingsHelpTabs } from '@/components/help/contents/settings-help';
 
-const PUBLIC_SITE_URL = (process.env.NEXT_PUBLIC_PUBLIC_SITE_URL || 'https://montshop.vercel.app').replace(/\/+$/, '');
+const PUBLIC_SITE_URL = (process.env.NEXT_PUBLIC_PUBLIC_SITE_URL || 'https://montshop.app').replace(/\/+$/, '');
 
 const withPublicSiteUrl = (path?: string | null) => {
   if (!path) {

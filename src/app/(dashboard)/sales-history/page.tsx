@@ -2,14 +2,14 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, Download, Eye, Filter, Printer, TrendingUp, DollarSign, HelpCircle } from 'lucide-react';
+import { Calendar, Download, Eye, Filter, Printer, TrendingUp, DollarSign } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -25,8 +25,6 @@ import { SaleDetailsDialog } from '@/components/sales-history/sale-details-dialo
 import { CancelSaleDialog } from '@/components/sales/cancel-sale-dialog';
 import { saleApi } from '@/lib/api-endpoints';
 import type { DataPeriodFilter } from '@/types';
-import { PageHelpModal } from '@/components/help';
-import { salesHistoryHelpTitle, salesHistoryHelpDescription, salesHistoryHelpIcon, getSalesHistoryHelpTabs } from '@/components/help/contents/sales-history-help';
 
 const COMPANY_PERIOD_OPTIONS: Array<{ value: DataPeriodFilter; label: string }> = [
   { value: 'TODAY', label: 'Hoje' },
@@ -103,7 +101,6 @@ export default function SalesHistoryPage() {
   const [filterPayment, setFilterPayment] = useState('');
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
-  const [helpOpen, setHelpOpen] = useState(false);
 
   const availableOptions = useMemo(
     () => (user?.role === 'vendedor' ? SELLER_PERIOD_OPTIONS : COMPANY_PERIOD_OPTIONS),
@@ -503,15 +500,10 @@ export default function SalesHistoryPage() {
             Visualize e gerencie todas as vendas realizadas
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
-            <HelpCircle className="h-5 w-5" />
-          </Button>
-          <Button onClick={handleExportSales} variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Exportar
-          </Button>
-        </div>
+        <Button onClick={handleExportSales} variant="outline">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar
+        </Button>
       </div>
 
       {/* Filtros */}
@@ -574,56 +566,56 @@ export default function SalesHistoryPage() {
       {/* Estatísticas - apenas para empresas */}
       {isCompany && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-muted-foreground">Total de Vendas</p>
-                <p className="text-xl font-bold mt-1 truncate">{stats.totalSales}</p>
-              </div>
-              <div className="h-9 w-9 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
+              <CardTitle className="text-sm font-medium">Total de Vendas</CardTitle>
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <TrendingUp className="h-4 w-4 text-primary" />
               </div>
-            </div>
+            </CardHeader>
+            <CardContent className="px-4 py-1 pt-0">
+              <div className="text-xl font-bold">{stats.totalSales}</div>
+            </CardContent>
           </Card>
 
-          <Card className="p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-muted-foreground">Receita Total</p>
-                <p className="text-xl font-bold mt-1 truncate">{formatCurrency(stats.totalRevenue)}</p>
-              </div>
-              <div className="h-9 w-9 shrink-0 rounded-full bg-green-500/10 flex items-center justify-center">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
+              <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
+              <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center">
                 <TrendingUp className="h-4 w-4 text-green-600" />
               </div>
-            </div>
+            </CardHeader>
+            <CardContent className="px-4 py-1 pt-0">
+              <div className="text-xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
+            </CardContent>
           </Card>
 
-          <Card className="p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-muted-foreground">Ticket Médio</p>
-                <p className="text-xl font-bold mt-1 truncate">{formatCurrency(stats.averageTicket)}</p>
-              </div>
-              <div className="h-9 w-9 shrink-0 rounded-full bg-blue-500/10 flex items-center justify-center">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
+              <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+              <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
                 <Calendar className="h-4 w-4 text-blue-600" />
               </div>
-            </div>
+            </CardHeader>
+            <CardContent className="px-4 py-1 pt-0">
+              <div className="text-xl font-bold">{formatCurrency(stats.averageTicket)}</div>
+            </CardContent>
           </Card>
 
           {netProfit !== null && (
-            <Card className="p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-muted-foreground">Lucro Líquido</p>
-                  <p className={`text-xl font-bold mt-1 truncate ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(netProfit)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Receita - COGS - Contas - Perdas - Juros</p>
-                </div>
-                <div className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
+                <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
                   <DollarSign className={`h-4 w-4 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
                 </div>
-              </div>
+              </CardHeader>
+              <CardContent className="px-4 py-1 pt-0">
+                <div className={`text-xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(netProfit)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Receita - COGS - Contas - Perdas - Juros</p>
+              </CardContent>
             </Card>
           )}
         </div>
@@ -664,7 +656,6 @@ export default function SalesHistoryPage() {
         onConfirm={handleConfirmCancel}
         loading={cancelling}
       />
-      <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={salesHistoryHelpTitle} description={salesHistoryHelpDescription} icon={salesHistoryHelpIcon} tabs={getSalesHistoryHelpTabs()} />
     </div>
   );
 }
