@@ -1,5 +1,5 @@
 // User Types
-export type UserRole = 'admin' | 'empresa' | 'vendedor';
+export type UserRole = 'admin' | 'empresa' | 'vendedor' | 'gestor';
 
 export interface User {
   id: string;
@@ -9,6 +9,7 @@ export interface User {
   login?: string;
   role: UserRole;
   companyId?: string | null;
+  companyIds?: string[];
   plan?: PlanType;
   dataPeriod?: DataPeriodFilter | null;
   nfeEmissionEnabled?: boolean;
@@ -403,12 +404,30 @@ export interface BillToPay {
   updatedAt: string;
 }
 
+export type BillRecurrenceType = 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
+
 export interface CreateBillDto {
   title: string;
   amount: number;
   dueDate: string;
   barcode?: string;
   paymentInfo?: string;
+  recurrenceType?: BillRecurrenceType;
+  recurrenceEndDate?: string;
+}
+
+export interface BillRecurrence {
+  id: string;
+  companyId: string;
+  title: string;
+  barcode?: string | null;
+  paymentInfo?: string | null;
+  amount: number;
+  recurrenceType: BillRecurrenceType;
+  endDate?: string | null;
+  nextDueDate: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Store Credit Types

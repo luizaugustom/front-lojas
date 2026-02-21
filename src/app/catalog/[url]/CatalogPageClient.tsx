@@ -6,6 +6,7 @@ import { Phone, Package, Search, ChevronDown, MessageCircle, X, Plus, Minus, Sho
 import Image from 'next/image';
 import { getImageUrl } from '@/lib/image-utils';
 import { getRandomVerse } from '@/lib/verses';
+import { ImageViewer } from '@/components/ui/image-viewer';
 
 interface Product {
   id: string;
@@ -52,12 +53,21 @@ export default function CatalogPageClient() {
   const [selectedCategory, setSelectedCategory] = useState<string>('todas');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productModalPhotoIndex, setProductModalPhotoIndex] = useState(0);
+  const [catalogImageViewerOpen, setCatalogImageViewerOpen] = useState(false);
+  const [catalogViewerInitialIndex, setCatalogViewerInitialIndex] = useState(0);
   const [verse, setVerse] = useState<{ reference: string; text: string } | null>(null);
   const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const initialProductFromUrlApplied = useRef(false);
+
+  useEffect(() => {
+    if (selectedProduct) {
+      setProductModalPhotoIndex(0);
+      setCatalogViewerInitialIndex(0);
+    }
+  }, [selectedProduct?.id]);
 
   useEffect(() => {
     const fetchCatalogData = async () => {
@@ -129,16 +139,19 @@ export default function CatalogPageClient() {
     }
   }, [url]);
 
-  // Atualizar título da página com nome fantasia da empresa do catálogo
+  // Título da aba sempre com o apelido (nome fantasia) da loja daquele catálogo
   useEffect(() => {
     if (data?.company) {
-      const displayName = data.company.fantasyName || data.company.name;
-      document.title = displayName;
+      const apelido = data.company.fantasyName?.trim() || data.company.name?.trim() || 'Catálogo';
+      document.title = apelido;
+    } else if (!loading && error) {
+      document.title = 'Catálogo não encontrado';
+    } else if (loading) {
+      document.title = 'Carregando catálogo...';
     } else {
-      // Manter título padrão enquanto carrega
-      document.title = 'Sistema Montshop - Gestão Lojas';
+      document.title = 'Catálogo';
     }
-  }, [data?.company]);
+  }, [data?.company, loading, error]);
 
   // Aplicar cor da empresa na scrollbar quando os dados forem carregados
   useEffect(() => {
@@ -249,7 +262,7 @@ export default function CatalogPageClient() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md px-4">
-          <Package className="h-24 w-24 text-gray-400 mx-auto mb-4" />
+          <Package className="h-24 w-24 text-gray-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Catálogo não encontrado</h1>
           <p className="text-gray-600">{error || 'Esta página não está disponível no momento.'}</p>
         </div>
@@ -345,7 +358,10 @@ export default function CatalogPageClient() {
                 />
               )}
               <div>
-                <h1 className="text-3xl font-bold text-white">
+                <h1
+                  className="text-3xl font-bold text-white"
+                  style={{ textShadow: '0 1px 3px rgba(0,0,0,0.25)' }}
+                >
                   {companyDisplayName}
                 </h1>
               </div>
@@ -357,6 +373,7 @@ export default function CatalogPageClient() {
                 <a
                   href={`tel:${company.phone}`}
                   className="flex items-center gap-2 text-white hover:opacity-80 transition-opacity"
+                  style={{ textShadow: '0 1px 3px rgba(0,0,0,0.25)' }}
                 >
                   <Phone className="h-5 w-5" />
                   <span>{company.phone}</span>
@@ -377,7 +394,7 @@ export default function CatalogPageClient() {
               placeholder="Buscar produtos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 placeholder:text-gray-500 bg-white"
             />
           </div>
           <div className="relative" ref={categoryDropdownRef}>
@@ -451,7 +468,7 @@ export default function CatalogPageClient() {
                       </div>
                     ) : (
                       <div className="h-20 bg-gray-200 flex items-center justify-center">
-                        <Package className="h-6 w-6 text-gray-400" />
+                        <Package className="h-6 w-6 text-gray-500" />
                       </div>
                     )}
 
@@ -504,9 +521,9 @@ export default function CatalogPageClient() {
 
         {Object.keys(productsByCategory).length === 0 ? (
           <div className="text-center py-12">
-            <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg font-medium mb-2">Nenhum produto disponível no momento.</p>
-            <p className="text-gray-400 text-sm">Volte em breve para ver nossos produtos!</p>
+            <Package className="h-16 w-16 text-gray-500 mx-auto mb-4" />
+            <p className="text-gray-700 text-lg font-medium mb-2">Nenhum produto disponível no momento.</p>
+            <p className="text-gray-600 text-sm">Volte em breve para ver nossos produtos!</p>
           </div>
         ) : (
           Object.entries(productsByCategory).map(([category, products]) => (
@@ -535,8 +552,8 @@ export default function CatalogPageClient() {
                         />
                       </div>
                     ) : (
-                      <div className="h-16 bg-gray-200 flex items-center justify-center">
-                        <Package className="h-6 w-6 text-gray-400" />
+                        <div className="h-16 bg-gray-200 flex items-center justify-center">
+                        <Package className="h-6 w-6 text-gray-500" />
                       </div>
                     )}
 
@@ -588,8 +605,8 @@ export default function CatalogPageClient() {
         )}
       </div>
 
-      {/* Footer */}
-      <footer className="text-white py-4 mt-12" style={{ backgroundColor: company.brandColor || '#000000' }}>
+      {/* Footer - fundo claro para texto escuro (apenas título e telefone ficam brancos no header) */}
+      <footer className="py-4 mt-12 bg-gray-100 border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Linha superior: logo à esquerda e versículo à direita */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -614,16 +631,16 @@ export default function CatalogPageClient() {
             {/* Lado direito - Versículo bíblico */}
             <div className="text-center max-w-xs">
               {verse && (
-                <div className="text-sm italic text-gray-300">
+                <div className="text-sm italic text-gray-800">
                   <p className="text-xs">"{verse.text}"</p>
-                  <p className="text-[10px] mt-1 text-gray-400">{verse.reference}</p>
+                  <p className="text-[10px] mt-1 text-gray-700">{verse.reference}</p>
                 </div>
               )}
             </div>
           </div>
           {/* Linha inferior: copyright centralizado na base do footer */}
           <div className="mt-3 text-center">
-            <p className="text-xs">&copy; {new Date().getFullYear()} Sistema MontShop. Todos os direitos reservados.</p>
+            <p className="text-xs text-gray-800">&copy; {new Date().getFullYear()} Sistema MontShop. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>
@@ -650,37 +667,73 @@ export default function CatalogPageClient() {
               <X className="h-5 w-5" />
             </button>
 
-            {/* Foto em destaque */}
+            {/* Foto em destaque - clicável para expandir */}
             <div className="relative aspect-square bg-gray-100 shrink-0">
               {selectedProduct.photos && selectedProduct.photos.length > 0 ? (
                 <>
-                  <Image
-                    src={getImageUrl(selectedProduct.photos[productModalPhotoIndex])}
-                    alt={selectedProduct.name}
-                    fill
-                    className="object-contain"
-                    sizes="(max-width: 512px) 100vw, 512px"
-                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCatalogViewerInitialIndex(productModalPhotoIndex);
+                      setCatalogImageViewerOpen(true);
+                    }}
+                    className="absolute inset-0 w-full h-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-none"
+                    style={{ ['--tw-ring-color' as string]: company.brandColor || '#3b82f6' }}
+                    aria-label="Ampliar foto"
+                  >
+                    <Image
+                      src={getImageUrl(selectedProduct.photos[productModalPhotoIndex])}
+                      alt={selectedProduct.name}
+                      fill
+                      className="object-contain"
+                      sizes="(max-width: 512px) 100vw, 512px"
+                    />
+                  </button>
                   {selectedProduct.photos.length > 1 && (
-                    <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
-                      {selectedProduct.photos.map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={(e) => { e.stopPropagation(); setProductModalPhotoIndex(i); }}
-                          className={`h-2 rounded-full transition-all ${
-                            i === productModalPhotoIndex
-                              ? 'w-6 bg-white shadow'
-                              : 'w-2 bg-white/60 hover:bg-white/80'
-                          }`}
-                          aria-label={`Foto ${i + 1}`}
-                        />
-                      ))}
-                    </div>
+                    <>
+                      <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                        {selectedProduct.photos.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={(e) => { e.stopPropagation(); setProductModalPhotoIndex(i); }}
+                            className={`h-2 rounded-full transition-all ${
+                              i === productModalPhotoIndex
+                                ? 'w-6 bg-white shadow'
+                                : 'w-2 bg-white/60 hover:bg-white/80'
+                            }`}
+                            aria-label={`Foto ${i + 1}`}
+                          />
+                        ))}
+                      </div>
+                      {/* Thumbnails - clique troca a foto em destaque */}
+                      <div className="absolute bottom-10 left-0 right-0 flex justify-center gap-1.5 overflow-x-auto px-2 py-1">
+                        {selectedProduct.photos.map((photo, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setProductModalPhotoIndex(i); }}
+                            className={`flex-shrink-0 w-10 h-10 rounded-md overflow-hidden border-2 transition-all ${
+                              i === productModalPhotoIndex ? 'border-gray-900 shadow' : 'border-white/60 hover:border-gray-400'
+                            }`}
+                            aria-label={`Foto ${i + 1}`}
+                          >
+                            <Image
+                              src={getImageUrl(photo)}
+                              alt={`${selectedProduct.name} - ${i + 1}`}
+                              width={40}
+                              height={40}
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </>
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Package className="h-24 w-24 text-gray-300" />
+                  <Package className="h-24 w-24 text-gray-500" />
                 </div>
               )}
             </div>
@@ -735,7 +788,7 @@ export default function CatalogPageClient() {
                     {selectedProduct.description}
                   </p>
                 ) : (
-                  <p className="text-sm text-gray-400 italic">Sem descrição.</p>
+                  <p className="text-sm text-gray-600 italic">Sem descrição.</p>
                 )}
               </div>
 
@@ -762,6 +815,17 @@ export default function CatalogPageClient() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Visualizador de fotos em tela cheia (catálogo) */}
+      {selectedProduct && selectedProduct.photos?.length > 0 && (
+        <ImageViewer
+          open={catalogImageViewerOpen}
+          onClose={() => setCatalogImageViewerOpen(false)}
+          images={selectedProduct.photos.map((p) => getImageUrl(p))}
+          initialIndex={catalogViewerInitialIndex}
+          alt={selectedProduct.name}
+        />
       )}
 
       {/* Botão WhatsApp Fixo */}

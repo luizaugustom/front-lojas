@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import {
@@ -127,6 +128,11 @@ function sanitizeProductData(data: any) {
   if (data.category && String(data.category).trim() !== '') {
     sanitized.category = String(data.category);
   }
+
+  // Adicionar descrição se fornecida
+  if (data.description && String(data.description).trim() !== '') {
+    sanitized.description = String(data.description);
+  }
   
   // Tratar data de validade - converter null, undefined ou string vazia em undefined (não enviar)
   if (data.expirationDate && String(data.expirationDate).trim() !== '' && data.expirationDate !== 'null' && data.expirationDate !== null) {
@@ -235,6 +241,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         price: product.price,
         stockQuantity: product.stockQuantity,
         category: product.category,
+        description: product.description ?? '',
         expirationDate: product.expirationDate,
         unitOfMeasure: normalizeUnitOfMeasure(product.unitOfMeasure),
         ncm: product.ncm || '',
@@ -256,6 +263,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
         price: 0,
         stockQuantity: 0,
         category: lastCategory || '',
+        description: '',
         expirationDate: undefined,
         unitOfMeasure: 'un',
         ncm: '',
@@ -549,6 +557,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
             formData.append('stockQuantity', dataToSend.stockQuantity.toString());
             
             if (dataToSend.category) formData.append('category', dataToSend.category);
+            if (dataToSend.description) formData.append('description', dataToSend.description);
             if (dataToSend.expirationDate) formData.append('expirationDate', dataToSend.expirationDate);
             if (dataToSend.unitOfMeasure) formData.append('unitOfMeasure', dataToSend.unitOfMeasure);
             if (dataToSend.cfop) formData.append('cfop', dataToSend.cfop);
@@ -629,7 +638,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
           formData.append('stockQuantity', sanitizedData.stockQuantity.toString());
           
           if (sanitizedData.category) formData.append('category', sanitizedData.category);
-          if (data.description) formData.append('description', String(data.description));
+          if (sanitizedData.description) formData.append('description', sanitizedData.description);
           if (sanitizedData.expirationDate) formData.append('expirationDate', sanitizedData.expirationDate);
           if (data.costPrice !== undefined && data.costPrice !== null) formData.append('costPrice', Number(data.costPrice || 0).toString());
           if (data.minStockQuantity !== undefined && data.minStockQuantity !== null) formData.append('minStockQuantity', Number(data.minStockQuantity || 0).toString());
@@ -723,6 +732,21 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
               <Input id="category" {...register('category')} disabled={loading} className="text-foreground" />
               {errors.category && (
                 <p className="text-sm text-destructive">{errors.category.message}</p>
+              )}
+            </div>
+
+            <div className="col-span-2 space-y-2">
+              <Label htmlFor="description" className="text-foreground">Descrição</Label>
+              <Textarea
+                id="description"
+                {...register('description')}
+                placeholder="Descrição opcional do produto"
+                disabled={loading}
+                rows={3}
+                className="text-foreground resize-none"
+              />
+              {errors.description && (
+                <p className="text-sm text-destructive">{errors.description.message}</p>
               )}
             </div>
 

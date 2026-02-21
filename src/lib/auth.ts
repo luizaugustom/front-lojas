@@ -30,6 +30,8 @@ export function setUser(user: User): void {
       vendedor: 'vendedor',
       admin: 'admin',
       administrador: 'admin',
+      manager: 'gestor',
+      gestor: 'gestor',
     };
 
     const normalizedRole = (roleMap[(user.role || '').toString().toLowerCase()] || user.role) as UserRole;
@@ -68,6 +70,12 @@ export function canAccessRoute(route: string): boolean {
   // Admin has access to everything
   if (user.role === 'admin') return true;
 
+  // Gestor: apenas rotas de multilojas
+  if (user.role === 'gestor') {
+    const gestorRoutes = ['/dashboard', '/stock-transfer', '/reports', '/settings'];
+    return gestorRoutes.includes(route) || route.startsWith('/gestor');
+  }
+
   // Define route permissions
   const permissions: Record<string, string[]> = {
     '/dashboard': ['admin', 'empresa', 'vendedor'],
@@ -78,6 +86,8 @@ export function canAccessRoute(route: string): boolean {
     '/bills': ['admin', 'empresa'],
     '/cash-closure': ['admin', 'empresa', 'vendedor'],
     '/reports': ['admin', 'empresa'],
+    '/stock-transfer': ['gestor'],
+    '/gestores': ['admin'],
     '/devices': ['empresa', 'vendedor'],
     '/settings': ['admin', 'empresa'],
   };

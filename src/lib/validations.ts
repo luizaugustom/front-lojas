@@ -218,12 +218,15 @@ export const customerSchema = z.object({
 });
 
 // Bill Schemas
+export const billRecurrenceTypeEnum = z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY']);
 export const billSchema = z.object({
   title: z.string().min(2, 'Título deve ter no mínimo 2 caracteres'),
   amount: z.number().positive('Valor deve ser positivo'),
   dueDate: z.string().min(1, 'Data de vencimento é obrigatória'),
   barcode: optionalString(),
   paymentInfo: optionalString(),
+  recurrenceType: billRecurrenceTypeEnum.optional(),
+  recurrenceEndDate: z.string().optional(),
 });
 
 // Cash Closure Schemas

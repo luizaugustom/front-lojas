@@ -25,6 +25,8 @@ import {
   ClipboardList,
   FileText,
   MessageSquare,
+  ArrowLeftRight,
+  Briefcase,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui-store';
@@ -32,7 +34,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'empresa'] },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'empresa', 'gestor'] },
   { name: 'Produtos', href: '/products', icon: Package, roles: ['admin', 'empresa', 'vendedor'] },
   { name: 'Vendas', href: '/sales', icon: ShoppingCart, roles: ['admin', 'empresa', 'vendedor'] },
   { name: 'Orçamentos', href: '/budgets', icon: FileText, roles: ['empresa', 'vendedor'] },
@@ -40,20 +42,22 @@ const navigation = [
   { name: 'Clientes', href: '/customers', icon: Users, roles: ['admin', 'empresa', 'vendedor'] },
   { name: 'Vendedores', href: '/sellers', icon: UserCheck, roles: ['admin', 'empresa'] },
   { name: 'Pagamentos a Prazo', href: '/installments', icon: CalendarClock, roles: ['empresa', 'vendedor'] },
-  { name: 'Contas a Pagar', href: '/bills', icon: CreditCard, roles: ['admin', 'empresa'] },
+  { name: 'Contas e Gastos', href: '/bills', icon: CreditCard, roles: ['admin', 'empresa'] },
   { name: 'Fechamento de Caixa', href: '/cash-closure', icon: DollarSign, roles: ['admin', 'empresa', 'vendedor'] },
-  { name: 'Relatórios', href: '/reports', icon: FileBarChart, roles: ['admin', 'empresa'] },
+  { name: 'Relatórios', href: '/reports', icon: FileBarChart, roles: ['admin', 'empresa', 'gestor'] },
+  { name: 'Transferência de estoque', href: '/stock-transfer', icon: ArrowLeftRight, roles: ['gestor'] },
   // Visível apenas para empresas: Notas Fiscais
   { name: 'Notas Fiscais', href: '/invoices', icon: Receipt, roles: ['empresa'] },
   // Visível apenas para empresas: Notas de Entrada
   { name: 'Notas de Entrada', href: '/inbound-invoices', icon: FileDown, roles: ['empresa'] },
-  // Visível apenas para admin: Gerenciar Empresas
+  // Visível apenas para admin: Gerenciar Empresas e Gestores
   { name: 'Empresas', href: '/companies', icon: Building2, roles: ['admin'] },
+  { name: 'Gestores', href: '/gestores', icon: Briefcase, roles: ['admin'] },
   // Testes da API - visível apenas para admin
   { name: 'Testes da API', href: '/test-api', icon: TestTube, roles: ['admin'] },
   // Teste WhatsApp - visível apenas para admin
   { name: 'Teste WhatsApp', href: '/whatsapp-test', icon: MessageSquare, roles: ['admin'] },
-  { name: 'Configurações', href: '/settings', icon: Settings, roles: ['admin', 'empresa'] },
+  { name: 'Configurações', href: '/settings', icon: Settings, roles: ['admin', 'empresa', 'gestor'] },
 ];
 
 export function Sidebar() {
@@ -66,6 +70,10 @@ export function Sidebar() {
       console.log('No user found, filtering out all items');
       return false;
     }
+    // Gestor: apenas itens com role gestor
+    if (user.role === 'gestor') {
+      return item.roles.includes('gestor');
+    }
     // Se for admin, ocultar itens sensíveis conforme solicitado
     const adminExcluded = new Set([
       'Dashboard',
@@ -73,7 +81,7 @@ export function Sidebar() {
       'Vendas',
       'Clientes',
       'Vendedores',
-      'Contas a Pagar',
+      'Contas e Gastos',
       'Relatórios',
       'Fechamento de Caixa',
     ]);

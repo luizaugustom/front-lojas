@@ -21,6 +21,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { handleApiError } from '@/lib/handleApiError';
+import { managerApi } from '@/lib/api-endpoints';
 import { reportSchema } from '@/lib/validations';
 import { downloadFile, getFileExtension } from '@/lib/utils';
 import type { GenerateReportDto, Seller } from '@/types';
@@ -46,6 +47,7 @@ export default function ReportsPage() {
   const { queryKeyPart } = useDateRange();
   const [loading, setLoading] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [reportCompanyId, setReportCompanyId] = useState('');
 
   // Carregar vendedores para o filtro
   const { data: sellersData } = useQuery({
@@ -55,6 +57,13 @@ export default function ReportsPage() {
   });
 
   const sellers: Seller[] = sellersData || [];
+
+  const { data: myCompaniesData } = useQuery({
+    queryKey: ['manager', 'my-companies'],
+    queryFn: () => managerApi.myCompanies().then((r) => r.data),
+    enabled: user?.role === 'gestor',
+  });
+  const reportCompanies = Array.isArray(myCompaniesData) ? myCompaniesData : [];
 
   const {
     handleSubmit,
@@ -79,13 +88,16 @@ export default function ReportsPage() {
     try {
       const includeDocuments = data.includeDocuments === true;
       // Preparar dados convertendo datas vazias para undefined
-      const payload = {
+      const payload: any = {
         ...data,
         startDate: data.startDate || undefined,
         endDate: data.endDate || undefined,
         sellerId: data.sellerId === 'all' ? undefined : data.sellerId || undefined,
         includeDocuments,
       };
+      if (user?.role === 'gestor' && reportCompanyId) {
+        payload.companyId = reportCompanyId;
+      }
 
       // Fazer requisição com responseType blob
       const response = await api.post('/reports/generate', payload, {
@@ -149,12 +161,12 @@ export default function ReportsPage() {
     return null;
   }
 
-  if (user.role !== 'empresa') {
+  if (user.role !== 'empresa' && user.role !== 'gestor') {
     return (
       <Card className="p-6 text-center">
         <CardTitle className="text-xl font-semibold text-destructive">Acesso não permitido</CardTitle>
         <CardDescription className="mt-2">
-          Apenas contas do tipo <strong>empresa</strong> podem gerar relatórios contábeis.
+          Apenas contas do tipo <strong>empresa</strong> ou <strong>gestor</strong> podem gerar relatórios contábeis.
         </CardDescription>
       </Card>
     );
@@ -188,6 +200,22 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent className="pb-4">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
+              {user.role === 'gestor' && (
+                <div className="space-y-2">
+                  <Label>Loja</Label>
+                  <Select value={reportCompanyId} onValueChange={setReportCompanyId} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a loja" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {reportCompanies.map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>{c.fantasyName || c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Relatório será gerado para a loja selecionada.</p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Tipo de Relatório</Label>
                 <Controller
@@ -347,7 +375,7 @@ export default function ReportsPage() {
                 )}
               />
 
-              <Button type="submit" disabled={loading} className="w-full">
+              <Button type="submit" disabled={loading || (user.role === 'gestor' && !reportCompanyId)} className="w-full">
                 {loading ? (
                   <>
                     <span className="animate-spin mr-2">⏳</span>

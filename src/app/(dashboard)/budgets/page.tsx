@@ -32,10 +32,11 @@ import { formatCurrency } from '@/lib/utils-clean';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { printContent as printContentService } from '@/lib/print-service';
-import { saleApi } from '@/lib/api-endpoints';
-import { PrintConfirmationDialog } from '@/components/sales/print-confirmation-dialog';
 import { PageHelpModal } from '@/components/help';
 import { budgetsHelpTitle, budgetsHelpDescription, budgetsHelpIcon, getBudgetsHelpTabs } from '@/components/help/contents/budgets-help';
+import { useCartStore } from '@/store/cart-store';
+import { CheckoutDialog } from '@/components/sales/checkout-dialog';
+import type { Product } from '@/types';
 
 interface Budget {
   id: string;
@@ -81,12 +82,26 @@ export default function BudgetsPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [printingBudgetId, setPrintingBudgetId] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [showNfcPrintConfirmation, setShowNfcPrintConfirmation] = useState(false);
-  const [nfcPrintContent, setNfcPrintContent] = useState<{ content: string | { storeCopy: string; customerCopy: string; isInstallmentSale: boolean }; type: string } | null>(null);
-  const [createdSaleIdFromBudget, setCreatedSaleIdFromBudget] = useState<string | null>(null);
-  const [printingNfc, setPrintingNfc] = useState(false);
-  
+  const [checkoutOpenFromBudget, setCheckoutOpenFromBudget] = useState(false);
+  const [pendingApprovalBudget, setPendingApprovalBudget] = useState<Budget | null>(null);
+  const [pendingApprovalNotes, setPendingApprovalNotes] = useState<string>('');
+
+  const { clearCart, addItem } = useCartStore();
   const isCompany = user?.role === 'empresa';
+
+  const { data: currentClosure } = useQuery({
+    queryKey: ['current-cash-closure', user?.id],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/cash-closure/current');
+        return response.data;
+      } catch (error: any) {
+        if (error.response?.status === 404 || error.response?.status === 204) return null;
+        throw error;
+      }
+    },
+    enabled: !!user,
+  });
 
   const { queryParams, queryKeyPart } = useDateRange();
   const { data: budgets, isLoading, refetch } = useQuery({
@@ -211,37 +226,48 @@ export default function BudgetsPage() {
   const handleUpdateStatus = async () => {
     if (!editingBudget || !newStatus) return;
 
+    if (newStatus === 'approved' && editingBudget.status !== 'approved') {
+      if (!currentClosure || !currentClosure.id) {
+        toast.error('Abra o caixa na página de Vendas para poder aprovar orçamentos.');
+        return;
+      }
+      setEditStatusDialogOpen(false);
+      setPendingApprovalNotes(statusNotes);
+      setEditingBudget(null);
+      setNewStatus('');
+      setStatusNotes('');
+      clearCart();
+      for (const item of editingBudget.items) {
+        const product: Product = {
+          id: item.product.id,
+          name: item.product.name,
+          barcode: item.product.barcode,
+          price: item.unitPrice,
+          stockQuantity: 0,
+          companyId: user?.companyId ?? '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        addItem(product, item.quantity);
+      }
+      setPendingApprovalBudget(editingBudget);
+      setCheckoutOpenFromBudget(true);
+      return;
+    }
+
     setUpdatingStatus(true);
     try {
-      const response = await api.patch(`/budget/${editingBudget.id}`, {
+      await api.patch(`/budget/${editingBudget.id}`, {
         status: newStatus,
         notes: statusNotes || undefined,
       });
-      const data = response.data;
-      
       toast.success('Status do orçamento atualizado com sucesso!');
-      
       setEditStatusDialogOpen(false);
       setEditingBudget(null);
       setNewStatus('');
       setStatusNotes('');
-      
-      // Invalidar cache e recarregar
       queryClient.invalidateQueries({ queryKey: ['budgets'] });
       refetch();
-
-      // Se aprovou e a API retornou venda criada com NFC-e, mostrar modal de impressão
-      if (newStatus === 'approved' && editingBudget.status !== 'approved' && data?.createdSale?.printContent) {
-        toast.success('Venda criada automaticamente com base no orçamento!');
-        setNfcPrintContent({
-          content: data.createdSale.printContent,
-          type: data.createdSale.printType || 'nfce',
-        });
-        setCreatedSaleIdFromBudget(data.createdSale.id);
-        setShowNfcPrintConfirmation(true);
-      } else if (newStatus === 'approved' && editingBudget.status !== 'approved') {
-        toast.success('Venda criada automaticamente com base no orçamento!');
-      }
     } catch (error) {
       handleApiError(error);
     } finally {
@@ -249,48 +275,28 @@ export default function BudgetsPage() {
     }
   };
 
-  const handleNfcPrintConfirm = async () => {
-    if (!nfcPrintContent) return;
-    setPrintingNfc(true);
-    try {
-      const printContent = nfcPrintContent.content;
-      if (typeof printContent === 'object' && 'isInstallmentSale' in printContent) {
-        const printResult = await printContentService(printContent.storeCopy);
-        if (printResult.success) {
-          toast.success('Via da loja enviada para impressão!');
-          const custResult = await printContentService(printContent.customerCopy);
-          if (custResult.success) toast.success('Via do cliente enviada para impressão!');
-        } else if (createdSaleIdFromBudget) {
-          await saleApi.reprint(createdSaleIdFromBudget);
-          toast.success('NFC-e enviada para impressão no servidor!');
-        }
-      } else if (typeof printContent === 'string') {
-        const printResult = await printContentService(printContent);
-        if (printResult.success) {
-          toast.success('NFC-e enviada para impressão!');
-        } else if (createdSaleIdFromBudget) {
-          await saleApi.reprint(createdSaleIdFromBudget);
-          toast.success('NFC-e enviada para impressão no servidor!');
-        }
-      } else if (createdSaleIdFromBudget) {
-        await saleApi.reprint(createdSaleIdFromBudget);
-        toast.success('NFC-e enviada para impressão!');
-      }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Erro ao imprimir NFC-e');
-    } finally {
-      setPrintingNfc(false);
-      setShowNfcPrintConfirmation(false);
-      setNfcPrintContent(null);
-      setCreatedSaleIdFromBudget(null);
-    }
+  const handleCheckoutCloseFromBudget = () => {
+    setCheckoutOpenFromBudget(false);
+    setPendingApprovalBudget(null);
+    setPendingApprovalNotes('');
   };
 
-  const handleNfcPrintCancel = () => {
-    toast.success('Venda registrada sem impressão');
-    setShowNfcPrintConfirmation(false);
-    setNfcPrintContent(null);
-    setCreatedSaleIdFromBudget(null);
+  const handleSaleCreatedFromBudget = async (saleId: string) => {
+    if (!pendingApprovalBudget) return;
+    try {
+      await api.patch(`/budget/${pendingApprovalBudget.id}`, {
+        status: 'approved',
+        notes: pendingApprovalNotes || undefined,
+      });
+      toast.success('Orçamento aprovado e venda registrada com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+      refetch();
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setPendingApprovalBudget(null);
+      setPendingApprovalNotes('');
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -610,7 +616,7 @@ export default function BudgetsPage() {
               </Select>
               {newStatus === 'approved' && editingBudget?.status !== 'approved' && (
                 <p className="text-sm text-muted-foreground">
-                  ⚠️ Ao aprovar este orçamento, uma venda será criada automaticamente.
+                  O caixa deve estar aberto. Será aberto o fluxo de finalizar venda (pagamentos, boleto, NFC-e/cupom).
                 </p>
               )}
             </div>
@@ -647,12 +653,11 @@ export default function BudgetsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <PrintConfirmationDialog
-        open={showNfcPrintConfirmation}
-        onConfirm={handleNfcPrintConfirm}
-        onCancel={handleNfcPrintCancel}
-        loading={printingNfc}
-        printType={nfcPrintContent?.type ?? null}
+      <CheckoutDialog
+        open={checkoutOpenFromBudget}
+        onClose={handleCheckoutCloseFromBudget}
+        initialClient={pendingApprovalBudget ? { name: pendingApprovalBudget.clientName, cpfCnpj: pendingApprovalBudget.clientCpfCnpj } : undefined}
+        onSaleCreated={handleSaleCreatedFromBudget}
       />
       <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={budgetsHelpTitle} description={budgetsHelpDescription} icon={budgetsHelpIcon} tabs={getBudgetsHelpTabs()} />
     </div>

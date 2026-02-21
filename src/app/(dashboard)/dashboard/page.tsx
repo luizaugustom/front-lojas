@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ShoppingCart, Package, Users, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Building2, HelpCircle } from 'lucide-react';
+import { ShoppingCart, Package, Users, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Building2, HelpCircle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,10 +13,11 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { ProductImage } from '@/components/products/product-image';
 import type { Sale, Product, Customer } from '@/types';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { companyApi, customerApi } from '@/lib/api-endpoints';
+import { companyApi, customerApi, dashboardApi, managerApi } from '@/lib/api-endpoints';
 import { PlanWarningBanner } from '@/components/plan-limits/plan-warning-banner';
 import { PlanUsageCard } from '@/components/plan-limits/plan-usage-card';
 import { PageHelpModal } from '@/components/help';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { dashboardHelpTitle, dashboardHelpDescription, dashboardHelpIcon, getDashboardHelpTabs } from '@/components/help/contents/dashboard-help';
 
 interface MetricCardProps {
@@ -25,14 +26,29 @@ interface MetricCardProps {
   change?: number;
   icon: React.ElementType;
   trend?: 'up' | 'down' | 'neutral';
+  infoTooltip?: string;
+  onInfoClick?: () => void;
 }
 
-function MetricCard({ title, value, change, icon: Icon, trend = 'neutral' }: MetricCardProps) {
+function MetricCard({ title, value, change, icon: Icon, trend = 'neutral', infoTooltip, onInfoClick }: MetricCardProps) {
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+            {title}
+            {onInfoClick && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onInfoClick(); }}
+                title={infoTooltip ?? 'Ver detalhes'}
+                className="inline-flex shrink-0 rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                aria-label={infoTooltip ?? 'Ver detalhes do cálculo'}
+              >
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </p>
           <p className="text-xl font-bold mt-1 truncate">{value}</p>
           {change !== undefined && (
             <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
@@ -58,6 +74,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const { queryParams, queryKeyPart, dateRange } = useDateRange();
   const [helpOpen, setHelpOpen] = useState(false);
+  const [netProfitModalOpen, setNetProfitModalOpen] = useState(false);
+  const [gestorCompanyId, setGestorCompanyId] = useState<string>('');
 
   // Sales com filtro global de data
   const { data: salesData, isLoading: isSalesLoading, error: salesError } = useQuery({
@@ -153,6 +171,19 @@ export default function DashboardPage() {
       return response.data || response || [];
     },
     enabled: isAuthenticated && user?.role === 'admin',
+  });
+
+  // Gestor: minhas lojas e métricas (por loja ou agregado)
+  const { data: myCompaniesData } = useQuery({
+    queryKey: ['manager', 'my-companies'],
+    queryFn: () => managerApi.myCompanies().then((r) => r.data),
+    enabled: isAuthenticated && user?.role === 'gestor',
+  });
+  const gestorCompanies = Array.isArray(myCompaniesData) ? myCompaniesData : [];
+  const { data: gestorMetrics, isLoading: isGestorMetricsLoading } = useQuery({
+    queryKey: ['dashboard', 'metrics', 'gestor', gestorCompanyId],
+    queryFn: () => dashboardApi.metrics(gestorCompanyId || undefined).then((r) => r.data),
+    enabled: isAuthenticated && user?.role === 'gestor',
   });
 
 
@@ -288,11 +319,14 @@ export default function DashboardPage() {
     .sort((a, b) => b.quantity - a.quantity)
     .slice(0, 5);
 
-  // Different loading states for admin vs company
+  // Different loading states for admin vs company vs gestor
   const isAdmin = user?.role === 'admin';
-  const loading = isAdmin 
-    ? isCompaniesLoading 
-    : isSalesLoading || isProductsLoading || isCustomersLoading;
+  const isGestor = user?.role === 'gestor';
+  const loading = isAdmin
+    ? isCompaniesLoading
+    : isGestor
+      ? isGestorMetricsLoading
+      : isSalesLoading || isProductsLoading || isCustomersLoading;
 
   if (loading) {
     return (
@@ -361,6 +395,126 @@ export default function DashboardPage() {
           </Card>
         </div>
         <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={dashboardHelpTitle} description={dashboardHelpDescription} icon={dashboardHelpIcon} tabs={getDashboardHelpTabs()} />
+      </div>
+    );
+  }
+
+  // Gestor Dashboard - métricas por loja ou agregado
+  if (isGestor && gestorMetrics) {
+    const m = gestorMetrics as any;
+    const companyName = gestorCompanyId
+      ? (gestorCompanies.find((c: any) => c.id === gestorCompanyId) as any)?.name || gestorCompanyId
+      : (m.company?.name || 'Todas as lojas');
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard Multilojas</h1>
+            <p className="text-muted-foreground">Métricas das lojas que você gerencia</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="gestor-company" className="text-sm font-medium text-muted-foreground">Loja:</label>
+            <select
+              id="gestor-company"
+              value={gestorCompanyId}
+              onChange={(e) => setGestorCompanyId(e.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm min-w-[200px]"
+            >
+              <option value="">Todas as lojas</option>
+              {gestorCompanies.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.fantasyName || c.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <MetricCard title="Vendas (total)" value={m.counts?.sales ?? 0} icon={ShoppingCart} />
+          <MetricCard title="Receita total" value={formatCurrency(m.financial?.totalSalesValue ?? 0)} icon={DollarSign} />
+          <MetricCard
+            title="Lucro líquido"
+            value={formatCurrency(m.financial?.netProfit ?? 0)}
+            icon={TrendingUp}
+            infoTooltip="Ver cálculo detalhado do lucro líquido"
+            onInfoClick={() => setNetProfitModalOpen(true)}
+          />
+          <MetricCard title="Produtos" value={m.counts?.products ?? 0} icon={Package} />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            title="Vendas este mês"
+            value={formatCurrency(m.sales?.thisMonth?.value ?? 0)}
+            change={m.sales?.growth?.valuePercentage}
+            trend={m.sales?.growth?.valuePercentage >= 0 ? 'up' : 'down'}
+            icon={DollarSign}
+          />
+          <MetricCard title="Clientes" value={m.counts?.customers ?? 0} icon={Users} />
+          <MetricCard title="Estoque baixo" value={m.products?.lowStock ?? 0} icon={AlertTriangle} />
+          <MetricCard title="Valor em estoque" value={formatCurrency(m.financial?.stockValue ?? 0)} icon={Package} />
+        </div>
+        {m.rankings?.topProducts?.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Produtos mais vendidos</CardTitle>
+              <CardDescription>{companyName}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {m.rankings.topProducts.slice(0, 5).map((p: any) => (
+                  <li key={p.id} className="flex justify-between text-sm">
+                    <span>{p.name}</span>
+                    <span>{p.salesCount} un. · {formatCurrency(p.totalValue ?? 0)}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+        <Dialog open={netProfitModalOpen} onOpenChange={setNetProfitModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Cálculo do lucro líquido</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                O lucro líquido é obtido a partir da receita total, descontando custos, contas a pagar, perdas, taxas de cartão e juros de parcelamento.
+              </p>
+              <dl className="space-y-2 border-t pt-3">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Receita total (vendas)</dt>
+                  <dd className="font-medium tabular-nums">{formatCurrency(m.financial?.totalSalesValue ?? 0)}</dd>
+                </div>
+                <div className="flex justify-between gap-4 text-red-600 dark:text-red-400">
+                  <dt>(−) Custo das vendas</dt>
+                  <dd className="tabular-nums">− {formatCurrency(m.financial?.totalCostOfSales ?? 0)}</dd>
+                </div>
+                <div className="flex justify-between gap-4 text-red-600 dark:text-red-400">
+                  <dt>(−) Contas a pagar este mês</dt>
+                  <dd className="tabular-nums">− {formatCurrency(m.financial?.billsToPayThisMonth ?? 0)}</dd>
+                </div>
+                <div className="flex justify-between gap-4 text-red-600 dark:text-red-400">
+                  <dt>(−) Perdas</dt>
+                  <dd className="tabular-nums">− {formatCurrency(m.financial?.totalLossesValue ?? 0)}</dd>
+                </div>
+                <div className="flex justify-between gap-4 text-red-600 dark:text-red-400">
+                  <dt>(−) Taxas de cartão</dt>
+                  <dd className="tabular-nums">− {formatCurrency(m.financial?.totalCardFees ?? 0)}</dd>
+                </div>
+                <div className="flex justify-between gap-4 text-red-600 dark:text-red-400">
+                  <dt>(−) Juros de parcelamento</dt>
+                  <dd className="tabular-nums">
+                    − {formatCurrency(Math.max(0, (m.financial?.totalSalesValue ?? 0) - (m.financial?.totalCostOfSales ?? 0) - (m.financial?.billsToPayThisMonth ?? 0) - (m.financial?.totalLossesValue ?? 0) - (m.financial?.totalCardFees ?? 0) - (m.financial?.netProfit ?? 0)))}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4 border-t pt-3 font-semibold">
+                  <dt>Lucro líquido</dt>
+                  <dd className={`tabular-nums ${(m.financial?.netProfit ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {formatCurrency(m.financial?.netProfit ?? 0)}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

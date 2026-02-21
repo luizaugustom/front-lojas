@@ -70,10 +70,10 @@ export const productApi = {
 
   /**
    * GET /product
-   * Roles: ADMIN, COMPANY, SELLER - Lista paginada
-   * Query: page, limit, search
+   * Roles: ADMIN, COMPANY, SELLER, MANAGER - Lista paginada
+   * Query: page, limit, search, companyId (obrigatório para gestor)
    */
-  list: (params?: { page?: number; limit?: number; search?: string }) =>
+  list: (params?: { page?: number; limit?: number; search?: string; companyId?: string }) =>
     api.get('/product', { params }),
 
   /**
@@ -1244,9 +1244,45 @@ export const whatsappApi = {
 export const dashboardApi = {
   /**
    * GET /dashboard/metrics
-   * Roles: ADMIN, COMPANY, SELLER
+   * Roles: ADMIN, COMPANY, MANAGER
+   * Query (gestor): companyId opcional; omitir = agregado de todas as lojas
    */
-  metrics: () => api.get('/dashboard/metrics'),
+  metrics: (companyId?: string) =>
+    api.get('/dashboard/metrics', { params: companyId ? { companyId } : {} }),
+};
+
+// ============================================================================
+// MANAGER (Gestor multilojas)
+// ============================================================================
+
+export const managerApi = {
+  /** GET /manager/my-companies - Lista lojas que o gestor pode acessar (role gestor) */
+  myCompanies: () => api.get('/manager/my-companies'),
+  /** GET /manager - Listar gestores (admin) */
+  list: () => api.get('/manager'),
+  /** GET /manager/:id - Obter gestor (admin) */
+  getOne: (id: string) => api.get(`/manager/${id}`),
+  /** POST /manager - Criar gestor (admin) */
+  create: (data: { login: string; password: string; name?: string }) => api.post('/manager', data),
+  /** PATCH /manager/:id - Atualizar gestor (admin) */
+  update: (id: string, data: { login?: string; password?: string; name?: string }) => api.patch(`/manager/${id}`, data),
+  /** DELETE /manager/:id - Remover gestor (admin) */
+  delete: (id: string) => api.delete(`/manager/${id}`),
+  /** PUT /manager/:id/companies - Definir lojas do gestor (admin) */
+  setCompanies: (id: string, companyIds: string[]) => api.put(`/manager/${id}/companies`, { companyIds }),
+};
+
+// ============================================================================
+// STOCK TRANSFER (Transferência entre lojas - gestor)
+// ============================================================================
+
+export const stockTransferApi = {
+  /** POST /stock-transfer - Transferir estoque entre lojas */
+  create: (data: { fromCompanyId: string; toCompanyId: string; productId: string; quantity: number }) =>
+    api.post('/stock-transfer', data),
+  /** GET /stock-transfer - Listar transferências */
+  list: (params?: { page?: number; limit?: number; fromCompanyId?: string; toCompanyId?: string; startDate?: string; endDate?: string }) =>
+    api.get('/stock-transfer', { params }),
 };
 
 // ============================================================================

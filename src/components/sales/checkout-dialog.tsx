@@ -37,9 +37,18 @@ import { CardBrandSelect } from '@/components/ui/card-brand-select';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import type { CreateSaleDto, PaymentMethod, PaymentMethodDetail, InstallmentData, Seller } from '@/types';
 
+export interface InitialClientForCheckout {
+  name?: string;
+  cpfCnpj?: string;
+}
+
 interface CheckoutDialogProps {
   open: boolean;
   onClose: () => void;
+  /** Cliente inicial (ex.: ao abrir a partir de um orçamento) */
+  initialClient?: InitialClientForCheckout;
+  /** Chamado quando a venda é criada e o fluxo de impressão termina (ex.: para marcar orçamento como aprovado) */
+  onSaleCreated?: (saleId: string) => void;
 }
 
 const paymentMethods: { value: PaymentMethod; label: string }[] = [
@@ -50,7 +59,7 @@ const paymentMethods: { value: PaymentMethod; label: string }[] = [
   { value: 'installment', label: 'A prazo' },
 ];
 
-export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
+export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: CheckoutDialogProps) {
   const [loading, setLoading] = useState(false);
   const [paymentDetails, setPaymentDetails] = useState<PaymentMethodDetail[]>([]);
   const [paymentInputValues, setPaymentInputValues] = useState<Record<number, string>>({});
@@ -97,6 +106,15 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   const { items, discount, getTotal, getSubtotal, clearCart } = useCartStore();
   const { user, isAuthenticated, api } = useAuth();
 
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    setValue,
+    watch,
+  } = useForm<{ clientName?: string; clientCpfCnpj?: string }>({});
+
   const baseTotal = getTotal();
   const roundToCents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
   // Calcular crédito disponível para aplicar como desconto
@@ -141,6 +159,18 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
       setLoadingFiscalConfig(false);
     }
   }, [isCompany]);
+
+  // Preencher cliente inicial quando abrir com initialClient (ex.: aprovação de orçamento)
+  useEffect(() => {
+    if (open && initialClient) {
+      const name = initialClient.name ?? '';
+      const cpfCnpj = initialClient.cpfCnpj ?? '';
+      setValue('clientName', name);
+      setValue('clientCpfCnpj', cpfCnpj);
+      setSelectedCustomerName(name);
+      setSelectedCustomerCpfCnpj(cpfCnpj);
+    }
+  }, [open, initialClient, setValue]);
 
   // Resetar estado quando o modal fechar
   useEffect(() => {
@@ -369,15 +399,6 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
     
     toast.success(`Venda a prazo configurada para ${data.installments}x de ${formatCurrency(data.installmentValue)}`);
   };
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    setValue,
-    watch,
-  } = useForm<{ clientName?: string; clientCpfCnpj?: string }>({});
 
   const watchedCpfCnpj = watch('clientCpfCnpj');
   
@@ -768,6 +789,9 @@ export function CheckoutDialog({ open, onClose }: CheckoutDialogProps) {
   };
 
   const handlePrintComplete = () => {
+    if (onSaleCreated && createdSaleId) {
+      onSaleCreated(createdSaleId);
+    }
     // Limpar carrinho e resetar formulário
     clearCart();
     reset();
