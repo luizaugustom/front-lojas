@@ -164,7 +164,7 @@ export default function BillsPage() {
   const bills = billsResponse?.bills || [];
 
   const totalAmount = useMemo(
-    () => bills.reduce((sum, b) => sum + Number(b?.amount ?? 0), 0),
+    () => bills.reduce((sum: number, b: BillToPay) => sum + Number(b?.amount ?? 0), 0),
     [bills]
   );
 
