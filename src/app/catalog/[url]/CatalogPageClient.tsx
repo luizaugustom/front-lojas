@@ -661,10 +661,10 @@ export default function CatalogPageClient() {
             {/* Botão fechar */}
             <button
               onClick={() => setSelectedProduct(null)}
-              className="absolute top-3 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 shadow-md hover:bg-white transition-colors border border-gray-200 text-gray-800"
+              className="absolute top-3 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 shadow-md hover:bg-white transition-colors border border-gray-200"
               aria-label="Fechar"
             >
-              <X className="h-5 w-5 text-gray-800 stroke-[2.5]" />
+              <X className="h-5 w-5 stroke-[2.5]" style={{ stroke: '#1f2937', color: '#1f2937' }} />
             </button>
 
             {/* Área rolável: foto + informações */}
@@ -750,13 +750,13 @@ export default function CatalogPageClient() {
                     {selectedProduct.category}
                   </span>
                 )}
-                <h2 id="product-modal-title" className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 pr-10 leading-tight">
+                <h2 id="product-modal-title" className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 pr-10 leading-tight" style={{ color: '#111827' }}>
                   {selectedProduct.name}
                 </h2>
 
                 {/* Descrição */}
                 <div className="mb-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-700 mb-1.5" style={{ color: '#374151' }}>
                     Descrição
                   </h3>
                   {selectedProduct.description && selectedProduct.description.trim() && selectedProduct.description !== 'null' ? (
