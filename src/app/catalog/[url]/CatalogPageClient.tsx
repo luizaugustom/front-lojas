@@ -388,7 +388,7 @@ export default function CatalogPageClient() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-800 pointer-events-none" strokeWidth={2.5} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 pointer-events-none" style={{ color: '#1f2937' }} strokeWidth={2.5} />
             <input
               type="text"
               placeholder="Buscar produtos..."
@@ -661,10 +661,11 @@ export default function CatalogPageClient() {
             {/* Botão fechar */}
             <button
               onClick={() => setSelectedProduct(null)}
-              className="absolute top-3 right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-md hover:bg-white transition-colors"
+              className="absolute top-3 right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md hover:bg-white transition-colors"
+              style={{ color: '#374151' }}
               aria-label="Fechar"
             >
-              <X className="h-5 w-5" />
+              <X className="h-5 w-5" style={{ color: '#374151' }} />
             </button>
 
             {/* Foto em destaque - clicável para expandir */}
@@ -861,34 +862,34 @@ export default function CatalogPageClient() {
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4">
           <div className="bg-white rounded-t-2xl shadow-2xl border border-gray-200 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-              <div className="flex items-center gap-2 text-gray-900">
-                <ShoppingCart className="h-5 w-5 text-gray-900" strokeWidth={2} />
-                <h3 className="font-semibold text-gray-900">Carrinho ({cart.reduce((s, i) => s + i.quantity, 0)} itens)</h3>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+              <div className="flex items-center gap-2" style={{ color: '#111827' }}>
+                <ShoppingCart className="h-5 w-5 shrink-0" style={{ color: '#111827' }} strokeWidth={2} />
+                <h3 className="font-semibold" style={{ color: '#111827' }}>Carrinho ({cart.reduce((s, i) => s + i.quantity, 0)} itens)</h3>
               </div>
-              <button className="text-sm text-gray-700 hover:text-gray-900 font-medium" onClick={() => setCartOpen(false)}>Fechar</button>
+              <button className="text-sm font-medium hover:opacity-80" style={{ color: '#374151' }} onClick={() => setCartOpen(false)}>Fechar</button>
             </div>
 
             {cart.length === 0 ? (
               <div className="px-4 py-8 text-center text-black">Seu carrinho está vazio.</div>
             ) : (
-              <div className="max-h-64 overflow-y-auto divide-y">
+              <div className="max-h-64 overflow-y-auto divide-y divide-gray-200">
                 {cart.map(item => (
-                  <div key={item.product.id} className="px-4 py-3 flex items-center gap-3">
+                  <div key={item.product.id} className="px-4 py-3 flex items-center gap-3 bg-white">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate text-black">{item.product.name}</p>
-                      <p className="text-xs text-black">{formatBRL(Number.parseFloat(item.product.price || '0'))}</p>
+                      <p className="text-sm font-medium truncate" style={{ color: '#111827' }}>{item.product.name}</p>
+                      <p className="text-xs" style={{ color: '#111827' }}>{formatBRL(Number.parseFloat(item.product.price || '0'))}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => decreaseItem(item.product.id)} className="p-1 rounded border border-gray-300 hover:bg-gray-100 text-gray-900" aria-label="Diminuir">
-                        <Minus className="h-3 w-3 text-gray-900" strokeWidth={2.5} />
+                      <button onClick={() => decreaseItem(item.product.id)} className="p-1 rounded border border-gray-300 hover:bg-gray-100" style={{ color: '#111827' }} aria-label="Diminuir">
+                        <Minus className="h-3 w-3" style={{ color: '#111827' }} strokeWidth={2.5} />
                       </button>
-                      <span className="w-6 text-center text-sm font-medium text-gray-900">{item.quantity}</span>
-                      <button onClick={() => increaseItem(item.product.id)} className="p-1 rounded border border-gray-300 hover:bg-gray-100 text-gray-900" aria-label="Aumentar">
-                        <Plus className="h-3 w-3 text-gray-900" strokeWidth={2.5} />
+                      <span className="w-6 text-center text-sm font-medium" style={{ color: '#111827' }}>{item.quantity}</span>
+                      <button onClick={() => increaseItem(item.product.id)} className="p-1 rounded border border-gray-300 hover:bg-gray-100" style={{ color: '#111827' }} aria-label="Aumentar">
+                        <Plus className="h-3 w-3" style={{ color: '#111827' }} strokeWidth={2.5} />
                       </button>
                     </div>
-                    <div className="w-24 text-right text-sm font-semibold text-black">{formatBRL(calcItemSubtotal(item))}</div>
+                    <div className="w-24 text-right text-sm font-semibold" style={{ color: '#111827' }}>{formatBRL(calcItemSubtotal(item))}</div>
                     <button onClick={() => removeItem(item.product.id)} className="ml-2 text-xs text-red-600 hover:underline">Remover</button>
                   </div>
                 ))}
