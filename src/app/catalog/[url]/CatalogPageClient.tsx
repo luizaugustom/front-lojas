@@ -648,174 +648,187 @@ export default function CatalogPageClient() {
       {/* Modal de Detalhes do Produto */}
       {selectedProduct && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
           onClick={() => setSelectedProduct(null)}
           role="dialog"
           aria-modal="true"
           aria-labelledby="product-modal-title"
         >
           <div
-            className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden h-[92vh] sm:max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Botão fechar */}
             <button
               onClick={() => setSelectedProduct(null)}
-              className="absolute top-3 right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md hover:bg-white transition-colors"
-              style={{ color: '#374151' }}
+              className="absolute top-3 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 shadow-md hover:bg-white transition-colors border border-gray-200 text-gray-800"
               aria-label="Fechar"
             >
-              <X className="h-5 w-5" style={{ color: '#374151' }} />
+              <X className="h-5 w-5 text-gray-800 stroke-[2.5]" />
             </button>
 
-            {/* Foto em destaque - clicável para expandir */}
-            <div className="relative aspect-square bg-gray-100 shrink-0">
-              {selectedProduct.photos && selectedProduct.photos.length > 0 ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCatalogViewerInitialIndex(productModalPhotoIndex);
-                      setCatalogImageViewerOpen(true);
-                    }}
-                    className="absolute inset-0 w-full h-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-none"
-                    style={{ ['--tw-ring-color' as string]: company.brandColor || '#3b82f6' }}
-                    aria-label="Ampliar foto"
-                  >
-                    <Image
-                      src={getImageUrl(selectedProduct.photos[productModalPhotoIndex])}
-                      alt={selectedProduct.name}
-                      fill
-                      className="object-contain"
-                      sizes="(max-width: 512px) 100vw, 512px"
-                    />
-                  </button>
-                  {selectedProduct.photos.length > 1 && (
-                    <>
-                      <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
-                        {selectedProduct.photos.map((_, i) => (
-                          <button
-                            key={i}
-                            onClick={(e) => { e.stopPropagation(); setProductModalPhotoIndex(i); }}
-                            className={`h-2 rounded-full transition-all ${
-                              i === productModalPhotoIndex
-                                ? 'w-6 bg-white shadow'
-                                : 'w-2 bg-white/60 hover:bg-white/80'
-                            }`}
-                            aria-label={`Foto ${i + 1}`}
-                          />
-                        ))}
-                      </div>
-                      {/* Thumbnails - clique troca a foto em destaque */}
-                      <div className="absolute bottom-10 left-0 right-0 flex justify-center gap-1.5 overflow-x-auto px-2 py-1">
-                        {selectedProduct.photos.map((photo, i) => (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setProductModalPhotoIndex(i); }}
-                            className={`flex-shrink-0 w-10 h-10 rounded-md overflow-hidden border-2 transition-all ${
-                              i === productModalPhotoIndex ? 'border-gray-900 shadow' : 'border-white/60 hover:border-gray-400'
-                            }`}
-                            aria-label={`Foto ${i + 1}`}
-                          >
-                            <Image
-                              src={getImageUrl(photo)}
-                              alt={`${selectedProduct.name} - ${i + 1}`}
-                              width={40}
-                              height={40}
-                              className="w-full h-full object-cover"
+            {/* Área rolável: foto + informações */}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+              {/* Foto em destaque - clicável para expandir */}
+              <div className="relative aspect-square bg-gray-100 shrink-0 max-h-[45vh] sm:max-h-none">
+                {selectedProduct.photos && selectedProduct.photos.length > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCatalogViewerInitialIndex(productModalPhotoIndex);
+                        setCatalogImageViewerOpen(true);
+                      }}
+                      className="absolute inset-0 w-full h-full cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-none"
+                      style={{ ['--tw-ring-color' as string]: company.brandColor || '#3b82f6' }}
+                      aria-label="Ampliar foto"
+                    >
+                      <Image
+                        src={getImageUrl(selectedProduct.photos[productModalPhotoIndex])}
+                        alt={selectedProduct.name}
+                        fill
+                        className="object-contain"
+                        sizes="(max-width: 512px) 100vw, 512px"
+                      />
+                    </button>
+                    {selectedProduct.photos.length > 1 && (
+                      <>
+                        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
+                          {selectedProduct.photos.map((_, i) => (
+                            <span
+                              key={i}
+                              className={`h-2 rounded-full transition-all ${
+                                i === productModalPhotoIndex ? 'w-6 bg-white shadow' : 'w-2 bg-white/60'
+                              }`}
+                              aria-hidden
                             />
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </>
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Package className="h-24 w-24 text-gray-500" />
-                </div>
-              )}
-            </div>
-
-            {/* Conteúdo: nome, preço, descrição, CTA */}
-            <div className="flex flex-1 flex-col overflow-hidden p-5">
-              {selectedProduct.category && (
-                <span
-                  className="mb-1 text-xs font-medium uppercase tracking-wide"
-                  style={{ color: company.brandColor || '#3b82f6' }}
-                >
-                  {selectedProduct.category}
-                </span>
-              )}
-              <h2 id="product-modal-title" className="text-xl font-bold text-gray-900 mb-2 pr-8">
-                {selectedProduct.name}
-              </h2>
-
-              {/* Preço */}
-              <div className="mb-4">
-                {selectedProduct.isOnPromotion && selectedProduct.promotionPrice ? (
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-2xl font-bold text-red-600">
-                      {formatBRL(parseFloat(selectedProduct.promotionPrice))}
-                    </span>
-                    <span className="text-base text-gray-500 line-through">
-                      {formatBRL(parseFloat(selectedProduct.originalPrice || selectedProduct.price))}
-                    </span>
-                    {selectedProduct.promotionDiscount != null && (
-                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-sm font-semibold text-red-600">
-                        -{selectedProduct.promotionDiscount.toFixed(0)}%
-                      </span>
+                          ))}
+                        </div>
+                        <div className="absolute bottom-10 left-0 right-0 flex justify-center gap-2 overflow-x-auto px-3 py-2 max-w-full">
+                          {selectedProduct.photos.map((photo, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setProductModalPhotoIndex(i); }}
+                              className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+                                i === productModalPhotoIndex
+                                  ? 'border-gray-900 shadow-md ring-2 ring-offset-1'
+                                  : 'border-gray-200 hover:border-gray-400'
+                              }`}
+                              style={i === productModalPhotoIndex ? { ['--tw-ring-color' as string]: company.brandColor || '#3b82f6' } : {}}
+                              aria-label={`Foto ${i + 1}`}
+                            >
+                              <Image
+                                src={getImageUrl(photo)}
+                                alt=""
+                                width={48}
+                                height={48}
+                                className="w-full h-full object-cover"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </>
                     )}
-                  </div>
+                  </>
                 ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Package className="h-24 w-24 text-gray-400" />
+                    <span className="sr-only">Sem foto</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Conteúdo: nome, descrição, preço */}
+              <div className="p-4 sm:p-5 pb-5">
+                {selectedProduct.category && (
                   <span
-                    className="text-2xl font-bold"
+                    className="inline-block mb-1 text-xs font-semibold uppercase tracking-wide"
                     style={{ color: company.brandColor || '#3b82f6' }}
                   >
-                    {formatBRL(parseFloat(selectedProduct.price))}
+                    {selectedProduct.category}
                   </span>
                 )}
-                <span className="ml-1 text-sm text-gray-500">
-                  / {(selectedProduct.unitOfMeasure || 'un')}
-                </span>
-              </div>
+                <h2 id="product-modal-title" className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 pr-10 leading-tight">
+                  {selectedProduct.name}
+                </h2>
 
-              {/* Descrição */}
-              <div className="flex-1 min-h-0 overflow-y-auto mb-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
-                  Descrição
-                </h3>
-                {selectedProduct.description && selectedProduct.description.trim() && selectedProduct.description !== 'null' ? (
-                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                    {selectedProduct.description}
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-600 italic">Nenhuma descrição disponível para este produto.</p>
-                )}
-              </div>
+                {/* Descrição */}
+                <div className="mb-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+                    Descrição
+                  </h3>
+                  {selectedProduct.description && selectedProduct.description.trim() && selectedProduct.description !== 'null' ? (
+                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                      {selectedProduct.description}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">Nenhuma descrição disponível para este produto.</p>
+                  )}
+                </div>
 
-              {/* Estoque + Adicionar ao carrinho */}
-              <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100">
-                {selectedProduct.stockQuantity > 0 ? (
-                  <span className="text-sm text-green-600 font-medium">Em estoque</span>
-                ) : (
-                  <span className="text-sm text-red-600 font-medium">Indisponível</span>
-                )}
-                <button
-                  onClick={() => {
-                    addToCart(selectedProduct);
-                    setCartOpen(true);
-                    setSelectedProduct(null);
-                  }}
-                  disabled={selectedProduct.stockQuantity <= 0}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-base font-semibold text-white shadow-lg hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-                  style={{ backgroundColor: company.brandColor || '#3b82f6' }}
-                >
-                  <Plus className="h-5 w-5" /> Adicionar ao carrinho
-                </button>
+                {/* Preço */}
+                <div className="flex flex-wrap items-baseline gap-2">
+                  {selectedProduct.isOnPromotion && selectedProduct.promotionPrice ? (
+                    <>
+                      <span className="text-2xl font-bold text-red-600">
+                        {formatBRL(parseFloat(selectedProduct.promotionPrice))}
+                      </span>
+                      <span className="text-base text-gray-500 line-through">
+                        {formatBRL(parseFloat(selectedProduct.originalPrice || selectedProduct.price))}
+                      </span>
+                      {selectedProduct.promotionDiscount != null && (
+                        <span
+                          className="rounded-full px-2.5 py-0.5 text-sm font-semibold text-red-600"
+                          style={{ backgroundColor: 'rgba(220, 38, 38, 0.15)' }}
+                        >
+                          -{selectedProduct.promotionDiscount.toFixed(0)}%
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span
+                      className="text-2xl font-bold"
+                      style={{ color: company.brandColor || '#3b82f6' }}
+                    >
+                      {formatBRL(parseFloat(selectedProduct.price))}
+                    </span>
+                  )}
+                  <span className="text-sm text-gray-500">
+                    / {(selectedProduct.unitOfMeasure || 'un')}
+                  </span>
+                </div>
+
+                {/* Status estoque - apenas informativo na área rolável */}
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  {selectedProduct.stockQuantity > 0 ? (
+                    <span className="text-sm text-green-600 font-medium">Em estoque</span>
+                  ) : (
+                    <span className="text-sm text-red-600 font-medium">Indisponível</span>
+                  )}
+                </div>
               </div>
+            </div>
+
+            {/* Botão Adicionar ao carrinho - fixo no rodapé em mobile */}
+            <div className="shrink-0 p-4 sm:p-5 pt-0 bg-white border-t border-gray-100">
+              <button
+                onClick={() => {
+                  addToCart(selectedProduct);
+                  setCartOpen(true);
+                  setSelectedProduct(null);
+                }}
+                disabled={selectedProduct.stockQuantity <= 0}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl py-3.5 px-4 text-base font-semibold text-white shadow-lg hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{
+                  backgroundColor: company.brandColor || '#3b82f6',
+                  ['--tw-ring-color' as string]: company.brandColor || '#3b82f6',
+                }}
+              >
+                <Plus className="h-5 w-5 shrink-0" aria-hidden />
+                Adicionar ao carrinho
+              </button>
             </div>
           </div>
         </div>
