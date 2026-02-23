@@ -139,10 +139,14 @@ export default function CatalogPageClient() {
     }
   }, [url]);
 
-  // Título da aba sempre com o apelido (nome fantasia) da loja daquele catálogo
+  // Título da aba do navegador: apelido (nome fantasia) da loja quando na página de catálogo
   useEffect(() => {
+    if (typeof document === 'undefined') return;
     if (data?.company) {
-      const apelido = data.company.fantasyName?.trim() || data.company.name?.trim() || 'Catálogo';
+      const apelido =
+        (data.company.fantasyName && String(data.company.fantasyName).trim()) ||
+        (data.company.name && String(data.company.name).trim()) ||
+        'Catálogo';
       document.title = apelido;
     } else if (!loading && error) {
       document.title = 'Catálogo não encontrado';
@@ -151,7 +155,7 @@ export default function CatalogPageClient() {
     } else {
       document.title = 'Catálogo';
     }
-  }, [data?.company, loading, error]);
+  }, [data?.company, data?.company?.fantasyName, data?.company?.name, loading, error]);
 
   // Aplicar cor da empresa na scrollbar quando os dados forem carregados
   useEffect(() => {
@@ -387,8 +391,10 @@ export default function CatalogPageClient() {
       {/* Busca e Filtro */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 pointer-events-none" style={{ color: '#1f2937' }} strokeWidth={2.5} />
+          <div className="relative flex-1 flex items-center">
+            <span className="absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center pointer-events-none" aria-hidden>
+              <Search className="h-5 w-5 shrink-0" style={{ stroke: '#1f2937', color: '#1f2937' }} strokeWidth={2.5} />
+            </span>
             <input
               type="text"
               placeholder="Buscar produtos..."
@@ -851,10 +857,10 @@ export default function CatalogPageClient() {
           {/* Botão abrir carrinho */}
           <button
             onClick={() => setCartOpen(v => !v)}
-            className="mb-3 group relative flex items-center justify-center w-14 h-14 bg-primary hover:opacity-90 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+            className="mb-3 group relative flex items-center justify-center w-14 h-14 bg-white hover:bg-gray-50 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200"
             title="Abrir carrinho"
           >
-            <ShoppingCart className="h-7 w-7 text-white" />
+            <ShoppingCart className="h-7 w-7" style={{ stroke: '#111827', color: '#111827' }} strokeWidth={2} />
           </button>
 
           {/* Botão WhatsApp direto (contato) - mantém opção original */}
@@ -880,7 +886,7 @@ export default function CatalogPageClient() {
           <div className="bg-white rounded-t-2xl shadow-2xl border border-gray-200 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
               <div className="flex items-center gap-2" style={{ color: '#111827' }}>
-                <ShoppingCart className="h-5 w-5 shrink-0" style={{ color: '#111827' }} strokeWidth={2} />
+                <ShoppingCart className="h-5 w-5 shrink-0" style={{ stroke: '#111827', color: '#111827' }} strokeWidth={2} />
                 <h3 className="font-semibold" style={{ color: '#111827' }}>Carrinho ({cart.reduce((s, i) => s + i.quantity, 0)} itens)</h3>
               </div>
               <button className="text-sm font-medium hover:opacity-80" style={{ color: '#374151' }} onClick={() => setCartOpen(false)}>Fechar</button>
@@ -897,12 +903,12 @@ export default function CatalogPageClient() {
                       <p className="text-xs" style={{ color: '#111827' }}>{formatBRL(Number.parseFloat(item.product.price || '0'))}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => decreaseItem(item.product.id)} className="p-1 rounded border border-gray-300 hover:bg-gray-100" style={{ color: '#111827' }} aria-label="Diminuir">
-                        <Minus className="h-3 w-3" style={{ color: '#111827' }} strokeWidth={2.5} />
+                      <button onClick={() => decreaseItem(item.product.id)} className="p-1.5 rounded-md border border-gray-300 hover:bg-gray-100 text-gray-900" aria-label="Diminuir">
+                        <Minus className="h-4 w-4" style={{ stroke: '#111827', color: '#111827' }} strokeWidth={2.5} />
                       </button>
                       <span className="w-6 text-center text-sm font-medium" style={{ color: '#111827' }}>{item.quantity}</span>
-                      <button onClick={() => increaseItem(item.product.id)} className="p-1 rounded border border-gray-300 hover:bg-gray-100" style={{ color: '#111827' }} aria-label="Aumentar">
-                        <Plus className="h-3 w-3" style={{ color: '#111827' }} strokeWidth={2.5} />
+                      <button onClick={() => increaseItem(item.product.id)} className="p-1.5 rounded-md border border-gray-300 hover:bg-gray-100 text-gray-900" aria-label="Aumentar">
+                        <Plus className="h-4 w-4" style={{ stroke: '#111827', color: '#111827' }} strokeWidth={2.5} />
                       </button>
                     </div>
                     <div className="w-24 text-right text-sm font-semibold" style={{ color: '#111827' }}>{formatBRL(calcItemSubtotal(item))}</div>
