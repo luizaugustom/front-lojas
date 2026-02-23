@@ -30,7 +30,7 @@ const RECURRENCE_LABELS: Record<string, string> = {
   MONTHLY: '1 vez por mês',
 };
 
-type DateFilter = 'all' | 'this-week' | 'next-week' | 'next-month' | 'this-year';
+type DateFilter = 'all' | 'this-week' | 'this-month' | 'next-week' | 'next-month' | 'this-year';
 
 export default function BillsPage() {
   const { api } = useAuth();
@@ -62,6 +62,14 @@ export default function BillsPage() {
         start.setDate(now.getDate() - now.getDay() + 7); // Próximo domingo
         const end = new Date(start);
         end.setDate(start.getDate() + 6); // Próximo sábado
+        return {
+          startDate: start.toISOString().split('T')[0],
+          endDate: end.toISOString().split('T')[0],
+        };
+      }
+      case 'this-month': {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0); // último dia do mês
         return {
           startDate: start.toISOString().split('T')[0],
           endDate: end.toISOString().split('T')[0],
@@ -155,6 +163,11 @@ export default function BillsPage() {
 
   const bills = billsResponse?.bills || [];
 
+  const totalAmount = useMemo(
+    () => bills.reduce((sum, b) => sum + Number(b?.amount ?? 0), 0),
+    [bills]
+  );
+
   const handleCreate = () => {
     setDialogOpen(true);
   };
@@ -184,7 +197,7 @@ export default function BillsPage() {
       </div>
 
       <Card className="p-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">Filtrar por vencimento:</span>
@@ -196,6 +209,7 @@ export default function BillsPage() {
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
               <SelectItem value="this-week">Esta semana</SelectItem>
+              <SelectItem value="this-month">Este mês</SelectItem>
               <SelectItem value="next-week">Próxima semana</SelectItem>
               <SelectItem value="next-month">Próximo mês</SelectItem>
               <SelectItem value="this-year">Este ano</SelectItem>
@@ -212,6 +226,10 @@ export default function BillsPage() {
               Limpar
             </Button>
           )}
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Total:</span>
+            <span className="text-lg font-semibold">{formatCurrency(totalAmount)}</span>
+          </div>
         </div>
       </Card>
 
