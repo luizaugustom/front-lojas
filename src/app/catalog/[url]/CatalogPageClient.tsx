@@ -857,10 +857,11 @@ export default function CatalogPageClient() {
           {/* Botão abrir carrinho */}
           <button
             onClick={() => setCartOpen(v => !v)}
-            className="mb-3 group relative flex items-center justify-center w-14 h-14 bg-white hover:bg-gray-50 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200"
+            className="mb-3 group relative flex items-center justify-center w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:opacity-90"
+            style={{ backgroundColor: company.brandColor || '#3b82f6' }}
             title="Abrir carrinho"
           >
-            <ShoppingCart className="h-7 w-7" style={{ stroke: '#111827', color: '#111827' }} strokeWidth={2} />
+            <ShoppingCart className="h-7 w-7 text-white" style={{ stroke: '#fff', color: '#fff' }} strokeWidth={2} />
           </button>
 
           {/* Botão WhatsApp direto (contato) - mantém opção original */}
