@@ -784,12 +784,15 @@ export default function CatalogPageClient() {
 
               {/* Descrição */}
               <div className="flex-1 min-h-0 overflow-y-auto mb-4">
-                {selectedProduct.description && selectedProduct.description.trim() ? (
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+                  Descrição
+                </h3>
+                {selectedProduct.description && selectedProduct.description.trim() && selectedProduct.description !== 'null' ? (
                   <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
                     {selectedProduct.description}
                   </p>
                 ) : (
-                  <p className="text-sm text-gray-600 italic">Sem descrição.</p>
+                  <p className="text-sm text-gray-600 italic">Nenhuma descrição disponível para este produto.</p>
                 )}
               </div>
 
