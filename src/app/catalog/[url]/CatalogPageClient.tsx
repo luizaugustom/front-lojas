@@ -393,7 +393,7 @@ export default function CatalogPageClient() {
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1 flex items-center">
             <span className="absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center pointer-events-none" aria-hidden>
-              <Search className="h-5 w-5 shrink-0" style={{ stroke: '#1f2937', color: '#1f2937' }} strokeWidth={2.5} />
+              <Search className="h-4 w-4 shrink-0 text-gray-400" style={{ stroke: '#9ca3af', color: '#9ca3af' }} strokeWidth={2.5} />
             </span>
             <input
               type="text"
