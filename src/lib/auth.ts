@@ -72,7 +72,7 @@ export function canAccessRoute(route: string): boolean {
 
   // Gestor: apenas rotas de multilojas
   if (user.role === 'gestor') {
-    const gestorRoutes = ['/dashboard', '/stock-transfer', '/reports', '/settings'];
+    const gestorRoutes = ['/dashboard', '/stock-transfer', '/reports', '/settings', '/metrics'];
     return gestorRoutes.includes(route) || route.startsWith('/gestor');
   }
 

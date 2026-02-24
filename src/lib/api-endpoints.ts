@@ -35,6 +35,15 @@ export const authApi = {
    * @returns { message: 'Logged out' }
    */
   logout: () => api.post('/auth/logout'),
+
+  /**
+   * POST /auth/company/:companyId/change-password
+   * Roles: ADMIN, MANAGER - Alterar senha de login de uma empresa (gestor só nas suas empresas)
+   * Body: { newPassword: string }
+   * @returns { message: string }
+   */
+  changeCompanyPassword: (companyId: string, newPassword: string) =>
+    api.post(`/auth/company/${companyId}/change-password`, { newPassword }),
 };
 
 // ============================================================================
@@ -1249,6 +1258,18 @@ export const dashboardApi = {
    */
   metrics: (companyId?: string) =>
     api.get('/dashboard/metrics', { params: companyId ? { companyId } : {} }),
+  /**
+   * GET /dashboard/metrics/trends
+   * Query: companyId (opcional), period: '7d' | '30d' | '90d'
+   */
+  trends: (params?: { companyId?: string; period?: '7d' | '30d' | '90d' }) =>
+    api.get('/dashboard/metrics/trends', { params: params ?? {} }),
+  /**
+   * GET /dashboard/metrics/by-store (apenas gestor)
+   * Query: startDate, endDate (ISO)
+   */
+  metricsByStore: (params: { startDate: string; endDate: string }) =>
+    api.get('/dashboard/metrics/by-store', { params }),
 };
 
 // ============================================================================
@@ -1283,6 +1304,8 @@ export const stockTransferApi = {
   /** GET /stock-transfer - Listar transferências */
   list: (params?: { page?: number; limit?: number; fromCompanyId?: string; toCompanyId?: string; startDate?: string; endDate?: string }) =>
     api.get('/stock-transfer', { params }),
+  /** GET /stock-transfer/:id/pdf - Baixar PDF do relatório da transferência */
+  getPdf: (id: string) => api.get(`/stock-transfer/${id}/pdf`, { responseType: 'blob' }),
 };
 
 // ============================================================================

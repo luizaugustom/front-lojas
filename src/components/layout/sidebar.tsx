@@ -27,6 +27,7 @@ import {
   MessageSquare,
   ArrowLeftRight,
   Briefcase,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui-store';
@@ -45,6 +46,7 @@ const navigation = [
   { name: 'Contas e Gastos', href: '/bills', icon: CreditCard, roles: ['admin', 'empresa'] },
   { name: 'Fechamento de Caixa', href: '/cash-closure', icon: DollarSign, roles: ['admin', 'empresa', 'vendedor'] },
   { name: 'Relatórios', href: '/reports', icon: FileBarChart, roles: ['admin', 'empresa', 'gestor'] },
+  { name: 'Métricas', href: '/metrics', icon: BarChart3, roles: ['gestor'] },
   { name: 'Transferência de estoque', href: '/stock-transfer', icon: ArrowLeftRight, roles: ['gestor'] },
   // Visível apenas para empresas: Notas Fiscais
   { name: 'Notas Fiscais', href: '/invoices', icon: Receipt, roles: ['empresa'] },

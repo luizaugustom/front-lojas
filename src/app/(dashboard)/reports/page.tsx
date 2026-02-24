@@ -32,7 +32,8 @@ const reportTypes = [
   { value: 'sales', label: 'Relatório de Vendas', icon: ShoppingCart },
   { value: 'cancelled_sales', label: 'Relatório de Vendas Canceladas', icon: XCircle },
   { value: 'products', label: 'Relatório de Produtos', icon: Package },
-  { value: 'invoices', label: 'Relatório de Notas Fiscais', icon: FileText },
+  { value: 'invoices', label: 'Relatório de Notas Fiscais (Saída)', icon: FileText },
+  { value: 'inbound_invoices', label: 'Relatório de Notas Fiscais de Entrada', icon: FileText },
   { value: 'complete', label: 'Relatório Completo', icon: FileBarChart },
 ];
 
@@ -49,14 +50,21 @@ export default function ReportsPage() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [reportCompanyId, setReportCompanyId] = useState('');
 
-  // Carregar vendedores para o filtro
+  // Carregar vendedores para o filtro (empresa: da loja; gestor: das lojas selecionadas)
   const { data: sellersData } = useQuery({
-    queryKey: ['sellers', queryKeyPart],
-    queryFn: async () => (await api.get('/seller')).data,
-    enabled: user?.role === 'empresa',
+    queryKey: ['sellers', user?.role === 'gestor' ? reportCompanyId : queryKeyPart],
+    queryFn: async () => {
+      if (user?.role === 'gestor' && reportCompanyId) {
+        const res = await api.get('/seller', { params: { companyId: reportCompanyId } });
+        return res.data;
+      }
+      const res = await api.get('/seller');
+      return res.data;
+    },
+    enabled: user?.role === 'empresa' || (user?.role === 'gestor' && !!reportCompanyId),
   });
 
-  const sellers: Seller[] = sellersData || [];
+  const sellers: Seller[] = Array.isArray(sellersData) ? sellersData : [];
 
   const { data: myCompaniesData } = useQuery({
     queryKey: ['manager', 'my-companies'],
@@ -321,38 +329,42 @@ export default function ReportsPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Filtrar por Vendedor (Opcional)
-                </Label>
-                <Controller
-                  name="sellerId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      value={field.value ?? 'all'}
-                      onValueChange={(value) => field.onChange(value)}
-                      disabled={loading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Todos os vendedores" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os vendedores</SelectItem>
-                        {sellers.map((seller) => (
-                          <SelectItem key={seller.id} value={seller.id}>
-                            {seller.name} {seller.commissionRate && seller.commissionRate > 0 ? `(${seller.commissionRate}%)` : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Deixe vazio para incluir todos os vendedores
-                </p>
-              </div>
+              {(user.role === 'empresa' || (user.role === 'gestor' && reportCompanyId)) && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Filtrar por Vendedor (Opcional)
+                  </Label>
+                  <Controller
+                    name="sellerId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ?? 'all'}
+                        onValueChange={(value) => field.onChange(value)}
+                        disabled={loading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Todos os vendedores" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os vendedores</SelectItem>
+                          {sellers.map((seller) => (
+                            <SelectItem key={seller.id} value={seller.id}>
+                              {seller.name} {seller.commissionRate && seller.commissionRate > 0 ? `(${seller.commissionRate}%)` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {user.role === 'gestor' && reportCompanyId === 'all'
+                      ? 'Vendedores de todas as lojas selecionadas.'
+                      : 'Deixe em "Todos" para incluir todos os vendedores.'}
+                  </p>
+                </div>
+              )}
 
               <Controller
                 name="includeDocuments"
@@ -413,7 +425,8 @@ export default function ReportsPage() {
                 <ul className="space-y-0 text-xs text-blue-800 dark:text-blue-300 leading-tight">
                   <li>✓ <strong>Vendas:</strong> Todas as vendas do período com detalhes</li>
                   <li>✓ <strong>Produtos:</strong> Estoque, preços e movimentações</li>
-                  <li>✓ <strong>Notas Fiscais:</strong> Documentos emitidos</li>
+                  <li>✓ <strong>Notas Fiscais (Saída):</strong> Documentos emitidos pela empresa</li>
+                  <li>✓ <strong>Notas Fiscais de Entrada:</strong> Documentos recebidos (em página separada)</li>
                   <li>✓ <strong>Contas a Pagar:</strong> Obrigações financeiras</li>
                   <li>✓ <strong>Fechamentos de Caixa:</strong> Histórico de fechamentos</li>
                   <li>✓ <strong>💰 Comissões:</strong> Cálculo detalhado por vendedor</li>

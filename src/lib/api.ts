@@ -176,6 +176,20 @@ class ApiClient {
     return response.data;
   }
 
+  /**
+   * POST /auth/company/:companyId/change-password
+   * Alterar senha de login de uma empresa (admin ou gestor; gestor só nas suas empresas)
+   * Autenticação: Requerida (Bearer token), Roles: ADMIN, MANAGER
+   * Body: { newPassword: string }
+   * Resposta: { message: string }
+   */
+  async changeCompanyPassword(companyId: string, newPassword: string) {
+    const response = await this.client.post(`/auth/company/${companyId}/change-password`, {
+      newPassword,
+    });
+    return response.data;
+  }
+
   // Products
   /**
    * GET /product

@@ -1,13 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { ArrowLeftRight, Package, Loader2 } from 'lucide-react';
+import { ArrowLeftRight, FileDown, Loader2, Search, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -18,7 +25,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { managerApi, productApi, stockTransferApi } from '@/lib/api-endpoints';
 import { handleApiError } from '@/lib/handleApiError';
-import { formatCurrency } from '@/lib/utils';
+import { downloadFile } from '@/lib/utils';
 
 export default function StockTransferPage() {
   const { user } = useAuth();
@@ -28,6 +35,16 @@ export default function StockTransferPage() {
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
+  const [productSearchDebounced, setProductSearchDebounced] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string; barcode?: string; stockQuantity?: number } | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setProductSearchDebounced(productSearch), 300);
+    return () => clearTimeout(t);
+  }, [productSearch]);
 
   const { data: companiesData } = useQuery({
     queryKey: ['manager', 'my-companies'],
@@ -36,12 +53,16 @@ export default function StockTransferPage() {
   });
   const companies = Array.isArray(companiesData) ? companiesData : [];
 
-  const { data: productsData } = useQuery({
-    queryKey: ['products', 'company', fromCompanyId],
-    queryFn: () => productApi.list({ companyId: fromCompanyId, page: 1, limit: 500 }).then((r) => r.data),
-    enabled: !!fromCompanyId && user?.role === 'gestor',
+  const { data: modalProductsData, isLoading: modalProductsLoading } = useQuery({
+    queryKey: ['products', 'company', fromCompanyId, 'modal', productSearchDebounced],
+    queryFn: () =>
+      productApi
+        .list({ companyId: fromCompanyId, page: 1, limit: 50, search: productSearchDebounced || undefined })
+        .then((r) => r.data),
+    enabled: !!fromCompanyId && productModalOpen && user?.role === 'gestor',
   });
-  const products = (productsData as any)?.products ?? (Array.isArray(productsData) ? productsData : []);
+  const modalProducts = (modalProductsData as any)?.products ?? (Array.isArray(modalProductsData) ? modalProductsData : []);
+  const modalTotal = (modalProductsData as any)?.total ?? modalProducts.length;
 
   const { data: transfersData, isLoading: transfersLoading } = useQuery({
     queryKey: ['stock-transfer', 'list'],
@@ -51,7 +72,6 @@ export default function StockTransferPage() {
   const transfers = (transfersData as any)?.data ?? [];
   const pagination = (transfersData as any)?.pagination;
 
-  const selectedProduct = products.find((p: any) => p.id === productId);
   const qty = parseInt(quantity, 10);
   const canSubmit =
     fromCompanyId &&
@@ -62,6 +82,30 @@ export default function StockTransferPage() {
     fromCompanyId !== toCompanyId &&
     selectedProduct &&
     (selectedProduct.stockQuantity ?? 0) >= qty;
+
+  const openProductModal = useCallback(() => {
+    if (!fromCompanyId) return;
+    setProductSearch('');
+    setProductModalOpen(true);
+  }, [fromCompanyId]);
+
+  const chooseProduct = useCallback((p: any) => {
+    setProductId(p.id);
+    setSelectedProduct({
+      id: p.id,
+      name: p.name,
+      barcode: p.barcode,
+      stockQuantity: p.stockQuantity,
+    });
+    setProductModalOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!fromCompanyId) {
+      setProductId('');
+      setSelectedProduct(null);
+    }
+  }, [fromCompanyId]);
 
   const handleTransfer = async () => {
     if (!canSubmit) return;
@@ -76,12 +120,29 @@ export default function StockTransferPage() {
       toast.success('Transferência realizada com sucesso');
       setQuantity('');
       setProductId('');
+      setSelectedProduct(null);
       queryClient.invalidateQueries({ queryKey: ['stock-transfer'] });
       queryClient.invalidateQueries({ queryKey: ['products', 'company', fromCompanyId] });
     } catch (err: any) {
       handleApiError(err);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDownloadPdf = async (transferId: string, transferredAt: string) => {
+    setPdfLoadingId(transferId);
+    try {
+      const res = await stockTransferApi.getPdf(transferId);
+      const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'application/pdf' });
+      const dateStr = new Date(transferredAt).toISOString().slice(0, 10);
+      const filename = `transferencia-${dateStr}-${transferId.slice(0, 8)}.pdf`;
+      downloadFile(blob, filename);
+      toast.success('PDF baixado com sucesso');
+    } catch (err: any) {
+      handleApiError(err);
+    } finally {
+      setPdfLoadingId(null);
     }
   };
 
@@ -140,18 +201,20 @@ export default function StockTransferPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Produto (origem)</Label>
-              <Select value={productId} onValueChange={setProductId} disabled={!fromCompanyId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a loja de origem primeiro" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((p: any) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name} — estoque: {p.stockQuantity ?? 0}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start font-normal h-10"
+                onClick={openProductModal}
+                disabled={!fromCompanyId}
+              >
+                <Package className="h-4 w-4 mr-2 shrink-0" />
+                {selectedProduct
+                  ? `${selectedProduct.name} — estoque: ${selectedProduct.stockQuantity ?? 0}`
+                  : fromCompanyId
+                    ? 'Buscar e selecionar produto'
+                    : 'Selecione a loja de origem primeiro'}
+              </Button>
             </div>
             <div className="space-y-2">
               <Label>Quantidade</Label>
@@ -176,6 +239,65 @@ export default function StockTransferPage() {
         </CardContent>
       </Card>
 
+      <Dialog open={productModalOpen} onOpenChange={setProductModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Selecionar produto</DialogTitle>
+            <DialogDescription>
+              Busque pelo nome ou código de barras e clique no produto para selecionar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar produto..."
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="border rounded-md overflow-auto min-h-[200px] max-h-[50vh]">
+            {modalProductsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : modalProducts.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {productSearchDebounced ? 'Nenhum produto encontrado.' : 'Nenhum produto nesta loja.'}
+              </p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 sticky top-0">
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-3">Nome</th>
+                    <th className="text-left py-2 px-3">Código</th>
+                    <th className="text-right py-2 px-3">Estoque</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalProducts.map((p: any) => (
+                    <tr
+                      key={p.id}
+                      className="border-b cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => chooseProduct(p)}
+                    >
+                      <td className="py-2 px-3 font-medium">{p.name}</td>
+                      <td className="py-2 px-3 text-muted-foreground">{p.barcode ?? '—'}</td>
+                      <td className="text-right py-2 px-3">{p.stockQuantity ?? 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          {modalTotal > 50 && (
+            <p className="text-xs text-muted-foreground">
+              Mostrando até 50 resultados. Use a busca para refinar.
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <CardTitle>Histórico de transferências</CardTitle>
@@ -198,6 +320,7 @@ export default function StockTransferPage() {
                     <th className="text-left py-2">Destino</th>
                     <th className="text-left py-2">Produto</th>
                     <th className="text-right py-2">Qtd</th>
+                    <th className="text-center py-2">Relatório</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -208,6 +331,22 @@ export default function StockTransferPage() {
                       <td className="py-2">{t.toCompany?.fantasyName || t.toCompany?.name || t.toCompanyId}</td>
                       <td className="py-2">{t.product?.name || t.productId}</td>
                       <td className="text-right py-2">{t.quantity}</td>
+                      <td className="py-2 text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDownloadPdf(t.id, t.transferredAt)}
+                          disabled={pdfLoadingId === t.id}
+                          className="gap-1"
+                        >
+                          {pdfLoadingId === t.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileDown className="h-4 w-4" />
+                          )}
+                          <span className="hidden sm:inline">Baixar PDF</span>
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -498,7 +498,7 @@ export interface PlanUsageStats {
 }
 
 // Report Types
-export type ReportType = 'sales' | 'products' | 'invoices' | 'complete' | 'cancelled_sales';
+export type ReportType = 'sales' | 'products' | 'invoices' | 'inbound_invoices' | 'complete' | 'cancelled_sales';
 export type ReportFormat = 'json' | 'xml' | 'excel';
 
 export interface GenerateReportDto {
