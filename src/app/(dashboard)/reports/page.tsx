@@ -96,7 +96,7 @@ export default function ReportsPage() {
         includeDocuments,
       };
       if (user?.role === 'gestor' && reportCompanyId) {
-        payload.companyId = reportCompanyId;
+        payload.companyId = reportCompanyId; // 'all' = relatório mesclado de todas as lojas
       }
 
       // Fazer requisição com responseType blob
@@ -208,12 +208,17 @@ export default function ReportsPage() {
                       <SelectValue placeholder="Selecione a loja" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">Todas as lojas (relatório mesclado)</SelectItem>
                       {reportCompanies.map((c: any) => (
                         <SelectItem key={c.id} value={c.id}>{c.fantasyName || c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">Relatório será gerado para a loja selecionada.</p>
+                  <p className="text-xs text-muted-foreground">
+                    {reportCompanyId === 'all'
+                      ? 'Relatório único com todos os produtos e dados das suas lojas (coluna Loja em cada seção).'
+                      : 'Relatório será gerado para a loja selecionada.'}
+                  </p>
                 </div>
               )}
               <div className="space-y-2">

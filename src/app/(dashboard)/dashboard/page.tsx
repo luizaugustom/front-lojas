@@ -77,7 +77,7 @@ export default function DashboardPage() {
   const [netProfitModalOpen, setNetProfitModalOpen] = useState(false);
   const [gestorCompanyId, setGestorCompanyId] = useState<string>('');
 
-  // Sales com filtro global de data
+  // Sales com filtro global de data (não executar para gestor: gestor usa métricas agregadas)
   const { data: salesData, isLoading: isSalesLoading, error: salesError } = useQuery({
     queryKey: ['sales', 'dashboard', queryKeyPart],
     queryFn: async () => {
@@ -86,7 +86,7 @@ export default function DashboardPage() {
       if (queryParams.endDate) params.endDate = queryParams.endDate;
       return (await api.get('/sale', { params })).data;
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && user?.role !== 'gestor',
   });
 
   const normalizeList = <T,>(raw: any, key?: string): T[] => {
@@ -108,7 +108,7 @@ export default function DashboardPage() {
   const { data: last7SalesRaw } = useQuery({
     queryKey: ['sales', 'last7', queryKeyPart, start7Iso, end7Iso],
     queryFn: async () => (await api.get('/sale', { params: { startDate: start7Iso, endDate: end7Iso, limit: 1000 } })).data,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && user?.role !== 'gestor',
   });
 
   const last7Sales: Sale[] = normalizeList<Sale>(last7SalesRaw, 'sales');
@@ -139,14 +139,14 @@ export default function DashboardPage() {
       };
     });
 
-  // Products for this company (attempt large limit)
+  // Products for this company (não executar para gestor: gestor usa métricas agregadas)
   const { data: productsData, isLoading: isProductsLoading, error: productsError } = useQuery({
     queryKey: ['products', 'company'],
     queryFn: async () => {
       const response = (await api.get('/product', { params: { page: 1, limit: 1000 } })).data;
       return response;
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && user?.role !== 'gestor',
   });
 
   // Customers for this company
