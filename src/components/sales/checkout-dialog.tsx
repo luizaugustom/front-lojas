@@ -519,7 +519,7 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
     ],
     enabled: open && !showPrintConfirmation && !showCustomerCopyConfirmation && !showBilletPrintConfirmation && !showStoreCreditVoucherConfirmation,
     context: 'checkout',
-    ignoreInputs: false, // Permitir atalhos mesmo em inputs no checkout
+    ignoreInputs: true, // Quando focado em input (valor, etc.), dígitos devem ir para o campo; atalhos 1-5 só fora de inputs
   });
 
   // Função printWithElectron removida - funcionalidades de impressão do Electron removidas
