@@ -118,7 +118,7 @@ export default function SalesPage() {
   });
 
   // Buscar caixa atual para verificar se está aberto
-  const { data: currentClosure } = useQuery({
+  const { data: currentClosure, isFetched: currentClosureFetched } = useQuery({
     queryKey: ['current-cash-closure', user?.id],
     queryFn: async () => {
       try {
@@ -248,17 +248,16 @@ export default function SalesPage() {
     checkPrinterStatus();
   }, [api, setPrinterStatus, setPrinterName]);
 
+  // Mostrar modal de abrir caixa apenas quando a query já carregou e não há caixa aberto (não reexecutar ao digitar)
+  useEffect(() => {
+    if (!user || !currentClosureFetched) return;
+    if (!currentClosure || !currentClosure.id) {
+      setOpeningDialogOpen(true);
+    }
+  }, [user, currentClosureFetched, currentClosure?.id]);
+
   // Keyboard barcode scanner support: collect input globally and submit on Enter
   useEffect(() => {
-    // Ao montar, verificar se existe fechamento de caixa atual. Se não, pedir saldo inicial.
-    if (user && currentClosure !== undefined) {
-      // Se não houver um current válido, abrir diálogo
-      if (!currentClosure || !currentClosure.id) {
-        setOpeningDialogOpen(true);
-      }
-    }
-
-    // Ativar status do leitor enquanto a página estiver montada
     setScannerActive(true);
 
     // Temporizador para medir velocidade de digitação (detectar leitor vs digitação humana)
@@ -307,7 +306,7 @@ export default function SalesPage() {
       window.removeEventListener('keydown', onKey);
       setScannerActive(false);
     };
-  }, [barcodeBuffer, lastScanned, setScannerActive, setBarcodeBuffer, handleBarcodeScanned, user, api, currentClosure]);
+  }, [barcodeBuffer, lastScanned, setScannerActive, setBarcodeBuffer, handleBarcodeScanned]);
 
   const handleCheckout = () => {
     if (items.length === 0) return;
