@@ -139,7 +139,7 @@ export function Header() {
           </div>
         ) : (
           <div className="text-xs sm:text-sm font-medium text-muted-foreground truncate">
-            {user?.fantasyName || user?.name || 'MontShop'}
+            {user?.fantasyName || user?.name || 'Montshop'}
           </div>
         )}
       </div>

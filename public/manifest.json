@@ -1,6 +1,6 @@
 {
-  "name": "MontShop",
-  "short_name": "MontShop",
+  "name": "Montshop",
+  "short_name": "Montshop",
   "description": "Sistema completo de gerenciamento de lojas",
   "start_url": "/",
   "display": "standalone",

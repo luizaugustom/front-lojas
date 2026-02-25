@@ -4,7 +4,7 @@
 
 ## 1. PREÂMBULO E ACEITAÇÃO
 
-Os presentes Termos de Uso ("Termos") regulam o uso do sistema MontShop ("Sistema" ou "Serviço"), uma plataforma de software como serviço (SaaS) de gestão de lojas desenvolvida e fornecida pela MONT Tecnologia da Informação ("MONT", "nós", "nosso" ou "prestador").
+Os presentes Termos de Uso ("Termos") regulam o uso do sistema Montshop ("Sistema" ou "Serviço"), uma plataforma de software como serviço (SaaS) de gestão de lojas desenvolvida e fornecida pela MONT Tecnologia da Informação ("MONT", "nós", "nosso" ou "prestador").
 
 Ao acessar, utilizar ou fazer login no Sistema, você ("Usuário", "Cliente" ou "Empresa") concorda expressamente em ficar vinculado a estes Termos. Se você não concordar com qualquer parte destes Termos, não deve utilizar o Sistema.
 
@@ -14,7 +14,7 @@ O uso do Sistema está condicionado à aceitação integral e irrestrita destes 
 
 Para os fins destes Termos, as seguintes definições se aplicam:
 
-- **Sistema**: Plataforma SaaS MontShop, incluindo todas as suas funcionalidades, módulos, interfaces e serviços relacionados.
+- **Sistema**: Plataforma SaaS Montshop, incluindo todas as suas funcionalidades, módulos, interfaces e serviços relacionados.
 - **Usuário/Cliente/Empresa**: Pessoa jurídica que possui conta ativa no Sistema e seus representantes autorizados.
 - **Conta**: Registro único de acesso ao Sistema vinculado a uma empresa.
 - **Dados**: Todas as informações, arquivos, documentos, transações e conteúdo inseridos ou gerados no Sistema pelo Usuário.
@@ -95,7 +95,7 @@ Quando aplicável e possível, a MONT tentará notificar o Usuário sobre desati
 ## 7. RESPONSABILIDADE FISCAL E TRIBUTÁRIA
 
 ### 7.1. Natureza do Sistema
-O Sistema MontShop é uma **FERRAMENTA DE GESTÃO** que auxilia na administração de lojas, incluindo funcionalidades relacionadas à emissão de notas fiscais eletrônicas (NFC-e e NF-e).
+O Sistema Montshop é uma **FERRAMENTA DE GESTÃO** que auxilia na administração de lojas, incluindo funcionalidades relacionadas à emissão de notas fiscais eletrônicas (NFC-e e NF-e).
 
 ### 7.2. Responsabilidade Exclusiva do Usuário
 **O USUÁRIO RECONHECE E CONCORDA QUE TODA E QUALQUER RESPONSABILIDADE RELACIONADA A OBRIGAÇÕES FISCAIS, TRIBUTÁRIAS E PERANTE A RECEITA FEDERAL É EXCLUSIVA DO USUÁRIO.**

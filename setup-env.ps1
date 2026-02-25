@@ -1,7 +1,7 @@
 # Script para configurar .env.local
 $envContent = @"
 NEXT_PUBLIC_API_URL=http://localhost:3000/api
-NEXT_PUBLIC_APP_NAME=MontShop
+NEXT_PUBLIC_APP_NAME=Montshop
 NEXT_PUBLIC_VERSION=1.0.0
 "@
 

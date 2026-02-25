@@ -132,13 +132,13 @@ export function Sidebar() {
               {!sidebarCollapsed && (
                 <Image 
                   src="/logo.png" 
-                  alt="MontShop Logo" 
+                  alt="Montshop Logo" 
                   width={24} 
                   height={24} 
                   className="h-6 w-6"
                 />
               )}
-              {!sidebarCollapsed && <span className="text-lg font-bold dark:text-white">MontShop</span>}
+              {!sidebarCollapsed && <span className="text-lg font-bold dark:text-white">Montshop</span>}
             </Link>
             <div className="flex items-center gap-1">
               {/* Toggle collapse (desktop) */}

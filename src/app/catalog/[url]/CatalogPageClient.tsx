@@ -646,7 +646,7 @@ export default function CatalogPageClient() {
           </div>
           {/* Linha inferior: copyright centralizado na base do footer */}
           <div className="mt-3 text-center">
-            <p className="text-xs text-gray-800">&copy; {new Date().getFullYear()} Sistema MontShop. Todos os direitos reservados.</p>
+            <p className="text-xs text-gray-800">&copy; {new Date().getFullYear()} Sistema Montshop. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>

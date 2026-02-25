@@ -26,11 +26,11 @@ export default function WhatsAppTestPage() {
   const messageTemplates = [
     {
       name: 'Teste Simples',
-      message: '🤖 Mensagem de teste do sistema MontShop!\n\nSe você recebeu esta mensagem, significa que a integração com WhatsApp está funcionando corretamente. ✅'
+      message: '🤖 Mensagem de teste do sistema Montshop!\n\nSe você recebeu esta mensagem, significa que a integração com WhatsApp está funcionando corretamente. ✅'
     },
     {
       name: 'Teste de Cobrança',
-      message: '💰 *TESTE DE COBRANÇA*\n\nOlá!\n\nEsta é uma mensagem de teste do sistema de cobrança.\n\n📋 *Detalhes:*\n• Parcela: 1 de 1\n• Valor: R$ 0,01\n• Vencimento: Teste\n\n🏢 *MontShop*\n\nObrigado! 🙏'
+      message: '💰 *TESTE DE COBRANÇA*\n\nOlá!\n\nEsta é uma mensagem de teste do sistema de cobrança.\n\n📋 *Detalhes:*\n• Parcela: 1 de 1\n• Valor: R$ 0,01\n• Vencimento: Teste\n\n🏢 *Montshop*\n\nObrigado! 🙏'
     },
     {
       name: 'Teste Completo',
