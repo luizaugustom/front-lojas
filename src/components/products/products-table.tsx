@@ -33,9 +33,27 @@ interface ProductsTableProps {
   onRefetch: () => void;
   canManage?: boolean; // quando false, esconde/impede editar/excluir
   onRegisterLoss?: (product: Product) => void; // callback para registrar perda
+  /** Paginação no servidor: quando informado, products já vêm da página atual e não se faz slice */
+  page?: number;
+  totalPages?: number;
+  totalItems?: number;
+  pageSize?: number;
+  onPageChange?: (page: number) => void;
 }
 
-export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManage = true, onRegisterLoss }: ProductsTableProps) {
+export function ProductsTable({
+  products,
+  isLoading,
+  onEdit,
+  onRefetch,
+  canManage = true,
+  onRegisterLoss,
+  page: pageProp = 1,
+  totalPages: totalPagesProp = 1,
+  totalItems: totalItemsProp,
+  pageSize: pageSizeProp = 20,
+  onPageChange,
+}: ProductsTableProps) {
   const { api } = useAuth();
   const [deleting, setDeleting] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<{ images: string[], index: number } | null>(null);
@@ -56,22 +74,27 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
     description: '',
     onConfirm: () => {},
   });
-  const [page, setPage] = useState(1);
-  const pageSize = 20;
-  const totalItems = products.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const [localPage, setLocalPage] = useState(1);
+  const pageSizeLocal = 20;
+
+  const serverPagination = typeof onPageChange === 'function';
+  const page = serverPagination ? pageProp : localPage;
+  const pageSize = serverPagination ? pageSizeProp : pageSizeLocal;
+  const totalItems = serverPagination ? (totalItemsProp ?? 0) : products.length;
+  const totalPages = serverPagination ? (totalPagesProp ?? 1) : Math.max(1, Math.ceil(products.length / pageSizeLocal));
+  const displayProducts = serverPagination ? products : products.slice((localPage - 1) * pageSizeLocal, localPage * pageSizeLocal);
 
   useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
+    if (!serverPagination && localPage > totalPages) {
+      setLocalPage(totalPages);
     }
-  }, [page, totalPages]);
+  }, [serverPagination, localPage, totalPages]);
 
   useEffect(() => {
-    setPage(1);
-  }, [totalItems]);
-
-  const paginatedProducts = products.slice((page - 1) * pageSize, page * pageSize);
+    if (!serverPagination) {
+      setLocalPage(1);
+    }
+  }, [serverPagination, products.length]);
 
   const handleImageClick = (product: Product) => {
     if (product.photos && product.photos.length > 0) {
@@ -131,7 +154,10 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
     );
   }
 
-  if (products.length === 0) {
+  const isEmpty = products.length === 0;
+  const showEmptyStateOnly = isEmpty && !(serverPagination && totalItems && totalItems > 0);
+
+  if (showEmptyStateOnly) {
     return (
       <Card>
         <div className="p-4 sm:p-8 text-center">
@@ -167,7 +193,14 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedProducts.map((product) => {
+          {isEmpty && serverPagination ? (
+            <TableRow>
+              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                Nenhum produto nesta página corresponde aos filtros.
+              </TableCell>
+            </TableRow>
+          ) : (
+          displayProducts.map((product) => {
             const stockNum = Number(product.stockQuantity ?? 0);
             const minNum = Number(product.minStockQuantity ?? 0);
             const threshold = product.lowStockAlertThreshold ?? 3;
@@ -283,17 +316,20 @@ export function ProductsTable({ products, isLoading, onEdit, onRefetch, canManag
                 </TableCell>
               </TableRow>
             );
-          })}
+          })
+          )}
         </TableBody>
       </Table>
 
-      <PaginationControls
-        page={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        pageSize={pageSize}
-        totalItems={totalItems}
-      />
+      {totalPages > 1 && (
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          onPageChange={serverPagination ? onPageChange! : setLocalPage}
+          pageSize={pageSize}
+          totalItems={totalItems}
+        />
+      )}
       
       {/* Modal de Confirmação */}
       <ConfirmationModal

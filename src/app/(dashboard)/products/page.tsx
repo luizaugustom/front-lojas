@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Search, HelpCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -33,13 +33,21 @@ export default function ProductsPage() {
     lowStock: false,
   });
   const [helpOpen, setHelpOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
   const canManageProducts = user ? user.role !== 'vendedor' : false;
 
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
   const { data: productsResponse, isLoading, refetch } = useQuery({
-    queryKey: ['products', queryKeyPart, search],
+    queryKey: ['products', queryKeyPart, search, page, pageSize],
     queryFn: async () => {
-      const response = (await api.get('/product', { params: { search } })).data;
+      const response = (
+        await api.get('/product', { params: { search, page, limit: pageSize } })
+      ).data;
       return response;
     },
   });
@@ -52,6 +60,8 @@ export default function ProductsPage() {
   });
 
   const products = productsResponse?.products || [];
+  const total = productsResponse?.total ?? 0;
+  const totalPages = productsResponse?.totalPages ?? 1;
   const filteredProducts = applyProductFilters(products, filters);
   const activeFiltersCount = getActiveFiltersCount(filters);
 
@@ -188,6 +198,11 @@ export default function ProductsPage() {
         onRefetch={refetch}
         canManage={canManageProducts}
         onRegisterLoss={handleRegisterLoss}
+        page={page}
+        totalPages={totalPages}
+        totalItems={total}
+        pageSize={pageSize}
+        onPageChange={setPage}
       />
 
       {canManageProducts && (

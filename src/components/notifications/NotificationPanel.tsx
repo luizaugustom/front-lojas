@@ -5,6 +5,7 @@ import { NotificationItem } from './NotificationItem';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { CheckCheck, Trash2, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'react-hot-toast';
@@ -28,6 +29,8 @@ export function NotificationPanel() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  const [showClearReadConfirm, setShowClearReadConfirm] = useState(false);
+  const [clearReadLoading, setClearReadLoading] = useState(false);
 
   useEffect(() => {
     loadNotifications();
@@ -69,15 +72,22 @@ export function NotificationPanel() {
     }
   };
 
-  const handleDeleteRead = async () => {
-    if (!window.confirm('Remover todas as notificações lidas?')) return;
+  const handleDeleteRead = () => {
+    setShowClearReadConfirm(true);
+  };
+
+  const confirmDeleteRead = async () => {
     try {
+      setClearReadLoading(true);
       await api.deleteReadNotifications();
       setNotifications(prev => prev.filter(n => !n.isRead));
+      setShowClearReadConfirm(false);
       toast.success('Notificações lidas removidas');
     } catch (error: any) {
       console.error('Erro ao remover notificações lidas:', error);
       toast.error('Erro ao remover notificações lidas');
+    } finally {
+      setClearReadLoading(false);
     }
   };
 
@@ -196,6 +206,18 @@ export function NotificationPanel() {
           )}
         </TabsContent>
       </Tabs>
+
+      <ConfirmationModal
+        open={showClearReadConfirm}
+        onClose={() => !clearReadLoading && setShowClearReadConfirm(false)}
+        onConfirm={confirmDeleteRead}
+        title="Remover notificações lidas?"
+        description="Todas as notificações marcadas como lidas serão removidas. Esta ação não pode ser desfeita."
+        variant="destructive"
+        confirmText="Remover"
+        cancelText="Cancelar"
+        loading={clearReadLoading}
+      />
     </div>
   );
 }
