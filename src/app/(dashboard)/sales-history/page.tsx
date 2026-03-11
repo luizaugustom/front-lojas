@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, Download, Eye, Filter, Printer, TrendingUp, DollarSign } from 'lucide-react';
+import { Calendar, Download, Eye, Filter, Info, Printer, TrendingUp, DollarSign } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,6 +10,12 @@ import { useDateRange } from '@/hooks/useDateRange';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -101,6 +107,7 @@ export default function SalesHistoryPage() {
   const [filterPayment, setFilterPayment] = useState('');
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
+  const [netProfitModalOpen, setNetProfitModalOpen] = useState(false);
 
   const availableOptions = useMemo(
     () => (user?.role === 'vendedor' ? SELLER_PERIOD_OPTIONS : COMPANY_PERIOD_OPTIONS),
@@ -606,8 +613,20 @@ export default function SalesHistoryPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
                 <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                  <DollarSign className={`h-4 w-4 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => setNetProfitModalOpen(true)}
+                    title="Ver cálculo detalhado do lucro líquido"
+                  >
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                    <DollarSign className={`h-4 w-4 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="px-4 py-1 pt-0">
@@ -618,6 +637,50 @@ export default function SalesHistoryPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Modal de detalhes do lucro líquido */}
+          <Dialog open={netProfitModalOpen} onOpenChange={setNetProfitModalOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Cálculo do lucro líquido</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 text-sm">
+                <p className="text-muted-foreground">
+                  Detalhamento do lucro líquido no período selecionado: o que entrou (receita) e o que foi descontado.
+                </p>
+                <dl className="space-y-2 border-t pt-3">
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Receita total (vendas)</dt>
+                    <dd className="font-medium tabular-nums text-green-600 dark:text-green-400">
+                      + {formatCurrency(netProfitData?.totalRevenue ?? 0)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4 text-red-600 dark:text-red-400">
+                    <dt>(−) Custo das vendas (CMV)</dt>
+                    <dd className="tabular-nums">− {formatCurrency(netProfitData?.totalCostOfGoods ?? 0)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4 text-red-600 dark:text-red-400">
+                    <dt>(−) Contas a pagar (pagas no período)</dt>
+                    <dd className="tabular-nums">− {formatCurrency(netProfitData?.totalBills ?? 0)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4 text-red-600 dark:text-red-400">
+                    <dt>(−) Perdas de produtos</dt>
+                    <dd className="tabular-nums">− {formatCurrency(netProfitData?.totalLosses ?? 0)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4 text-red-600 dark:text-red-400">
+                    <dt>(−) Juros de parcelamento</dt>
+                    <dd className="tabular-nums">− {formatCurrency(netProfitData?.totalInstallmentInterest ?? 0)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4 border-t pt-3 font-semibold">
+                    <dt>Lucro líquido</dt>
+                    <dd className={`tabular-nums ${(netProfitData?.netProfit ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {formatCurrency(netProfitData?.netProfit ?? 0)}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
 
