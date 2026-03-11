@@ -181,11 +181,23 @@ export default function DashboardPage() {
   });
   const gestorCompanies = Array.isArray(myCompaniesData) ? myCompaniesData : [];
   const { data: gestorMetrics, isLoading: isGestorMetricsLoading } = useQuery({
-    queryKey: ['dashboard', 'metrics', 'gestor', gestorCompanyId],
+    queryKey: ['dashboard', 'metrics', 'gestor', gestorCompanyId, queryKeyPart],
     queryFn: () => dashboardApi.metrics(gestorCompanyId || undefined).then((r) => r.data),
     enabled: isAuthenticated && user?.role === 'gestor',
   });
 
+  const hasDateFilter = !!queryParams.startDate && !!queryParams.endDate;
+  const { data: gestorMetricsByStore } = useQuery({
+    queryKey: ['dashboard', 'metrics', 'by-store', queryKeyPart, queryParams.startDate, queryParams.endDate],
+    queryFn: () =>
+      dashboardApi
+        .metricsByStore({
+          startDate: queryParams.startDate!,
+          endDate: queryParams.endDate!,
+        })
+        .then((r) => r.data),
+    enabled: isAuthenticated && user?.role === 'gestor' && hasDateFilter,
+  });
 
   // Clientes com dívidas a prazo em atraso (> 30 dias)
   const { data: overdueCustomers } = useQuery({
@@ -402,15 +414,27 @@ export default function DashboardPage() {
   // Gestor Dashboard - métricas por loja ou agregado
   if (isGestor && gestorMetrics) {
     const m = gestorMetrics as any;
-    const companyName = gestorCompanyId
-      ? (gestorCompanies.find((c: any) => c.id === gestorCompanyId) as any)?.name || gestorCompanyId
-      : (m.company?.name || 'Todas as lojas');
+    const byStore = Array.isArray(gestorMetricsByStore) ? gestorMetricsByStore : [];
+    const byStoreFiltered = gestorCompanyId
+      ? byStore.filter((s: any) => s.companyId === gestorCompanyId)
+      : byStore;
+    const periodSalesCount = hasDateFilter && byStoreFiltered.length > 0
+      ? byStoreFiltered.reduce((acc: number, s: any) => acc + (s.totalCount ?? 0), 0)
+      : null;
+    const periodSalesValue = hasDateFilter && byStoreFiltered.length > 0
+      ? byStoreFiltered.reduce((acc: number, s: any) => acc + (Number(s.totalValue) || 0), 0)
+      : null;
+    const periodLabel = hasDateFilter && dateRange.startDate && dateRange.endDate
+      ? `${dateRange.startDate.getDate().toString().padStart(2, '0')}/${(dateRange.startDate.getMonth() + 1).toString().padStart(2, '0')} - ${dateRange.endDate.getDate().toString().padStart(2, '0')}/${(dateRange.endDate.getMonth() + 1).toString().padStart(2, '0')}`
+      : null;
     return (
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard Multilojas</h1>
-            <p className="text-muted-foreground">Métricas das lojas que você gerencia</p>
+            <p className="text-muted-foreground">
+              {hasDateFilter && periodLabel ? `Métricas no período: ${periodLabel}` : 'Métricas das lojas que você gerencia'}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <label htmlFor="gestor-company" className="text-sm font-medium text-muted-foreground">Loja:</label>
@@ -428,8 +452,16 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <MetricCard title="Vendas (total)" value={m.counts?.sales ?? 0} icon={ShoppingCart} />
-          <MetricCard title="Receita total" value={formatCurrency(m.financial?.totalSalesValue ?? 0)} icon={DollarSign} />
+          <MetricCard
+            title={hasDateFilter && periodLabel ? `Vendas (${periodLabel})` : 'Vendas (total)'}
+            value={periodSalesCount !== null ? periodSalesCount : (m.counts?.sales ?? 0)}
+            icon={ShoppingCart}
+          />
+          <MetricCard
+            title={hasDateFilter && periodLabel ? `Receita (${periodLabel})` : 'Receita total'}
+            value={periodSalesValue !== null ? formatCurrency(periodSalesValue) : formatCurrency(m.financial?.totalSalesValue ?? 0)}
+            icon={DollarSign}
+          />
           <MetricCard
             title="Lucro líquido"
             value={formatCurrency(m.financial?.netProfit ?? 0)}
@@ -441,10 +473,10 @@ export default function DashboardPage() {
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            title="Vendas este mês"
-            value={formatCurrency(m.sales?.thisMonth?.value ?? 0)}
-            change={m.sales?.growth?.valuePercentage}
-            trend={m.sales?.growth?.valuePercentage >= 0 ? 'up' : 'down'}
+            title={hasDateFilter && periodLabel ? 'Vendas no período' : 'Vendas este mês'}
+            value={periodSalesValue !== null ? formatCurrency(periodSalesValue) : formatCurrency(m.sales?.thisMonth?.value ?? 0)}
+            change={periodSalesValue === null ? m.sales?.growth?.valuePercentage : undefined}
+            trend={periodSalesValue === null && m.sales?.growth?.valuePercentage != null ? (m.sales.growth.valuePercentage >= 0 ? 'up' : 'down') : 'neutral'}
             icon={DollarSign}
           />
           <MetricCard title="Clientes" value={m.counts?.customers ?? 0} icon={Users} />

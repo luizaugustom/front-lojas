@@ -1260,9 +1260,14 @@ export const dashboardApi = {
     api.get('/dashboard/metrics', { params: companyId ? { companyId } : {} }),
   /**
    * GET /dashboard/metrics/trends
-   * Query: companyId (opcional), period: '7d' | '30d' | '90d'
+   * Query: companyId (opcional), period: '7d' | '30d' | '90d', startDate/endDate (opcional, do filtro do header)
    */
-  trends: (params?: { companyId?: string; period?: '7d' | '30d' | '90d' }) =>
+  trends: (params?: {
+    companyId?: string;
+    period?: '7d' | '30d' | '90d';
+    startDate?: string;
+    endDate?: string;
+  }) =>
     api.get('/dashboard/metrics/trends', { params: params ?? {} }),
   /**
    * GET /dashboard/metrics/by-store (apenas gestor)
