@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, HelpCircle } from 'lucide-react';
+import { Plus, Search, HelpCircle, Download } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { InputWithIcon } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -17,6 +18,7 @@ import { applyProductFilters, getActiveFiltersCount, type ProductFilters as Prod
 import type { Product, PlanUsageStats } from '@/types';
 import { AlertTriangle } from 'lucide-react';
 import { handleApiError } from '@/lib/handleApiError';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { PageHelpModal } from '@/components/help';
 import { productsHelpTitle, productsHelpDescription, productsHelpIcon, getProductsHelpTabs } from '@/components/help/contents/products-help';
 
@@ -34,9 +36,11 @@ export default function ProductsPage() {
   });
   const [helpOpen, setHelpOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
   const pageSize = 20;
 
   const canManageProducts = user ? user.role !== 'vendedor' : false;
+  const canExportProducts = user?.role === 'empresa';
 
   useEffect(() => {
     setPage(1);
@@ -139,6 +143,104 @@ export default function ProductsPage() {
     refetch();
   };
 
+  const handleExportProducts = async () => {
+    if (!canExportProducts) return;
+    setExporting(true);
+    try {
+      const res = await api.get('/product', {
+        params: { page: 1, limit: 100000, search: '' },
+      });
+      const list: Product[] = res.data?.products ?? [];
+      if (list.length === 0) {
+        toast.error('Nenhum produto para exportar.');
+        return;
+      }
+      const headers = [
+        'Nome',
+        'Código de Barras',
+        'Preço',
+        'Preço de Custo',
+        'Estoque',
+        'Estoque Mínimo',
+        'Alerta Estoque',
+        'Categoria',
+        'Descrição',
+        'Validade',
+        'Unidade',
+        'NCM',
+        'CFOP',
+        'Fotos (URLs)',
+        'Em promoção',
+        'Preço promocional',
+        'Desconto %',
+        'Nome promoção',
+        'Preço original',
+        'Criado em',
+        'Atualizado em',
+        'ID',
+      ];
+      const rows: (string | number)[][] = [headers];
+      for (const p of list) {
+        const photosStr = Array.isArray(p.photos)
+          ? p.photos.join('; ')
+          : p.photos != null ? String(p.photos) : '';
+        rows.push([
+          p.name ?? '',
+          p.barcode ?? '',
+          typeof p.price === 'number' ? p.price : '',
+          p.costPrice != null ? p.costPrice : '',
+          p.stockQuantity ?? '',
+          p.minStockQuantity ?? '',
+          p.lowStockAlertThreshold ?? '',
+          p.category ?? '',
+          p.description ?? '',
+          p.expirationDate && p.expirationDate !== 'null' ? formatDate(p.expirationDate) : '',
+          p.unitOfMeasure ?? '',
+          p.ncm ?? '',
+          p.cfop ?? '',
+          photosStr,
+          p.isOnPromotion ? 'Sim' : 'Não',
+          p.promotionPrice ?? '',
+          p.promotionDiscount ?? '',
+          p.promotionName ?? '',
+          p.originalPrice ?? '',
+          p.createdAt ? formatDate(p.createdAt) : '',
+          p.updatedAt ? formatDate(p.updatedAt) : '',
+          p.id ?? '',
+        ]);
+      }
+      const workbook = XLSX.utils.book_new();
+      const sheet = XLSX.utils.aoa_to_sheet(rows);
+      sheet['!cols'] = [
+        { wch: 25 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
+        { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 30 }, { wch: 12 },
+        { wch: 10 }, { wch: 14 }, { wch: 10 }, { wch: 40 }, { wch: 10 },
+        { wch: 14 }, { wch: 10 }, { wch: 20 }, { wch: 12 }, { wch: 16 },
+        { wch: 16 }, { wch: 38 },
+      ];
+      XLSX.utils.book_append_sheet(workbook, sheet, 'Produtos');
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const dateStr = new Date().toISOString().split('T')[0];
+      link.setAttribute('download', `produtos-${dateStr}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Produtos exportados com sucesso!');
+    } catch (error) {
+      handleApiError(error);
+      toast.error('Erro ao exportar produtos.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -157,6 +259,17 @@ export default function ProductsPage() {
           <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
             <HelpCircle className="h-5 w-5" />
           </Button>
+          {canExportProducts && (
+            <Button
+              variant="outline"
+              onClick={handleExportProducts}
+              disabled={exporting}
+              aria-label="Exportar produtos"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {exporting ? 'Exportando...' : 'Exportar produtos'}
+            </Button>
+          )}
           {canManageProducts && (
           <Button 
             onClick={handleCreate}
