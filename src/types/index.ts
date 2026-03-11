@@ -218,6 +218,12 @@ export interface CreateSaleDto {
   sellerId?: string;
   installmentData?: InstallmentData;
   discount?: number;
+  /** Usado quando emitOnlyNfe está ativo: emitir boleto para esta venda */
+  emitBoleto?: boolean;
+  /** Data de vencimento preferencial do boleto (ISO date). Obrigatório se emitBoleto = true. */
+  boletoDueDate?: string;
+  /** ID do cliente cadastrado para o boleto. Obrigatório se emitBoleto = true. */
+  boletoCustomerId?: string;
 }
 
 // Exchange Types

@@ -619,6 +619,29 @@ export const scaleApi = {
 };
 
 // ============================================================================
+// BOLETO (Billet)
+// ============================================================================
+
+export const billetApi = {
+  list: (params?: { page?: number; limit?: number; status?: string; customerId?: string; startDate?: string; endDate?: string }) =>
+    api.get('/billet', { params }),
+  get: (id: string) => api.get(`/billet/${id}`),
+  getPdf: (id: string) => api.get(`/billet/${id}/pdf`, { responseType: 'arraybuffer' }),
+  cancel: (id: string) => api.post(`/billet/${id}/cancel`),
+  markAsPaid: (id: string) => api.post(`/billet/${id}/mark-paid`),
+  sendWhatsApp: (id: string) => api.post(`/billet/${id}/send-whatsapp`),
+  /** Envia arquivo CNAB de retorno para conciliar pagamentos (Boleto Cloud). */
+  processCnabReturn: (file: File) => {
+    const form = new FormData();
+    form.append('arquivo', file);
+    return api.post<{ processed: boolean; markedAsPaid: number; titlesInFile: number; message: string }>(
+      '/billet/cnab/process-return',
+      form,
+    );
+  },
+};
+
+// ============================================================================
 // FISCAL
 // ============================================================================
 
@@ -1421,4 +1444,16 @@ export const adminApi = {
    * Roles: ADMIN - Obter configuração global do Focus NFe
    */
   getFocusNfeConfig: () => api.get('/admin/focus-nfe-config'),
+
+  /**
+   * PATCH /admin/boleto-cloud-config
+   * Roles: ADMIN - Atualizar configuração global do Boleto Cloud
+   */
+  updateBoletoCloudConfig: (data: any) => api.patch('/admin/boleto-cloud-config', data),
+
+  /**
+   * GET /admin/boleto-cloud-config
+   * Roles: ADMIN - Obter configuração global do Boleto Cloud
+   */
+  getBoletoCloudConfig: () => api.get('/admin/boleto-cloud-config'),
 };

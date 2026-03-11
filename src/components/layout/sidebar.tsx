@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { companyApi } from '@/lib/api-endpoints';
 import {
   LayoutDashboard,
   Package,
@@ -28,6 +30,7 @@ import {
   ArrowLeftRight,
   Briefcase,
   BarChart3,
+  Banknote,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui-store';
@@ -52,6 +55,8 @@ const navigation = [
   { name: 'Notas Fiscais', href: '/invoices', icon: Receipt, roles: ['empresa'] },
   // Visível apenas para empresas: Notas de Entrada
   { name: 'Notas de Entrada', href: '/inbound-invoices', icon: FileDown, roles: ['empresa'] },
+  // Boletos (empresa; vendedor também se tiver companyId)
+  { name: 'Boletos', href: '/boletos', icon: Banknote, roles: ['empresa', 'vendedor'] },
   // Visível apenas para admin: Gerenciar Empresas e Gestores
   { name: 'Empresas', href: '/companies', icon: Building2, roles: ['admin'] },
   { name: 'Gestores', href: '/gestores', icon: Briefcase, roles: ['admin'] },
@@ -66,6 +71,16 @@ export function Sidebar() {
   const pathname = usePathname();
   const { sidebarOpen, setSidebarOpen, sidebarCollapsed, toggleSidebarCollapsed } = useUIStore();
   const { user } = useAuth();
+
+  const { data: companyData } = useQuery({
+    queryKey: ['my-company-sidebar', user?.companyId],
+    queryFn: async () => {
+      const res = await companyApi.myCompany();
+      return res.data as { boletoEnabled?: boolean };
+    },
+    enabled: !!user && (user.role === 'empresa' || user.role === 'vendedor'),
+  });
+  const boletoEnabled = companyData?.boletoEnabled === true;
 
   const filteredNavigation = navigation.filter((item) => {
     if (!user) {
@@ -95,6 +110,11 @@ export function Sidebar() {
     // Notas Fiscais: empresa sempre; vendedor apenas se nfeEmissionEnabled
     if (item.name === 'Notas Fiscais') {
       return user.role === 'empresa' || (user.role === 'vendedor' && user.nfeEmissionEnabled === true);
+    }
+
+    // Boletos: apenas se empresa/vendedor e company.boletoEnabled
+    if (item.name === 'Boletos') {
+      return item.roles.includes(user.role) && boletoEnabled === true;
     }
 
     // O role já foi normalizado na API (company -> empresa)

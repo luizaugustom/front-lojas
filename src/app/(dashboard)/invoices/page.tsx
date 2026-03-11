@@ -14,9 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDateTime, downloadFile } from '@/lib/utils';
-import { fiscalApi } from '@/lib/api-endpoints';
+import { fiscalApi, customerApi } from '@/lib/api-endpoints';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
 import { isValidCPF, isValidCNPJ, isValidCPFOrCNPJ } from '@/lib/validations';
@@ -98,6 +99,10 @@ export default function InvoicesPage() {
   const [cardBrand, setCardBrand] = useState<string>('');
   const [cardOperationType, setCardOperationType] = useState<string>('');
   const [additionalInfo, setAdditionalInfo] = useState('');
+  const [emitBoleto, setEmitBoleto] = useState(false);
+  const [boletoCustomerId, setBoletoCustomerId] = useState('');
+  const [boletoDueDate, setBoletoDueDate] = useState('');
+  const [boletoAmount, setBoletoAmount] = useState<number | ''>('');
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
@@ -177,6 +182,16 @@ export default function InvoicesPage() {
       return response.data;
     },
     enabled: productSearchOpen,
+  });
+
+  // Clientes para seleção no boleto da NFe
+  const { data: boletoCustomersData } = useQuery({
+    queryKey: ['customers-boleto-nfe', user?.companyId],
+    queryFn: async () => {
+      const res = await customerApi.list({ limit: 500, companyId: user?.companyId ?? undefined });
+      return res.data as { data?: { id: string; name: string; cpfCnpj?: string }[] };
+    },
+    enabled: emitOpen && !!user?.companyId,
   });
 
   // Protege rota: empresa ou vendedor com nfeEmissionEnabled
@@ -316,6 +331,10 @@ export default function InvoicesPage() {
     setRecipientDistrict('');
     setRecipientCity('');
     setRecipientState('');
+    setEmitBoleto(false);
+    setBoletoCustomerId('');
+    setBoletoDueDate('');
+    setBoletoAmount('');
     setItems([{
       description: '',
       quantity: 1,
@@ -388,6 +407,11 @@ export default function InvoicesPage() {
         return;
       }
       
+      if (emitBoleto && !boletoCustomerId) {
+        toast.error('Para emitir boleto, selecione o cliente cadastrado');
+        return;
+      }
+
       if (items.length === 0 || !items[0].description.trim()) {
         toast.error('Adicione pelo menos um item');
         return;
@@ -521,6 +545,13 @@ export default function InvoicesPage() {
         if (additionalInfo.trim()) {
           payload.additionalInfo = additionalInfo.trim();
         }
+      }
+
+      if (emitBoleto && boletoCustomerId) {
+        payload.emitBoleto = true;
+        payload.boletoCustomerId = boletoCustomerId;
+        if (boletoDueDate) payload.boletoDueDate = new Date(boletoDueDate).toISOString();
+        if (boletoAmount !== '' && typeof boletoAmount === 'number') payload.boletoAmount = boletoAmount;
       }
       
       await api.post('/fiscal/nfe', payload);
@@ -1271,6 +1302,60 @@ export default function InvoicesPage() {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* Emitir boleto para esta nota */}
+          <Card className="p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="font-semibold">Emitir boleto para esta nota</h3>
+                <p className="text-sm text-muted-foreground">Gera um boleto vinculado à NFe (cliente cadastrado com CPF/CNPJ e endereço).</p>
+              </div>
+              <Switch checked={emitBoleto} onCheckedChange={setEmitBoleto} />
+            </div>
+            {emitBoleto && (
+              <div className="mt-4 pt-4 border-t space-y-4">
+                <div className="space-y-2">
+                  <Label>Cliente para o boleto *</Label>
+                  <Select value={boletoCustomerId || '_'} onValueChange={(v) => setBoletoCustomerId(v === '_' ? '' : v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o cliente cadastrado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_">Selecione...</SelectItem>
+                      {(boletoCustomersData?.data ?? []).map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name || c.cpfCnpj || c.id}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Vencimento (opcional)</Label>
+                    <Input
+                      type="date"
+                      value={boletoDueDate}
+                      onChange={(e) => setBoletoDueDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Valor do boleto (opcional, padrão: total da nota)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder={formatCurrency(calculateTotal())}
+                      value={boletoAmount === '' ? '' : boletoAmount}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        const n = parseFloat(v);
+                        setBoletoAmount(v === '' ? '' : (isNaN(n) ? '' : n));
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </Card>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setEmitOpen(false)} disabled={submitting}>
