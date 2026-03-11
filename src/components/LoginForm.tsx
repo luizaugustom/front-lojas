@@ -18,6 +18,7 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+
 export function LoginForm() {
   const { login, isAuthenticated, user } = useAuth();
   const router = useRouter();
