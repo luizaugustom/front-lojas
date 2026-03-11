@@ -36,7 +36,7 @@ import { Button } from '@/components/ui/button';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'empresa', 'gestor'] },
-  { name: 'Produtos', href: '/products', icon: Package, roles: ['admin', 'empresa', 'vendedor'] },
+  { name: 'Produtos', href: '/products', icon: Package, roles: ['admin', 'empresa', 'vendedor', 'gestor'] },
   { name: 'Vendas', href: '/sales', icon: ShoppingCart, roles: ['admin', 'empresa', 'vendedor'] },
   { name: 'Orçamentos', href: '/budgets', icon: FileText, roles: ['empresa', 'vendedor'] },
   { name: 'Histórico de Vendas', href: '/sales-history', icon: ClipboardList, roles: ['empresa', 'vendedor'] },

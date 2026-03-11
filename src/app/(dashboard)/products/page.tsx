@@ -21,6 +21,7 @@ import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { PageHelpModal } from '@/components/help';
 import { productsHelpTitle, productsHelpDescription, productsHelpIcon, getProductsHelpTabs } from '@/components/help/contents/products-help';
+import { managerApi } from '@/lib/api-endpoints';
 
 export default function ProductsPage() {
   const { api, user } = useAuth();
@@ -38,22 +39,43 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
   const pageSize = 20;
+  const isGestor = user?.role === 'gestor';
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
 
   const canManageProducts = user ? user.role !== 'vendedor' : false;
-  const canExportProducts = user?.role === 'empresa';
+  const canExportProducts = user?.role === 'empresa' || (isGestor && !!selectedCompanyId);
+
+  const { data: gestorCompaniesData } = useQuery({
+    queryKey: ['manager', 'my-companies'],
+    queryFn: () => managerApi.myCompanies().then((r) => r.data),
+    enabled: !!user && isGestor,
+  });
+  const gestorCompanies = Array.isArray(gestorCompaniesData) ? gestorCompaniesData : [];
 
   useEffect(() => {
     setPage(1);
-  }, [search]);
+  }, [search, selectedCompanyId]);
 
+  useEffect(() => {
+    if (isGestor && gestorCompanies.length === 1 && !selectedCompanyId) {
+      setSelectedCompanyId(gestorCompanies[0].id);
+    }
+  }, [isGestor, gestorCompanies, selectedCompanyId]);
+
+  const productsQueryEnabled = !!user && (isGestor ? !!selectedCompanyId : true);
   const { data: productsResponse, isLoading, refetch } = useQuery({
-    queryKey: ['products', queryKeyPart, search, page, pageSize],
+    queryKey: ['products', queryKeyPart, search, page, pageSize, isGestor ? selectedCompanyId : null],
     queryFn: async () => {
-      const response = (
-        await api.get('/product', { params: { search, page, limit: pageSize } })
-      ).data;
+      const params: { search: string; page: number; limit: number; companyId?: string } = {
+        search,
+        page,
+        limit: pageSize,
+      };
+      if (isGestor && selectedCompanyId) params.companyId = selectedCompanyId;
+      const response = (await api.get('/product', { params })).data;
       return response;
     },
+    enabled: productsQueryEnabled,
   });
 
   // Carregar estatísticas de uso do plano
@@ -109,9 +131,13 @@ export default function ProductsPage() {
       toast.error('Você não tem permissão para adicionar produtos.');
       return;
     }
+    if (isGestor && !selectedCompanyId) {
+      toast.error('Selecione uma loja para adicionar produtos.');
+      return;
+    }
 
-    // Validar limite do plano
-    if (planUsage && planUsage.usage.products.max) {
+    // Validar limite do plano (empresa; gestor valida no backend por loja)
+    if (user?.role === 'empresa' && planUsage && planUsage.usage.products.max) {
       if (planUsage.usage.products.current >= planUsage.usage.products.max) {
         toast.error(
           `Limite de produtos atingido! Seu plano ${planUsage.plan} permite no máximo ${planUsage.usage.products.max} produtos. Faça upgrade para adicionar mais.`,
@@ -147,9 +173,13 @@ export default function ProductsPage() {
     if (!canExportProducts) return;
     setExporting(true);
     try {
-      const res = await api.get('/product', {
-        params: { page: 1, limit: 100000, search: '' },
-      });
+      const params: { page: number; limit: number; search: string; companyId?: string } = {
+        page: 1,
+        limit: 100000,
+        search: '',
+      };
+      if (isGestor && selectedCompanyId) params.companyId = selectedCompanyId;
+      const res = await api.get('/product', { params });
       const list: Product[] = res.data?.products ?? [];
       if (list.length === 0) {
         toast.error('Nenhum produto para exportar.');
@@ -243,18 +273,38 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Produtos</h1>
           <p className="text-muted-foreground">
             Gerencie seu catálogo de produtos
-            {planUsage && planUsage.usage.products.max && (
+            {planUsage && planUsage.usage.products.max && user?.role === 'empresa' && (
               <span className="ml-2 text-sm">
                 ({planUsage.usage.products.current}/{planUsage.usage.products.max} usados)
               </span>
             )}
           </p>
         </div>
+        {isGestor && gestorCompanies.length > 0 && (
+          <div className="flex items-center gap-2">
+            <label htmlFor="products-store-select" className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+              Loja:
+            </label>
+            <select
+              id="products-store-select"
+              value={selectedCompanyId}
+              onChange={(e) => setSelectedCompanyId(e.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm min-w-[200px]"
+            >
+              <option value="">Selecione uma loja</option>
+              {gestorCompanies.map((c: { id: string; name?: string; fantasyName?: string }) => (
+                <option key={c.id} value={c.id}>
+                  {c.fantasyName || c.name || c.id}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
             <HelpCircle className="h-5 w-5" />
@@ -273,7 +323,9 @@ export default function ProductsPage() {
           {canManageProducts && (
           <Button 
             onClick={handleCreate}
-            disabled={planUsage?.usage.products.max ? planUsage.usage.products.current >= planUsage.usage.products.max : false}
+            disabled={
+              isGestor ? !selectedCompanyId : (planUsage?.usage.products.max ? planUsage.usage.products.current >= planUsage.usage.products.max : false)
+            }
           >
             <Plus className="mr-2 h-4 w-4" />
             Novo Produto
@@ -285,6 +337,12 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {isGestor && !selectedCompanyId && (
+        <Card className="p-6 text-center text-muted-foreground">
+          Selecione uma loja para ver e gerenciar os produtos.
+        </Card>
+      )}
+
       <Card className="p-4">
         <div className="flex items-center gap-4">
           <div className="flex-1">
@@ -294,6 +352,7 @@ export default function ProductsPage() {
               onChange={(e) => setSearch(e.target.value)}
               icon={<Search className="h-4 w-4" />}
               iconPosition="left"
+              disabled={isGestor && !selectedCompanyId}
             />
           </div>
           <ProductFilters
@@ -323,6 +382,7 @@ export default function ProductsPage() {
           open={dialogOpen}
           onClose={handleClose}
           product={selectedProduct}
+          companyIdForCreate={isGestor ? selectedCompanyId || undefined : undefined}
         />
       )}
       <ProductLossDialog

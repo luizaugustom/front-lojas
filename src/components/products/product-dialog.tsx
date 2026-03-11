@@ -161,9 +161,11 @@ interface ProductDialogProps {
   open: boolean;
   onClose: () => void;
   product?: Product | null;
+  /** Quando informado (gestor criando produto), envia no body do create para associar à loja. */
+  companyIdForCreate?: string;
 }
 
-export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
+export function ProductDialog({ open, onClose, product, companyIdForCreate }: ProductDialogProps) {
   const passthroughLoader = ({ src }: { src: string }) => src;
   const [loading, setLoading] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
@@ -646,6 +648,7 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
           if (sanitizedData.unitOfMeasure) formData.append('unitOfMeasure', sanitizedData.unitOfMeasure);
           if (sanitizedData.cfop) formData.append('cfop', sanitizedData.cfop);
           if (sanitizedData.ncm) formData.append('ncm', sanitizedData.ncm);
+          if (companyIdForCreate) formData.append('companyId', companyIdForCreate);
           
           // Adicionar fotos
           selectedPhotos.forEach((photo, index) => {
@@ -668,10 +671,11 @@ export function ProductDialog({ open, onClose, product }: ProductDialogProps) {
           // Usar endpoint padrão quando não há fotos
           console.log('[ProductDialog] Criando produto sem fotos usando /product');
           
-          const productData = {
+          const productData: Record<string, unknown> = {
             id: generateCoherentUUID(), // Gerar UUID coerente com backend
             ...sanitizeProductData(data),
           };
+          if (companyIdForCreate) productData.companyId = companyIdForCreate;
           
           console.log('[ProductDialog] UUID gerado para novo produto:', productData.id);
           console.log('[ProductDialog] Dados para criação:', productData);
