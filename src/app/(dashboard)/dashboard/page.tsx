@@ -98,28 +98,44 @@ export default function DashboardPage() {
     return [];
   };
 
-  // Sales last 7 days (for chart) - sempre últimos 7 dias da data atual
-  const now = new Date();
-  const start7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 0, 0, 0);
-  const end7 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  const start7Iso = start7.toISOString();
-  const end7Iso = end7.toISOString();
-  
-  const { data: last7SalesRaw } = useQuery({
-    queryKey: ['sales', 'last7', queryKeyPart, start7Iso, end7Iso],
-    queryFn: async () => (await api.get('/sale', { params: { startDate: start7Iso, endDate: end7Iso, limit: 1000 } })).data,
+  // Período do gráfico: filtro do header quando ativo, senão últimos 7 dias
+  const chartRange = (() => {
+    const now = new Date();
+    const start7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 0, 0, 0);
+    const end7 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    if (queryParams.startDate && queryParams.endDate) {
+      const start = new Date(queryParams.startDate);
+      const end = new Date(queryParams.endDate);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        return { start, end, startIso: start.toISOString(), endIso: end.toISOString(), useFilter: true };
+      }
+    }
+    return { start: start7, end: end7, startIso: start7.toISOString(), endIso: end7.toISOString(), useFilter: false };
+  })();
+
+  const { data: chartSalesRaw } = useQuery({
+    queryKey: ['sales', 'chart', queryKeyPart, chartRange.startIso, chartRange.endIso],
+    queryFn: async () =>
+      (await api.get('/sale', { params: { startDate: chartRange.startIso, endDate: chartRange.endIso, limit: 1000 } })).data,
     enabled: isAuthenticated && user?.role !== 'gestor',
   });
 
-  const last7Sales: Sale[] = normalizeList<Sale>(last7SalesRaw, 'sales');
-  // Aggregate by day
+  const chartSales: Sale[] = normalizeList<Sale>(chartSalesRaw, 'sales');
+  // Dias no intervalo: quando usa filtro, um ponto por dia; senão 7 dias
   const salesByDayMap: Record<string, { total: number; count: number }> = {};
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start7.getTime() + i * 24 * 60 * 60 * 1000);
-    const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+  const numDays = Math.min(
+    90,
+    Math.ceil((chartRange.end.getTime() - chartRange.start.getTime()) / (24 * 60 * 60 * 1000)) + 1,
+  );
+  for (let i = 0; i < numDays; i++) {
+    const d = new Date(chartRange.start.getTime() + i * 24 * 60 * 60 * 1000);
+    if (d > chartRange.end) break;
+    const key = d.toISOString().slice(0, 10);
     salesByDayMap[key] = { total: 0, count: 0 };
   }
-  last7Sales.forEach((s) => {
+  chartSales.forEach((s) => {
     const dateKey = (s.createdAt ? new Date(s.createdAt).toISOString().slice(0, 10) : '').toString();
     if (!dateKey) return;
     if (!salesByDayMap[dateKey]) salesByDayMap[dateKey] = { total: 0, count: 0 };
@@ -181,8 +197,11 @@ export default function DashboardPage() {
   });
   const gestorCompanies = Array.isArray(myCompaniesData) ? myCompaniesData : [];
   const { data: gestorMetrics, isLoading: isGestorMetricsLoading } = useQuery({
-    queryKey: ['dashboard', 'metrics', 'gestor', gestorCompanyId, queryKeyPart],
-    queryFn: () => dashboardApi.metrics(gestorCompanyId || undefined).then((r) => r.data),
+    queryKey: ['dashboard', 'metrics', 'gestor', gestorCompanyId, queryKeyPart, queryParams.startDate, queryParams.endDate],
+    queryFn: () =>
+      dashboardApi
+        .metrics(gestorCompanyId || undefined, queryParams.startDate, queryParams.endDate)
+        .then((r) => r.data),
     enabled: isAuthenticated && user?.role === 'gestor',
   });
 
@@ -414,16 +433,6 @@ export default function DashboardPage() {
   // Gestor Dashboard - métricas por loja ou agregado
   if (isGestor && gestorMetrics) {
     const m = gestorMetrics as any;
-    const byStore = Array.isArray(gestorMetricsByStore) ? gestorMetricsByStore : [];
-    const byStoreFiltered = gestorCompanyId
-      ? byStore.filter((s: any) => s.companyId === gestorCompanyId)
-      : byStore;
-    const periodSalesCount = hasDateFilter && byStoreFiltered.length > 0
-      ? byStoreFiltered.reduce((acc: number, s: any) => acc + (s.totalCount ?? 0), 0)
-      : null;
-    const periodSalesValue = hasDateFilter && byStoreFiltered.length > 0
-      ? byStoreFiltered.reduce((acc: number, s: any) => acc + (Number(s.totalValue) || 0), 0)
-      : null;
     const periodLabel = hasDateFilter && dateRange.startDate && dateRange.endDate
       ? `${dateRange.startDate.getDate().toString().padStart(2, '0')}/${(dateRange.startDate.getMonth() + 1).toString().padStart(2, '0')} - ${dateRange.endDate.getDate().toString().padStart(2, '0')}/${(dateRange.endDate.getMonth() + 1).toString().padStart(2, '0')}`
       : null;
@@ -457,12 +466,12 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title={hasDateFilter && periodLabel ? `Vendas (${periodLabel})` : 'Vendas (total)'}
-            value={periodSalesCount !== null ? periodSalesCount : (m.counts?.sales ?? 0)}
+            value={m.counts?.sales ?? 0}
             icon={ShoppingCart}
           />
           <MetricCard
             title={hasDateFilter && periodLabel ? `Receita (${periodLabel})` : 'Receita total'}
-            value={periodSalesValue !== null ? formatCurrency(periodSalesValue) : formatCurrency(m.financial?.totalSalesValue ?? 0)}
+            value={formatCurrency(m.financial?.totalSalesValue ?? 0)}
             icon={DollarSign}
           />
           <MetricCard
@@ -477,9 +486,9 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title={hasDateFilter && periodLabel ? 'Vendas no período' : 'Vendas este mês'}
-            value={periodSalesValue !== null ? formatCurrency(periodSalesValue) : formatCurrency(m.sales?.thisMonth?.value ?? 0)}
-            change={periodSalesValue === null ? m.sales?.growth?.valuePercentage : undefined}
-            trend={periodSalesValue === null && m.sales?.growth?.valuePercentage != null ? (m.sales.growth.valuePercentage >= 0 ? 'up' : 'down') : 'neutral'}
+            value={formatCurrency(m.sales?.thisMonth?.value ?? 0)}
+            change={m.sales?.growth?.valuePercentage}
+            trend={m.sales?.growth?.valuePercentage != null ? (m.sales.growth.valuePercentage >= 0 ? 'up' : 'down') : 'neutral'}
             icon={DollarSign}
           />
           <MetricCard title="Clientes" value={m.counts?.customers ?? 0} icon={Users} />

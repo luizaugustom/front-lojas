@@ -27,7 +27,10 @@ type DateFilter = 'all' | 'this-week' | 'last-week' | 'this-month' | 'last-month
 
 export default function InstallmentsPage() {
   const { api, user } = useAuth();
-  const { dateRange, queryKeyPart } = useDateRange();
+  const { dateRange, queryParams, queryKeyPart } = useDateRange();
+  const dateParams = queryParams.startDate && queryParams.endDate
+    ? { startDate: queryParams.startDate, endDate: queryParams.endDate }
+    : {};
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState<any>(null);
   const [customerDebtDialogOpen, setCustomerDebtDialogOpen] = useState(false);
@@ -175,7 +178,7 @@ export default function InstallmentsPage() {
   const { data: pendingInstallments, isLoading: pendingLoading, refetch: refetchPending } = useQuery({
     queryKey: ['installments-pending', queryKeyPart],
     queryFn: async () => {
-      const response = await api.get('/installment?isPaid=false');
+      const response = await api.get('/installment', { params: { isPaid: 'false', ...dateParams } });
       return normalizeInstallments(response.data);
     },
     enabled: !!user, // Só busca se o usuário estiver autenticado
@@ -185,7 +188,7 @@ export default function InstallmentsPage() {
   const { data: allInstallments, isLoading: allLoading, refetch: refetchAll } = useQuery({
     queryKey: ['installments-all', queryKeyPart],
     queryFn: async () => {
-      const response = await api.get('/installment');
+      const response = await api.get('/installment', { params: dateParams });
       return normalizeInstallments(response.data);
     },
     enabled: isCompany, // Só busca se for empresa
@@ -195,7 +198,7 @@ export default function InstallmentsPage() {
   const { data: overdueInstallments, isLoading: overdueLoading, refetch: refetchOverdue } = useQuery({
     queryKey: ['installments-overdue', queryKeyPart],
     queryFn: async () => {
-      const response = await api.get('/installment/overdue');
+      const response = await api.get('/installment/overdue', { params: dateParams });
       return normalizeInstallments(response.data);
     },
     enabled: isCompany, // Só busca se for empresa
@@ -205,7 +208,7 @@ export default function InstallmentsPage() {
   const { data: paidInstallments, isLoading: paidLoading, refetch: refetchPaid } = useQuery({
     queryKey: ['installments-paid', queryKeyPart],
     queryFn: async () => {
-      const response = await api.get('/installment?isPaid=true');
+      const response = await api.get('/installment', { params: { isPaid: 'true', ...dateParams } });
       return normalizeInstallments(response.data);
     },
     enabled: isCompany, // Só busca se for empresa
@@ -215,7 +218,7 @@ export default function InstallmentsPage() {
   const { data: stats } = useQuery({
     queryKey: ['installments-stats', queryKeyPart],
     queryFn: async () => {
-      const response = await api.get('/installment/stats');
+      const response = await api.get('/installment/stats', { params: dateParams });
       return response.data || {};
     },
     enabled: isCompany, // Só busca se for empresa

@@ -23,6 +23,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import { useDateRange } from '@/hooks/useDateRange';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { SellerCharts } from '@/components/sellers/seller-charts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -91,7 +92,15 @@ export default function SellerProfilePage() {
     );
   }, [user?.dataPeriod]);
 
-  const { startDate, endDate } = useMemo(() => getPeriodRange(dataPeriod), [dataPeriod]);
+  const periodRange = useMemo(() => getPeriodRange(dataPeriod), [dataPeriod]);
+  const { queryParams, queryKeyPart } = useDateRange();
+  // Filtro do header tem prioridade quando ativo; senão usa período local do vendedor
+  const { startDate, endDate } = useMemo(() => {
+    if (queryParams.startDate && queryParams.endDate) {
+      return { startDate: queryParams.startDate, endDate: queryParams.endDate };
+    }
+    return { startDate: periodRange.startDate, endDate: periodRange.endDate };
+  }, [queryParams.startDate, queryParams.endDate, periodRange]);
 
   // Buscar perfil do vendedor
   const { data: profileData, isLoading: isLoadingProfile, refetch: refetchProfile } = useQuery({
@@ -110,7 +119,7 @@ export default function SellerProfilePage() {
 
   // Buscar estatísticas do vendedor
   const { data: statsData, isLoading: isLoadingStats, refetch: refetchStats } = useQuery({
-    queryKey: ['seller-stats', startDate, endDate],
+    queryKey: ['seller-stats', queryKeyPart, startDate, endDate],
     queryFn: async () => {
       try {
         const response = await sellerApi.myStats({ startDate, endDate });
@@ -125,7 +134,7 @@ export default function SellerProfilePage() {
 
   // Buscar vendas recentes
   const { data: salesData, isLoading: isLoadingSales, refetch: refetchSales } = useQuery({
-    queryKey: ['seller-sales', startDate, endDate],
+    queryKey: ['seller-sales', queryKeyPart, startDate, endDate],
     queryFn: async () => {
       try {
         const response = await sellerApi.mySales({ page: 1, limit: 10, startDate, endDate });

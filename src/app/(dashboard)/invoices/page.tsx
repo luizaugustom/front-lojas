@@ -147,13 +147,18 @@ export default function InvoicesPage() {
   const contingenciaEnabled = contingenciaData?.contingenciaEnabled ?? false;
 
   const queryClient = useQueryClient();
-  const { queryKeyPart } = useDateRange();
+  const { queryParams, queryKeyPart } = useDateRange();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['fiscal-outbound', queryKeyPart, search, page, pageSize],
     queryFn: async () =>
       (
         await api.get('/fiscal', {
-          params: { page, limit: pageSize, documentType: 'outbound' },
+          params: {
+            page,
+            limit: pageSize,
+            documentType: 'outbound',
+            ...(queryParams.startDate && queryParams.endDate ? { startDate: queryParams.startDate, endDate: queryParams.endDate } : {}),
+          },
         })
       ).data,
   });

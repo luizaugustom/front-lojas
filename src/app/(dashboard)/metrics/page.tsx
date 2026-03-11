@@ -115,8 +115,11 @@ export default function MetricsPage() {
   const gestorCompanies = Array.isArray(companiesData) ? companiesData : [];
 
   const { data: metrics, isLoading: metricsLoading, error: metricsError } = useQuery({
-    queryKey: ['dashboard', 'metrics', 'gestor', companyId, queryKeyPart],
-    queryFn: () => dashboardApi.metrics(companyId || undefined).then((r) => r.data),
+    queryKey: ['dashboard', 'metrics', 'gestor', companyId, dateRange.startDate, dateRange.endDate],
+    queryFn: () =>
+      dashboardApi
+        .metrics(companyId || undefined, dateRange.startDate, dateRange.endDate)
+        .then((r) => r.data),
     enabled: isAuthenticated && user?.role === 'gestor',
   });
 
@@ -263,10 +266,10 @@ export default function MetricsPage() {
               icon={ShoppingCart}
             />
             <MetricCard
-              title="Vendas este mês"
+              title={isHeaderFilterActive ? 'Vendas no período' : 'Vendas este mês'}
               value={formatCurrency(m.sales?.thisMonth?.value ?? 0)}
               change={m.sales?.growth?.valuePercentage}
-              trend={m.sales?.growth?.valuePercentage >= 0 ? 'up' : 'down'}
+              trend={m.sales?.growth?.valuePercentage != null ? (m.sales.growth.valuePercentage >= 0 ? 'up' : 'down') : 'neutral'}
               icon={TrendingUp}
             />
             <MetricCard

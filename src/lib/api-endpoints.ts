@@ -681,12 +681,14 @@ export const fiscalApi = {
   /**
    * GET /fiscal
    * Roles: ADMIN, COMPANY
-   * Query: page, limit, documentType
+   * Query: page, limit, documentType, startDate, endDate
    */
   list: (params?: {
     page?: number;
     limit?: number;
     documentType?: string;
+    startDate?: string;
+    endDate?: string;
   }) => api.get('/fiscal', { params }),
 
   /**
@@ -1254,10 +1256,16 @@ export const dashboardApi = {
   /**
    * GET /dashboard/metrics
    * Roles: ADMIN, COMPANY, MANAGER
-   * Query (gestor): companyId opcional; omitir = agregado de todas as lojas
+   * Query: companyId (opcional), startDate/endDate (opcional, filtra métricas pelo período)
    */
-  metrics: (companyId?: string) =>
-    api.get('/dashboard/metrics', { params: companyId ? { companyId } : {} }),
+  metrics: (companyId?: string, startDate?: string, endDate?: string) =>
+    api.get('/dashboard/metrics', {
+      params: {
+        ...(companyId ? { companyId } : {}),
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {}),
+      },
+    }),
   /**
    * GET /dashboard/metrics/trends
    * Query: companyId (opcional), period: '7d' | '30d' | '90d', startDate/endDate (opcional, do filtro do header)

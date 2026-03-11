@@ -244,15 +244,22 @@ export default function CashClosurePage() {
     },
   });
 
-  // Buscar estatísticas do caixa
+  const { queryParams, queryKeyPart } = useDateRange();
+  const hasDateFilter = !!(queryParams.startDate && queryParams.endDate);
+
+  // Buscar estatísticas do caixa (caixa atual ou do período quando filtro do header ativo)
   const { data: stats, refetch: refetchStats } = useQuery<CashStats>({
-    queryKey: ['cash-stats', user?.id],
-    queryFn: async () => (await api.get('/cash-closure/stats')).data,
-    enabled: !!currentClosure,
+    queryKey: ['cash-stats', user?.id, queryKeyPart],
+    queryFn: async () => {
+      const params: Record<string, string> = {};
+      if (queryParams.startDate) params.startDate = queryParams.startDate;
+      if (queryParams.endDate) params.endDate = queryParams.endDate;
+      return (await api.get('/cash-closure/stats', { params })).data;
+    },
+    enabled: !!currentClosure || hasDateFilter,
     refetchInterval: 30000, // Atualiza a cada 30 segundos
   });
 
-  const { queryParams, queryKeyPart } = useDateRange();
   // Buscar histórico
   const { data: historyData, refetch: refetchHistory } = useQuery<CashClosureHistoryResponse>({
     queryKey: ['cash-history', queryKeyPart],

@@ -6,6 +6,7 @@ import { Plus, AlertTriangle, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
+import { useDateRange } from '@/hooks/useDateRange';
 import { ProductLossDialog } from '@/components/product-losses/product-loss-dialog';
 import { ProductLossesTable } from '@/components/product-losses/product-losses-table';
 import { formatCurrency } from '@/lib/utils';
@@ -34,6 +35,7 @@ interface ProductLoss {
 
 export default function ProductLossesPage() {
   const { api, user } = useAuth();
+  const { queryParams: headerQueryParams, queryKeyPart } = useDateRange();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [startDate, setStartDate] = useState<string>('');
@@ -41,16 +43,23 @@ export default function ProductLossesPage() {
 
   const canManage = user ? user.role !== 'vendedor' : false;
 
-  // Construir query string
+  // Filtro do header tem prioridade quando ativo; senão usa estado local
+  const effectiveStartDate = headerQueryParams.startDate && headerQueryParams.endDate
+    ? headerQueryParams.startDate.split('T')[0]
+    : startDate || undefined;
+  const effectiveEndDate = headerQueryParams.startDate && headerQueryParams.endDate
+    ? headerQueryParams.endDate.split('T')[0]
+    : endDate || undefined;
+
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
+    if (effectiveStartDate) params.append('startDate', effectiveStartDate);
+    if (effectiveEndDate) params.append('endDate', effectiveEndDate);
     return params.toString();
-  }, [startDate, endDate]);
+  }, [effectiveStartDate, effectiveEndDate]);
 
   const { data: lossesResponse, isLoading, refetch } = useQuery({
-    queryKey: ['product-losses', queryParams],
+    queryKey: ['product-losses', queryKeyPart, queryParams],
     queryFn: async () => {
       const url = queryParams ? `/product-losses?${queryParams}` : '/product-losses';
       return (await api.get(url)).data;
@@ -58,7 +67,7 @@ export default function ProductLossesPage() {
   });
 
   const { data: summaryResponse } = useQuery({
-    queryKey: ['product-losses-summary', queryParams],
+    queryKey: ['product-losses-summary', queryKeyPart, queryParams],
     queryFn: async () => {
       const url = queryParams ? `/product-losses/summary?${queryParams}` : '/product-losses/summary';
       return (await api.get(url)).data;

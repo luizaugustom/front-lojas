@@ -110,13 +110,18 @@ export default function InboundInvoicesPage() {
     }
   }, [user]);
 
-  const { queryKeyPart } = useDateRange();
+  const { queryParams, queryKeyPart } = useDateRange();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['inbound-fiscal', queryKeyPart, search],
     queryFn: async () =>
       (
         await api.get('/fiscal', {
-          params: { page: 1, limit: 100, documentType: 'inbound' },
+          params: {
+            page: 1,
+            limit: 100,
+            documentType: 'inbound',
+            ...(queryParams.startDate && queryParams.endDate ? { startDate: queryParams.startDate, endDate: queryParams.endDate } : {}),
+          },
         })
       ).data,
   });
