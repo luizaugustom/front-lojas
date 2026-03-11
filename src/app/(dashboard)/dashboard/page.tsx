@@ -427,6 +427,9 @@ export default function DashboardPage() {
     const periodLabel = hasDateFilter && dateRange.startDate && dateRange.endDate
       ? `${dateRange.startDate.getDate().toString().padStart(2, '0')}/${(dateRange.startDate.getMonth() + 1).toString().padStart(2, '0')} - ${dateRange.endDate.getDate().toString().padStart(2, '0')}/${(dateRange.endDate.getMonth() + 1).toString().padStart(2, '0')}`
       : null;
+    const companyName = gestorCompanyId
+      ? (gestorCompanies.find((c: any) => c.id === gestorCompanyId) as any)?.name || gestorCompanyId
+      : (m.company?.name || 'Todas as lojas');
     return (
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
