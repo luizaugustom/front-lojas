@@ -2,10 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, HelpCircle, Download } from 'lucide-react';
+import { Plus, Search, HelpCircle, Download, ChevronDown, FileSpreadsheet, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { InputWithIcon } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,7 +29,7 @@ import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { PageHelpModal } from '@/components/help';
 import { productsHelpTitle, productsHelpDescription, productsHelpIcon, getProductsHelpTabs } from '@/components/help/contents/products-help';
-import { managerApi } from '@/lib/api-endpoints';
+import { managerApi, companyApi } from '@/lib/api-endpoints';
 
 export default function ProductsPage() {
   const { api, user } = useAuth();
@@ -169,18 +177,35 @@ export default function ProductsPage() {
     refetch();
   };
 
-  const handleExportProducts = async () => {
+  const fetchAllProductsForExport = async (): Promise<Product[]> => {
+    const params: { page: number; limit: number; search: string; companyId?: string } = {
+      page: 1,
+      limit: 100000,
+      search: '',
+    };
+    if (isGestor && selectedCompanyId) params.companyId = selectedCompanyId;
+    const res = await api.get('/product', { params });
+    return res.data?.products ?? [];
+  };
+
+  const getCompanyNameForExport = async (): Promise<string> => {
+    if (isGestor && selectedCompanyId) {
+      const company = gestorCompanies.find((c: { id: string; name?: string; fantasyName?: string }) => c.id === selectedCompanyId);
+      return company?.fantasyName || company?.name || 'Loja';
+    }
+    if (user?.role === 'empresa') {
+      const response = await companyApi.myCompany();
+      const data = response.data as { fantasyName?: string; name?: string };
+      return data?.fantasyName || data?.name || 'Empresa';
+    }
+    return 'Empresa';
+  };
+
+  const handleExportExcel = async () => {
     if (!canExportProducts) return;
     setExporting(true);
     try {
-      const params: { page: number; limit: number; search: string; companyId?: string } = {
-        page: 1,
-        limit: 100000,
-        search: '',
-      };
-      if (isGestor && selectedCompanyId) params.companyId = selectedCompanyId;
-      const res = await api.get('/product', { params });
-      const list: Product[] = res.data?.products ?? [];
+      const list = await fetchAllProductsForExport();
       if (list.length === 0) {
         toast.error('Nenhum produto para exportar.');
         return;
@@ -262,10 +287,90 @@ export default function ProductsPage() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      toast.success('Produtos exportados com sucesso!');
+      toast.success('Produtos exportados em Excel com sucesso!');
     } catch (error) {
       handleApiError(error);
       toast.error('Erro ao exportar produtos.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!canExportProducts) return;
+    setExporting(true);
+    try {
+      const list = await fetchAllProductsForExport();
+      if (list.length === 0) {
+        toast.error('Nenhum produto para exportar.');
+        return;
+      }
+      const companyName = await getCompanyNameForExport();
+      const emittedAt = new Date();
+      const dateStr = emittedAt.toLocaleDateString('pt-BR');
+      const timeStr = emittedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 12;
+      const headerY = 10;
+      const footerY = pageHeight - 10;
+
+      const pdfHeaders = [
+        'Nome',
+        'Cód. Barras',
+        'Preço',
+        'Custo',
+        'Estoque',
+        'Est. Mín.',
+        'Categoria',
+        'Un.',
+        'Validade',
+        'Promoção',
+        'Preço Promo.',
+      ];
+      const pdfRows = list.map((p) => [
+        (p.name ?? '').slice(0, 35),
+        (p.barcode ?? '').slice(0, 14),
+        typeof p.price === 'number' ? formatCurrency(p.price) : '',
+        p.costPrice != null ? formatCurrency(p.costPrice) : '',
+        String(p.stockQuantity ?? ''),
+        String(p.minStockQuantity ?? ''),
+        (p.category ?? '').slice(0, 12),
+        (p.unitOfMeasure ?? '').slice(0, 4),
+        p.expirationDate && p.expirationDate !== 'null' ? formatDate(p.expirationDate) : '',
+        p.isOnPromotion ? 'Sim' : 'Não',
+        p.promotionPrice != null ? formatCurrency(p.promotionPrice) : '',
+      ]);
+
+      autoTable(doc, {
+        head: [pdfHeaders],
+        body: pdfRows,
+        startY: headerY + 14,
+        margin: { left: margin, right: margin },
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [66, 66, 66], fontSize: 8 },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        showHead: 'everyPage',
+        didDrawPage: (data) => {
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'bold');
+          doc.text(companyName, margin, headerY);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.text(`Emitido em: ${dateStr} às ${timeStr}`, margin, headerY + 6);
+          doc.setFontSize(7);
+          doc.text('MontShop', pageWidth - margin - doc.getTextWidth('MontShop'), footerY);
+        },
+      });
+
+      const fileName = `produtos-${emittedAt.toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      toast.success('Produtos exportados em PDF com sucesso!');
+    } catch (error) {
+      handleApiError(error);
+      toast.error('Erro ao exportar produtos em PDF.');
     } finally {
       setExporting(false);
     }
@@ -310,15 +415,29 @@ export default function ProductsPage() {
             <HelpCircle className="h-5 w-5" />
           </Button>
           {canExportProducts && (
-            <Button
-              variant="outline"
-              onClick={handleExportProducts}
-              disabled={exporting}
-              aria-label="Exportar produtos"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              {exporting ? 'Exportando...' : 'Exportar produtos'}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  disabled={exporting}
+                  aria-label="Exportar produtos"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {exporting ? 'Exportando...' : 'Exportar produtos'}
+                  <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportExcel} disabled={exporting}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Exportar em Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPdf} disabled={exporting}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Exportar em PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           {canManageProducts && (
           <Button 
