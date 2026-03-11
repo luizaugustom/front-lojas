@@ -150,8 +150,7 @@ export function NotificationPanel() {
               title="Marcar todas como lidas"
               className="h-8 px-2 sm:px-3"
             >
-              <CheckCheck className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Marcar todas</span>
+              <CheckCheck className="h-4 w-4" />
             </Button>
           )}
           {readCount > 0 && (
@@ -162,8 +161,7 @@ export function NotificationPanel() {
               title="Remover notificações lidas"
               className="h-8 px-2 sm:px-3"
             >
-              <Trash2 className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Remover lidas</span>
+              <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>
