@@ -188,17 +188,33 @@ export default function ProductsPage() {
     return res.data?.products ?? [];
   };
 
-  const getCompanyNameForExport = async (): Promise<string> => {
+  const getCompanyForExport = async (): Promise<{ name: string; brandColor?: string }> => {
     if (isGestor && selectedCompanyId) {
-      const company = gestorCompanies.find((c: { id: string; name?: string; fantasyName?: string }) => c.id === selectedCompanyId);
-      return company?.fantasyName || company?.name || 'Loja';
+      const company = gestorCompanies.find((c: { id: string; name?: string; fantasyName?: string; brandColor?: string }) => c.id === selectedCompanyId);
+      return {
+        name: company?.fantasyName || company?.name || 'Loja',
+        brandColor: company?.brandColor,
+      };
     }
     if (user?.role === 'empresa') {
       const response = await companyApi.myCompany();
-      const data = response.data as { fantasyName?: string; name?: string };
-      return data?.fantasyName || data?.name || 'Empresa';
+      const data = response.data as { fantasyName?: string; name?: string; brandColor?: string };
+      return {
+        name: data?.fantasyName || data?.name || 'Empresa',
+        brandColor: data?.brandColor,
+      };
     }
-    return 'Empresa';
+    return { name: 'Empresa' };
+  };
+
+  const hexToRgb = (hex: string): [number, number, number] | null => {
+    const h = hex.replace(/^#/, '');
+    if (h.length !== 6 && h.length !== 3) return null;
+    const r = h.length === 6 ? parseInt(h.slice(0, 2), 16) : parseInt(h[0] + h[0], 16);
+    const g = h.length === 6 ? parseInt(h.slice(2, 4), 16) : parseInt(h[1] + h[1], 16);
+    const b = h.length === 6 ? parseInt(h.slice(4, 6), 16) : parseInt(h[2] + h[2], 16);
+    if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
+    return [r, g, b];
   };
 
   const handleExportExcel = async () => {
@@ -305,7 +321,11 @@ export default function ProductsPage() {
         toast.error('Nenhum produto para exportar.');
         return;
       }
-      const companyName = await getCompanyNameForExport();
+      const company = await getCompanyForExport();
+      const companyName = company.name;
+      const brandRgb = company.brandColor ? hexToRgb(company.brandColor) : null;
+      const headerColor: [number, number, number] = brandRgb ?? [66, 66, 66];
+
       const emittedAt = new Date();
       const dateStr = emittedAt.toLocaleDateString('pt-BR');
       const timeStr = emittedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -315,6 +335,8 @@ export default function ProductsPage() {
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 12;
       const headerY = 10;
+      const titleY = 22;
+      const tableStartY = 30;
       const footerY = pageHeight - 10;
 
       const pdfHeaders = [
@@ -330,27 +352,33 @@ export default function ProductsPage() {
         'Promoção',
         'Preço Promo.',
       ];
-      const pdfRows = list.map((p) => [
-        (p.name ?? '').slice(0, 35),
-        (p.barcode ?? '').slice(0, 14),
-        typeof p.price === 'number' ? formatCurrency(p.price) : '',
-        p.costPrice != null ? formatCurrency(p.costPrice) : '',
-        String(p.stockQuantity ?? ''),
-        String(p.minStockQuantity ?? ''),
-        (p.category ?? '').slice(0, 12),
-        (p.unitOfMeasure ?? '').slice(0, 4),
-        p.expirationDate && p.expirationDate !== 'null' ? formatDate(p.expirationDate) : '',
-        p.isOnPromotion ? 'Sim' : 'Não',
-        p.promotionPrice != null ? formatCurrency(p.promotionPrice) : '',
-      ]);
+      const pdfRows = list.map((p) => {
+        const priceNum = Number(p.price);
+        const costNum = p.costPrice != null ? Number(p.costPrice) : NaN;
+        const stockNum = Number(p.stockQuantity);
+        const minStockNum = Number(p.minStockQuantity);
+        return [
+          (p.name ?? '').slice(0, 35),
+          (p.barcode ?? '').slice(0, 14),
+          !isNaN(priceNum) ? formatCurrency(priceNum) : '',
+          !isNaN(costNum) ? formatCurrency(costNum) : '',
+          !isNaN(stockNum) ? String(stockNum) : '0',
+          !isNaN(minStockNum) ? String(minStockNum) : '0',
+          (p.category ?? '').slice(0, 12),
+          (p.unitOfMeasure ?? '').slice(0, 4),
+          p.expirationDate && p.expirationDate !== 'null' ? formatDate(p.expirationDate) : '',
+          p.isOnPromotion ? 'Sim' : 'Não',
+          p.promotionPrice != null && !isNaN(Number(p.promotionPrice)) ? formatCurrency(Number(p.promotionPrice)) : '',
+        ];
+      });
 
       autoTable(doc, {
         head: [pdfHeaders],
         body: pdfRows,
-        startY: headerY + 14,
+        startY: tableStartY,
         margin: { left: margin, right: margin },
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [66, 66, 66], fontSize: 8 },
+        headStyles: { fillColor: headerColor, fontSize: 8, textColor: [255, 255, 255] },
         alternateRowStyles: { fillColor: [245, 245, 245] },
         showHead: 'everyPage',
         didDrawPage: (data) => {
@@ -360,6 +388,21 @@ export default function ProductsPage() {
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(8);
           doc.text(`Emitido em: ${dateStr} às ${timeStr}`, margin, headerY + 6);
+          if (data.pageNumber === 1) {
+            const title = `Relatórios de Produtos da ${companyName}`;
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            if (brandRgb) doc.setTextColor(brandRgb[0], brandRgb[1], brandRgb[2]);
+            doc.text(title, margin, titleY);
+            doc.setTextColor(0, 0, 0);
+            if (brandRgb) {
+              doc.setDrawColor(brandRgb[0], brandRgb[1], brandRgb[2]);
+              doc.setLineWidth(0.5);
+              doc.line(margin, titleY + 2, pageWidth - margin, titleY + 2);
+            }
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+          }
           doc.setFontSize(7);
           doc.text('MontShop', pageWidth - margin - doc.getTextWidth('MontShop'), footerY);
         },
