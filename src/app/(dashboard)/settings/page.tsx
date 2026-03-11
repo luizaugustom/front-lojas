@@ -2706,46 +2706,44 @@ export default function SettingsPage() {
                         onCheckedChange={(checked) => setBoletoConfig((c) => ({ ...c, useBankBoletoForInstallments: checked }))}
                       />
                     </div>
-                    {boletoConfig.useBankBoletoForInstallments && (
-                      <>
-                        <div className="space-y-2">
-                          <Label>Provedor de boleto bancário</Label>
-                          <Select
-                            value={boletoConfig.bankBoletoProvider || 'none'}
-                            onValueChange={(v) => setBoletoConfig((c) => ({ ...c, bankBoletoProvider: v === 'none' ? '' : v }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o banco ou agregador" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Selecione...</SelectItem>
-                              <SelectItem value="BB">Banco do Brasil</SelectItem>
-                              <SelectItem value="BRADESCO">Bradesco</SelectItem>
-                              <SelectItem value="ITAU">Itaú</SelectItem>
-                              <SelectItem value="CAIXA">Caixa</SelectItem>
-                              <SelectItem value="INTER">Inter</SelectItem>
-                              <SelectItem value="SANTANDER">Santander</SelectItem>
-                              <SelectItem value="SICOOB">Sicoob</SelectItem>
-                              <SelectItem value="SICREDI">Sicredi</SelectItem>
-                              <SelectItem value="C6">C6 Bank</SelectItem>
-                              <SelectItem value="BOLETO_CLOUD">Boleto Cloud</SelectItem>
-                              <SelectItem value="ASAAS">Asaas</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
-                          <Label className="text-sm font-medium">Configuração da API do banco (opcional)</Label>
-                          {boletoConfig.bankBoletoProvider === 'BOLETO_CLOUD' && (
-                            <p className="text-xs text-muted-foreground">A API Key é configurada pelo administrador. Preencha apenas o token da sua conta bancária abaixo.</p>
-                          )}
-                          {boletoConfig.bankBoletoProvider !== 'BOLETO_CLOUD' && (
-                            <p className="text-xs text-muted-foreground">Preencha conforme a documentação do seu banco. Os dados são armazenados de forma segura e não são exibidos ao carregar a página.</p>
-                          )}
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            {boletoConfig.bankBoletoProvider !== 'BOLETO_CLOUD' && (
-                              <>
-                                <div className="space-y-1">
-                                  <Label htmlFor="boleto-clientId" className="text-xs">Client ID / API Key</Label>
+                    <div className="space-y-2">
+                      <Label>Provedor de boleto bancário</Label>
+                      <Select
+                        value={boletoConfig.bankBoletoProvider || 'none'}
+                        onValueChange={(v) => setBoletoConfig((c) => ({ ...c, bankBoletoProvider: v === 'none' ? '' : v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o banco ou agregador" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Selecione...</SelectItem>
+                          <SelectItem value="BB">Banco do Brasil</SelectItem>
+                          <SelectItem value="BRADESCO">Bradesco</SelectItem>
+                          <SelectItem value="ITAU">Itaú</SelectItem>
+                          <SelectItem value="CAIXA">Caixa</SelectItem>
+                          <SelectItem value="INTER">Inter</SelectItem>
+                          <SelectItem value="SANTANDER">Santander</SelectItem>
+                          <SelectItem value="SICOOB">Sicoob</SelectItem>
+                          <SelectItem value="SICREDI">Sicredi</SelectItem>
+                          <SelectItem value="C6">C6 Bank</SelectItem>
+                          <SelectItem value="BOLETO_CLOUD">Boleto Cloud</SelectItem>
+                          <SelectItem value="ASAAS">Asaas</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+                      <Label className="text-sm font-medium">Configuração da API do banco (opcional)</Label>
+                      {boletoConfig.bankBoletoProvider === 'BOLETO_CLOUD' && (
+                        <p className="text-xs text-muted-foreground">A API Key é configurada pelo administrador. Preencha apenas o token da sua conta bancária abaixo.</p>
+                      )}
+                      {boletoConfig.bankBoletoProvider !== 'BOLETO_CLOUD' && (
+                        <p className="text-xs text-muted-foreground">Preencha conforme a documentação do seu banco. Os dados são armazenados de forma segura e não são exibidos ao carregar a página.</p>
+                      )}
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {boletoConfig.bankBoletoProvider !== 'BOLETO_CLOUD' && (
+                          <>
+                            <div className="space-y-1">
+                              <Label htmlFor="boleto-clientId" className="text-xs">Client ID / API Key</Label>
                                   <Input
                                     id="boleto-clientId"
                                     type="password"
@@ -2753,9 +2751,9 @@ export default function SettingsPage() {
                                     value={boletoConfig.bankBoletoConfigForm.clientId ?? ''}
                                     onChange={(e) => setBoletoConfig((c) => ({ ...c, bankBoletoConfigForm: { ...c.bankBoletoConfigForm, clientId: e.target.value } }))}
                                   />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label htmlFor="boleto-clientSecret" className="text-xs">Client Secret / Secret Key</Label>
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor="boleto-clientSecret" className="text-xs">Client Secret / Secret Key</Label>
                                   <Input
                                     id="boleto-clientSecret"
                                     type="password"
@@ -2763,31 +2761,31 @@ export default function SettingsPage() {
                                     value={boletoConfig.bankBoletoConfigForm.clientSecret ?? ''}
                                     onChange={(e) => setBoletoConfig((c) => ({ ...c, bankBoletoConfigForm: { ...c.bankBoletoConfigForm, clientSecret: e.target.value } }))}
                                   />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label htmlFor="boleto-convenio" className="text-xs">Convênio</Label>
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor="boleto-convenio" className="text-xs">Convênio</Label>
                                   <Input
                                     id="boleto-convenio"
                                     value={boletoConfig.bankBoletoConfigForm.convenio ?? ''}
                                     onChange={(e) => setBoletoConfig((c) => ({ ...c, bankBoletoConfigForm: { ...c.bankBoletoConfigForm, convenio: e.target.value } }))}
                                     placeholder="Ex: 123456"
                                   />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label htmlFor="boleto-carteira" className="text-xs">Carteira</Label>
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor="boleto-carteira" className="text-xs">Carteira</Label>
                                   <Input
                                     id="boleto-carteira"
                                     value={boletoConfig.bankBoletoConfigForm.carteira ?? ''}
                                     onChange={(e) => setBoletoConfig((c) => ({ ...c, bankBoletoConfigForm: { ...c.bankBoletoConfigForm, carteira: e.target.value } }))}
                                     placeholder="Ex: 09"
                                   />
-                                </div>
-                              </>
-                            )}
-                            {boletoConfig.bankBoletoProvider === 'BOLETO_CLOUD' && (
-                              <>
-                                <div className="space-y-1 sm:col-span-2">
-                                  <Label htmlFor="boleto-contaToken" className="text-xs">Token da conta (Boleto Cloud) *</Label>
+                            </div>
+                          </>
+                        )}
+                        {boletoConfig.bankBoletoProvider === 'BOLETO_CLOUD' && (
+                          <>
+                            <div className="space-y-1 sm:col-span-2">
+                              <Label htmlFor="boleto-contaToken" className="text-xs">Token da conta (Boleto Cloud) *</Label>
                                   <Input
                                     id="boleto-contaToken"
                                     type="password"
@@ -2796,23 +2794,21 @@ export default function SettingsPage() {
                                     onChange={(e) => setBoletoConfig((c) => ({ ...c, bankBoletoConfigForm: { ...c.bankBoletoConfigForm, contaToken: e.target.value } }))}
                                   />
                                   <p className="text-xs text-muted-foreground">Obrigatório para Boleto Cloud. Obtenha em: Conta → Consultar → Editar → Gerar Token.</p>
-                                </div>
-                                <div className="space-y-1 flex items-center gap-2">
-                                  <input
+                            </div>
+                            <div className="space-y-1 flex items-center gap-2">
+                              <input
                                     type="checkbox"
                                     id="boleto-sandbox"
                                     checked={boletoConfig.bankBoletoConfigForm.sandbox === 'true'}
                                     onChange={(e) => setBoletoConfig((c) => ({ ...c, bankBoletoConfigForm: { ...c.bankBoletoConfigForm, sandbox: e.target.checked ? 'true' : 'false' } }))}
                                     className="rounded border-input"
                                   />
-                                  <Label htmlFor="boleto-sandbox" className="text-xs cursor-pointer">Usar ambiente de testes (Sandbox)</Label>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    )}
+                              <Label htmlFor="boleto-sandbox" className="text-xs cursor-pointer">Usar ambiente de testes (Sandbox)</Label>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </>
                 )}
               </div>
