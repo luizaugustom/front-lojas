@@ -32,6 +32,7 @@ import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
 import { getAcquirerList } from '@/lib/acquirer-cnpj-list';
 import { PageHelpModal } from '@/components/help';
 import { settingsHelpTitle, settingsHelpDescription, settingsHelpIcon, getSettingsHelpTabs } from '@/components/help/contents/settings-help';
+import { requestNotificationPermission } from '@/lib/electron-adapter';
 
 const PUBLIC_SITE_URL = (process.env.NEXT_PUBLIC_PUBLIC_SITE_URL || 'https://montshop.app').replace(/\/+$/, '');
 
@@ -453,6 +454,7 @@ export default function SettingsPage() {
           systemUpdates: false,
           emailEnabled: false,
           inAppEnabled: false,
+          desktopNotificationsEnabled: false,
         });
         return;
       }
@@ -466,7 +468,9 @@ export default function SettingsPage() {
   const handleToggleNotification = async (field: string, value: boolean) => {
     try {
       setUpdatingPreferences(true);
-      
+      if (field === 'desktopNotificationsEnabled' && value) {
+        await requestNotificationPermission();
+      }
       const updates = { [field]: value };
       console.log('Atualizando preferência:', { field, value, updates });
       
@@ -2890,7 +2894,7 @@ export default function SettingsPage() {
                   </div>
 
                   {/* In-App */}
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-4">
                     <div>
                       <p className="font-medium">Notificações In-App</p>
                       <p className="text-sm text-muted-foreground">
@@ -2903,6 +2907,23 @@ export default function SettingsPage() {
                       disabled={updatingPreferences}
                     >
                       {notificationPreferences.inAppEnabled ? 'Ativado' : 'Desativado'}
+                    </Button>
+                  </div>
+
+                  {/* Notificações na área de trabalho */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Notificações na área de trabalho</p>
+                      <p className="text-sm text-muted-foreground">
+                        Exibir notificações do sistema na área de trabalho, mesmo com o navegador em segundo plano
+                      </p>
+                    </div>
+                    <Button
+                      variant={notificationPreferences.desktopNotificationsEnabled ?? false ? "default" : "outline"}
+                      onClick={() => handleToggleNotification('desktopNotificationsEnabled', !(notificationPreferences.desktopNotificationsEnabled ?? false))}
+                      disabled={updatingPreferences}
+                    >
+                      {notificationPreferences.desktopNotificationsEnabled ?? false ? 'Ativado' : 'Desativado'}
                     </Button>
                   </div>
             </div>

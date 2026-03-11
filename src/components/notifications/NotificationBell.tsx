@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,23 +16,7 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [lastNotifiedAt, setLastNotifiedAt] = useState<string | null>(null);
-
-  useEffect(() => {
-    const stored = typeof window !== 'undefined' ? localStorage.getItem('lastNotificationAt') : null;
-    const initial = stored || new Date().toISOString();
-    setLastNotifiedAt(initial);
-    requestNotificationPermission();
-
-    loadUnreadCount();
-    checkNewNotifications(initial);
-
-    // Atualizar contador e notificacoes a cada 30 segundos
-    const interval = setInterval(() => {
-      loadUnreadCount();
-      checkNewNotifications();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const desktopNotificationsEnabledRef = useRef(false);
 
   const loadUnreadCount = async () => {
     try {
@@ -55,9 +39,11 @@ export function NotificationBell() {
         .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
       if (newOnes.length > 0) {
-        newOnes.forEach((notification: any) => {
-          showNotification(notification.title, notification.message);
-        });
+        if (desktopNotificationsEnabledRef.current) {
+          newOnes.forEach((notification: any) => {
+            showNotification(notification.title, notification.message);
+          });
+        }
         const latest = newOnes[newOnes.length - 1].createdAt;
         setLastNotifiedAt(latest);
         if (typeof window !== 'undefined') {
@@ -68,6 +54,40 @@ export function NotificationBell() {
       console.error('Erro ao verificar novas notificações:', error);
     }
   };
+
+  useEffect(() => {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('lastNotificationAt') : null;
+    const initial = stored || new Date().toISOString();
+    setLastNotifiedAt(initial);
+
+    let mounted = true;
+    (async () => {
+      try {
+        const prefs = await api.getNotificationPreferences();
+        const enabled = prefs?.desktopNotificationsEnabled === true;
+        if (mounted) {
+          desktopNotificationsEnabledRef.current = enabled;
+          if (enabled) {
+            await requestNotificationPermission();
+          }
+        }
+      } catch {
+        if (mounted) desktopNotificationsEnabledRef.current = false;
+      }
+
+      loadUnreadCount();
+      checkNewNotifications(initial);
+    })();
+
+    const interval = setInterval(() => {
+      loadUnreadCount();
+      checkNewNotifications();
+    }, 30000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
@@ -103,10 +123,13 @@ export function NotificationBell() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-[500px] p-0"
+        side="bottom"
+        className="w-[min(500px,calc(100vw-1.5rem))] max-w-[calc(100vw-1.5rem)] p-0 max-h-[85vh] overflow-hidden flex flex-col"
         sideOffset={8}
+        alignOffset={0}
+        collisionPadding={12}
       >
-        <div className="p-4">
+        <div className="p-3 sm:p-4 overflow-auto flex-1 min-h-0">
           <NotificationPanel />
         </div>
       </PopoverContent>

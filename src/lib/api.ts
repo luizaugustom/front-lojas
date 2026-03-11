@@ -792,6 +792,7 @@ class ApiClient {
     systemUpdates?: boolean;
     emailEnabled?: boolean;
     inAppEnabled?: boolean;
+    desktopNotificationsEnabled?: boolean;
   }) {
     const response = await this.client.put('/notification/preferences', data);
     return response.data;
