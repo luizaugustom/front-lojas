@@ -8,63 +8,20 @@ import { getComputerId } from './device-detection';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const USE_HTTPS = process.env.NEXT_PUBLIC_USE_HTTPS === 'true';
 
-logger.log('[API Client] Configuração:', { 
-  API_BASE_URL, 
-  USE_HTTPS,
-  NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
-  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL
-});
 
-// Armazenamento do access token (memória + sessionStorage como backup)
+// Armazenamento do access token apenas em memória (sem localStorage/sessionStorage para reduzir risco de XSS)
 let accessToken: string | null = null;
 
 export function setAccessToken(token: string | null) {
-  logger.log('[setAccessToken]', {
-    hasToken: !!token,
-    tokenPreview: token ? `${token.substring(0, 20)}...` : null,
-  });
   accessToken = token;
-  
-  // Backup em sessionStorage para persistir entre navegações
-  if (typeof window !== 'undefined') {
-    if (token) {
-      sessionStorage.setItem('access_token', token);
-      logger.log('[setAccessToken] Token salvo no sessionStorage');
-    } else {
-      sessionStorage.removeItem('access_token');
-      logger.log('[setAccessToken] Token removido do sessionStorage');
-    }
-  }
 }
 
 export function getAccessToken(): string | null {
-  // Tenta memória primeiro, depois sessionStorage
-  if (accessToken) {
-    logger.log('[getAccessToken] Token encontrado na memória');
-    return accessToken;
-  }
-  
-  // Fallback para sessionStorage se token foi perdido da memória
-  if (typeof window !== 'undefined') {
-    const storedToken = sessionStorage.getItem('access_token');
-    logger.log('[getAccessToken] Verificando sessionStorage:', { hasStoredToken: !!storedToken });
-    if (storedToken) {
-      logger.log('[getAccessToken] Token recuperado do sessionStorage');
-      accessToken = storedToken; // Restaura na memória
-      return storedToken;
-    }
-  }
-  
-  logger.log('[getAccessToken] Nenhum token encontrado');
-  return null;
+  return accessToken;
 }
 
 export function clearAccessToken() {
-  logger.log('[clearAccessToken] Limpando token');
   accessToken = null;
-  if (typeof window !== 'undefined') {
-    sessionStorage.removeItem('access_token');
-  }
 }
 
 // Event listeners para o AuthContext reagir a refresh/logout automáticos
@@ -512,8 +469,8 @@ instance.interceptors.response.use(
         
         // Verificar se foi causado por logout automático (token inválido/revogado)
         const isAutoLogout = refreshErr?.response?.status === 401 && 
-          (refreshErr?.response?.data?.message?.toLowerCase().includes('invalid') ||
-           refreshErr?.response?.data?.message?.toLowerCase().includes('revoked') ||
+          (refreshErr?.response?.data?.message === 'Refresh token revoked' ||
+           refreshErr?.response?.data?.message?.toLowerCase().includes('invalid') ||
            refreshErr?.response?.data?.message?.toLowerCase().includes('expired'));
         
         if (isAutoLogout) {
@@ -604,14 +561,9 @@ export async function authLogin(
     
     return res.data;
   } catch (error: any) {
-    console.error('[authLogin] Erro:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      config: error.config,
-      url: error.config?.url,
-      baseURL: error.config?.baseURL
-    });
+    if (process.env.NODE_ENV !== 'production') {
+      logger.log('[authLogin] Erro:', error.message, error.response?.status);
+    }
     throw error;
   }
 }

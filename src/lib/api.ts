@@ -7,6 +7,7 @@ import type {
   StoreCreditBalance,
   StoreCreditTransactionsResponse,
 } from '@/types';
+import { getAccessToken, clearAccessToken } from './apiClient';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const USE_MOCK = false; // Sempre usar backend real
@@ -83,17 +84,11 @@ class ApiClient {
   }
 
   private getToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('token');
-    }
-    return null;
+    return getAccessToken();
   }
 
   private clearToken(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    }
+    clearAccessToken();
   }
 
   // Auth

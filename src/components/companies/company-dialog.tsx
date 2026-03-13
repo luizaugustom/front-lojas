@@ -65,6 +65,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
     nfeEmissionEnabled: true,
     catalogPageAllowed: true,
     autoMessageAllowed: true,
+    boletoAllowed: true,
   });
 
   const [loading, setLoading] = useState(false);
@@ -107,6 +108,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
         nfeEmissionEnabled: company.nfeEmissionEnabled ?? true,
         catalogPageAllowed: company.catalogPageAllowed ?? true,
         autoMessageAllowed: company.autoMessageAllowed ?? true,
+        boletoAllowed: company.boletoAllowed ?? true,
       });
     } else {
       setFormData({
@@ -145,6 +147,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
         nfeEmissionEnabled: true,
         catalogPageAllowed: true,
         autoMessageAllowed: true,
+        boletoAllowed: true,
       });
     }
   }, [company, open]);
@@ -208,6 +211,7 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
           nfeEmissionEnabled: formData.nfeEmissionEnabled,
           catalogPageAllowed: formData.catalogPageAllowed,
           autoMessageAllowed: formData.autoMessageAllowed,
+          boletoAllowed: formData.boletoAllowed,
         }),
       };
       await onSave(dataToSave);
@@ -870,6 +874,21 @@ export function CompanyDialog({ open, onOpenChange, company, onSave }: CompanyDi
                       id="autoMessageAllowed"
                       checked={formData.autoMessageAllowed ?? true}
                       onCheckedChange={(checked) => handleBooleanChange('autoMessageAllowed', checked)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-4 border rounded-md">
+                    <div>
+                      <Label htmlFor="boletoAllowed" className="text-foreground font-medium">
+                        Permitir Boletos
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Permite que a empresa ative o módulo de boletos e emita boletos.
+                      </p>
+                    </div>
+                    <Switch
+                      id="boletoAllowed"
+                      checked={formData.boletoAllowed ?? true}
+                      onCheckedChange={(checked) => handleBooleanChange('boletoAllowed', checked)}
                     />
                   </div>
                 </div>

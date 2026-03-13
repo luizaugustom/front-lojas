@@ -75,6 +75,7 @@ export interface Company {
   // Feature Permissions
   catalogPageAllowed?: boolean;
   autoMessageAllowed?: boolean;
+  boletoAllowed?: boolean;
   // Installment Configuration
   installmentInterestRates?: Record<string, number>;
   maxInstallments?: number;
@@ -118,6 +119,7 @@ export interface CreateCompanyDto {
   nfeEmissionEnabled?: boolean;
   catalogPageAllowed?: boolean;
   autoMessageAllowed?: boolean;
+  boletoAllowed?: boolean;
 }
 
 // Product Types

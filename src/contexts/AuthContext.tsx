@@ -14,8 +14,8 @@ import {
   onAuthLoggedOut,
   type DeviceInfo,
 } from '@/lib/apiClient';
-import { api } from '@/lib/api'; // ← API com todos os métodos incluindo notificações
-import { removeAuthToken, setUser as setUserStorage, getUser as getUserStorage, setAuthToken as setAuthTokenStorage, getAuthToken as getAuthTokenStorage } from '@/lib/auth';
+import { api } from '@/lib/api';
+import { removeAuthToken, setUser as setUserInAuth, getUser as getUserFromAuth } from '@/lib/auth';
 import { checkPrinterStatus } from '@/lib/printer-check';
 
 type AuthContextValue = {
@@ -36,26 +36,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!token && !!user;
   const queryClient = useQueryClient();
 
-  // Inicializa token e user do storage se existirem
+  // Inicializa estado a partir da memória (token/user não são mais persistidos em localStorage)
   useEffect(() => {
-    // Tenta primeiro do sessionStorage (memória), depois do localStorage
-    let existingToken = getMemToken();
-    if (!existingToken) {
-      existingToken = getAuthTokenStorage();
-      // Se encontrou no localStorage, também salva no sessionStorage para consistência
-      if (existingToken) {
-        setAccessToken(existingToken);
-      }
-    }
-    const existingUser = getUserStorage();
-    
+    const existingToken = getMemToken();
+    const existingUser = getUserFromAuth();
     if (existingToken && existingUser) {
-      console.log('[AuthContext] Inicializando com token e user existentes');
       setToken(existingToken);
       setUser(existingUser);
     } else if (existingToken) {
-      console.log('[AuthContext] Token encontrado mas user não encontrado, limpando token');
-      // Se há token mas não há user, limpa o token (estado inconsistente)
       setAccessToken(null);
       removeAuthToken();
     }
@@ -65,70 +53,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      // Primeiro verifica se já existe um token válido e user
       const existingToken = getMemToken();
-      const existingUser = getUserStorage();
+      const existingUser = getUserFromAuth();
       if (existingToken && existingUser) {
-        console.log('[AuthContext] Token e user existentes encontrados, pulando refresh');
-        // Garantir que o estado está sincronizado
         setToken(existingToken);
         setUser(existingUser);
         return;
       }
-      
-      // Desabilitado temporariamente para debug
-      console.log('[AuthContext] Refresh automático desabilitado para debug');
-      return;
-      
       try {
         const data = await authRefresh();
         if (!mounted) return;
         setAccessToken(data.access_token);
         setToken(data.access_token);
         setUser(data.user);
-        // Salvar token e user no localStorage para persistência
-        setAuthTokenStorage(data.access_token);
-        setUserStorage(data.user);
+        setUserInAuth(data.user);
       } catch {
-        // Fica deslogado em silêncio apenas se não havia token
-        console.log('[AuthContext] Refresh falhou, mas não havia token para limpar');
+        // Fica deslogado em silêncio se não havia sessão válida
       }
     })();
 
     // Listener para logout automático (login em outro dispositivo)
     const handleAutoLogout = (event: CustomEvent) => {
       if (event.detail?.reason === 'login-em-outro-dispositivo') {
-        console.log('[AuthContext] Logout automático detectado: login em outro dispositivo');
-        // Limpar estado local
         setAccessToken(null);
         setToken(null);
         setUser(null);
         removeAuthToken();
-        
-        // Mostrar notificação
         toast.error('Você foi desconectado porque fez login em outro dispositivo');
       }
     };
 
-    // Listeners de refresh/logout disparados pelos interceptors
     const offRef = onAuthRefreshed(({ user, accessToken }) => {
       setUser(user);
       setToken(accessToken);
-      // Salvar token e user no localStorage quando há refresh
-      if (accessToken) {
-        setAuthTokenStorage(accessToken);
-      }
-      setUserStorage(user);
+      setUserInAuth(user);
     });
     const offOut = onAuthLoggedOut(() => {
       setAccessToken(null);
       setToken(null);
       setUser(null);
-      // Limpa também o localStorage quando logout é disparado pelos interceptors
       removeAuthToken();
     });
 
-    // Adicionar listener para logout automático
     if (typeof window !== 'undefined') {
       window.addEventListener('auth:auto-logout', handleAutoLogout as EventListener);
     }
@@ -207,50 +173,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (login: string, password: string) => {
-    console.log('[AuthContext.login] Iniciando login...', { login, password: '***' });
     try {
       const deviceInfo = getDeviceInfo();
       const data = await authLogin(login, password, deviceInfo);
-      console.log('[AuthContext.login] Login bem-sucedido, setando token:', {
-        hasToken: !!data.access_token,
-        tokenPreview: data.access_token ? `${data.access_token.substring(0, 20)}...` : null,
-        user: data.user,
-        deviceInfo,
-      });
       setAccessToken(data.access_token);
       setToken(data.access_token);
       setUser(data.user);
-      // Salvar token e user no localStorage para persistência
-      setAuthTokenStorage(data.access_token);
-      setUserStorage(data.user);
-      console.log('[AuthContext.login] Token e user setados no contexto e localStorage');
-      
+      setUserInAuth(data.user);
       return data.user;
     } catch (error) {
-      console.error('[AuthContext.login] Erro no login:', error);
       throw error;
     }
   }, [getDeviceInfo]);
 
   const logout = useCallback(async () => {
-    console.log('[AuthContext.logout] Iniciando logout...');
     try {
       await authLogout();
-      console.log('[AuthContext.logout] Logout da API bem-sucedido');
-    } catch (error) {
-      console.error('[AuthContext.logout] Erro no logout da API:', error);
+    } catch {
       // Continua com a limpeza local mesmo se a API falhar
     } finally {
-      // Sempre limpa o estado local
-      console.log('[AuthContext.logout] Limpando estado local...');
       setAccessToken(null);
       setToken(null);
       setUser(null);
-      // Limpa também o localStorage (token e user)
       removeAuthToken();
-      // Limpa cache do React Query para evitar dados de outro usuário
       queryClient.clear();
-      console.log('[AuthContext.logout] Logout concluído');
     }
   }, [queryClient]);
 
@@ -258,11 +204,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateUser = useCallback((partial: Partial<User>) => {
     setUser((prev) => {
-      if (!prev) {
-        return prev;
-      }
+      if (!prev) return prev;
       const next = { ...prev, ...partial };
-      setUserStorage(next);
+      setUserInAuth(next);
       return next;
     });
   }, []);

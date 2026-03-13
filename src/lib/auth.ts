@@ -1,51 +1,40 @@
 import { User, UserRole } from '@/types';
+import { setAccessToken, getAccessToken, clearAccessToken } from './apiClient';
 
+// Token: delegado ao apiClient (apenas memória; sem localStorage para reduzir risco de XSS)
 export function setAuthToken(token: string): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('token', token);
-  }
+  setAccessToken(token);
 }
 
 export function getAuthToken(): string | null {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('token');
-  }
-  return null;
+  return getAccessToken();
 }
 
 export function removeAuthToken(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  }
+  clearAccessToken();
+  currentUser = null;
 }
 
-export function setUser(user: User): void {
-  if (typeof window !== 'undefined') {
-    // Normalize role variants coming from backend to expected frontend roles
-    const roleMap: Record<string, string> = {
-      company: 'empresa',
-      empresa: 'empresa',
-      seller: 'vendedor',
-      vendedor: 'vendedor',
-      admin: 'admin',
-      administrador: 'admin',
-      manager: 'gestor',
-      gestor: 'gestor',
-    };
+// User: apenas em memória (não persistir em localStorage)
+let currentUser: User | null = null;
 
-    const normalizedRole = (roleMap[(user.role || '').toString().toLowerCase()] || user.role) as UserRole;
-    const normalizedUser = { ...user, role: normalizedRole };
-    localStorage.setItem('user', JSON.stringify(normalizedUser));
-  }
+export function setUser(user: User): void {
+  const roleMap: Record<string, string> = {
+    company: 'empresa',
+    empresa: 'empresa',
+    seller: 'vendedor',
+    vendedor: 'vendedor',
+    admin: 'admin',
+    administrador: 'admin',
+    manager: 'gestor',
+    gestor: 'gestor',
+  };
+  const normalizedRole = (roleMap[(user.role || '').toString().toLowerCase()] || user.role) as UserRole;
+  currentUser = { ...user, role: normalizedRole };
 }
 
 export function getUser(): User | null {
-  if (typeof window !== 'undefined') {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
-  }
-  return null;
+  return currentUser;
 }
 
 export function isAuthenticated(): boolean {

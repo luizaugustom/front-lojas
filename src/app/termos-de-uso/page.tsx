@@ -13,8 +13,9 @@ import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
+import { renderSafeMarkdown } from '@/lib/safe-html';
 
-// Conteúdo dos termos (será importado ou definido inline)
+// Conteúdo dos termos (fonte controlada; se no futuro vier da API, usar renderSafeMarkdown)
 const TERMOS_CONTENT = `# TERMOS DE USO DO SISTEMA MONTSHOP
 
 **Última atualização: 16 de fevereiro de 2025**
@@ -403,7 +404,7 @@ export default function TermosDeUsoPage() {
             <ScrollArea className="h-[calc(100vh-300px)] pr-4">
               <div 
                 className="prose prose-sm dark:prose-invert max-w-none text-foreground"
-                dangerouslySetInnerHTML={{ __html: processMarkdown(TERMOS_CONTENT) }}
+                dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(TERMOS_CONTENT, processMarkdown) }}
               />
             </ScrollArea>
 
