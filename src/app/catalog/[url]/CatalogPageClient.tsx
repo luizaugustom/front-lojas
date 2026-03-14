@@ -6,6 +6,7 @@ import { Phone, Package, Search, ChevronDown, MessageCircle, X, Plus, Minus, Sho
 import Image from 'next/image';
 import { getImageUrl } from '@/lib/image-utils';
 import { getRandomVerse } from '@/lib/verses';
+import { handleApiError } from '@/lib/handleApiError';
 import { ImageViewer } from '@/components/ui/image-viewer';
 
 interface Product {
@@ -124,11 +125,7 @@ export default function CatalogPageClient() {
         setData(catalogData);
       } catch (err) {
         console.error('❌ Erro ao buscar catálogo:', err);
-        if (err instanceof TypeError && err.message.includes('fetch')) {
-          setError('Não foi possível conectar com o servidor. Verifique se a API está rodando.');
-        } else {
-          setError(err instanceof Error ? err.message : 'Erro ao carregar catálogo');
-        }
+        setError(handleApiError(err, { showToast: false }).message);
       } finally {
         setLoading(false);
       }

@@ -559,12 +559,11 @@ export default function InvoicesPage() {
       setEmitOpen(false);
       refetch();
     } catch (error: any) {
-      // Verificar se é erro de dados fiscais incompletos da empresa
-      const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao emitir NF-e';
-      if (errorMessage.includes('Dados fiscais incompletos da empresa')) {
+      const { message } = handleApiError(error, { showToast: false });
+      if (message.includes('Dados fiscais incompletos da empresa')) {
         toast.error('Configure os dados fiscais da empresa na seção de Configurações antes de emitir notas fiscais');
       } else {
-        handleApiError(error);
+        toast.error(message);
       }
     } finally {
       setSubmitting(false);

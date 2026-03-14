@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
+import { handleApiError } from '@/lib/handleApiError';
 import { toast } from 'react-hot-toast';
 
 export default function WhatsAppTestPage() {
@@ -118,12 +119,13 @@ export default function WhatsAppTestPage() {
       }
     } catch (error: any) {
       const duration = Date.now() - startTime;
+      const { message } = handleApiError(error, { showToast: false });
       setLastResult({
         success: false,
-        message: error.response?.data?.message || error.message || 'Erro desconhecido',
+        message,
         timestamp: new Date()
       });
-      toast.error('Erro ao enviar mensagem');
+      toast.error(message);
     } finally {
       setSending(false);
     }

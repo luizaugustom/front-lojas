@@ -729,20 +729,10 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
       }
     } catch (error: any) {
       console.error('[Checkout] Erro ao imprimir NFC-e:', error);
-      
-      // Extrai mensagem de erro detalhada do backend
-      let errorMessage = 'Erro ao imprimir NFC-e';
-      if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      
-      // Exibe mensagem de erro detalhada
-      toast.error(errorMessage, {
-        duration: 6000, // Mostra por mais tempo para o usuário ler
+      const { message } = handleApiError(error, { showToast: false });
+      toast.error(message, {
+        duration: 6000,
       });
-      
       handlePrintComplete();
     } finally {
       setPrinting(false);
@@ -846,8 +836,8 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
       }
     } catch (voucherError: any) {
       console.error('[Checkout] Erro ao imprimir comprovante de saldo restante:', voucherError);
-      const errorMessage = voucherError?.response?.data?.message || voucherError?.message || 'Erro ao imprimir comprovante. Você pode imprimi-lo depois.';
-      toast.error(errorMessage);
+      const { message } = handleApiError(voucherError, { showToast: false });
+      toast.error(message);
     } finally {
       setPrinting(false);
       setShowStoreCreditVoucherConfirmation(false);

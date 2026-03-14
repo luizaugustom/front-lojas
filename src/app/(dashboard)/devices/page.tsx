@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Printer, Search, RefreshCw, Download, Settings, Scale as ScaleIcon, Usb, Bluetooth, Wifi, CheckCircle2, AlertTriangle, TestTube, HelpCircle } from 'lucide-react';
 import { scaleApi } from '@/lib/api-endpoints';
-import { handleApiError } from '@/lib/error-handler';
+import { handleApiError } from '@/lib/handleApiError';
 import { toast } from 'sonner';
 import { PageHelpModal } from '@/components/help';
 import { devicesHelpTitle, devicesHelpDescription, devicesHelpIcon, getDevicesHelpTabs } from '@/components/help/contents/devices-help';

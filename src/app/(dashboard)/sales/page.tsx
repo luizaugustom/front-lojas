@@ -472,7 +472,7 @@ export default function SalesPage() {
                 addItem(product);
               } catch (error) {
                 console.error('[DEBUG] Erro ao adicionar produto ao carrinho:', error);
-                toast.error(error instanceof Error ? error.message : 'Erro ao adicionar produto ao carrinho');
+                handleApiError(error);
               }
             }}
           />

@@ -8,6 +8,7 @@ import { InputWithIcon } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { customerApi } from '@/lib/api-endpoints';
+import { handleApiError } from '@/lib/handleApiError';
 import { CustomersTable } from '@/components/customers/customers-table';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import type { Customer } from '@/types';
@@ -123,7 +124,7 @@ export default function CustomersPage() {
           <div className="text-destructive">
             <h3 className="font-semibold">Erro ao carregar clientes:</h3>
             <p className="text-sm mt-1">
-              {error instanceof Error ? error.message : 'Erro desconhecido'}
+              {handleApiError(error, { showToast: false }).message}
             </p>
             <p className="text-xs mt-2 opacity-75">
               CompanyId: {user?.companyId || 'Não definido'} | 

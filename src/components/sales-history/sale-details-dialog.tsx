@@ -119,14 +119,8 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
         toast.success('Cupom enviado para impressão!');
       }
     } catch (error: unknown) {
-      let errorMessage = 'Erro ao reimprimir cupom';
-      if (isAxiosError(error) && error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error instanceof Error && error.message) {
-        errorMessage = error.message;
-      }
-
-      toast.error(errorMessage, {
+      const { message } = handleApiError(error, { showToast: false });
+      toast.error(message, {
         duration: 6000,
       });
     } finally {

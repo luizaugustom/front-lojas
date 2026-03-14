@@ -17,6 +17,7 @@ import {
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { handleApiError } from '@/lib/handleApiError';
 import { billetApi, companyApi, customerApi } from '@/lib/api-endpoints';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +32,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { handleApiError } from '@/lib/handleApiError';
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pendente',
@@ -393,7 +393,7 @@ export default function BoletosPage() {
             </div>
           ) : isError ? (
             <div className="py-12 text-center text-destructive">
-              {error instanceof Error ? error.message : 'Erro ao carregar boletos.'}
+              {handleApiError(error, { showToast: false }).message}
             </div>
           ) : !boletos.length ? (
             <div className="py-12 text-center text-muted-foreground">

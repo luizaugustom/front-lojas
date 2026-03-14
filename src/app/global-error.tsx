@@ -42,7 +42,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               {process.env.NODE_ENV === 'development' && (
                 <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
                   <p className="text-sm font-mono text-gray-700 dark:text-gray-300 break-all">
-                    <strong>Erro:</strong> {error.message}
+                    <strong>Detalhe técnico (apenas desenvolvimento):</strong> {error.message}
                   </p>
                   {error.stack && (
                     <details className="mt-2">

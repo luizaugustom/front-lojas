@@ -12,6 +12,7 @@ import { CompanyStatusModal } from '@/components/companies/company-status-modal'
 import { FocusNfeConfigModal } from '@/components/companies/focus-nfe-config-modal';
 import { Company, CreateCompanyDto } from '@/types';
 import { companyApi } from '@/lib/api-endpoints';
+import { handleApiError } from '@/lib/handleApiError';
 import { toast } from 'react-hot-toast';
 import { convertPrismaIdToUUID, isValidId } from '@/lib/utils';
 
@@ -128,7 +129,7 @@ export default function CompaniesPage() {
         status: error.response?.status,
         id
       });
-      toast.error('Erro ao excluir empresa');
+      handleApiError(error);
     }
   };
 

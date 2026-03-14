@@ -509,8 +509,8 @@ export function ProcessExchangeDialog({
       }
     } catch (printError: any) {
       console.error('Erro ao imprimir comprovante:', printError);
-      const errorMessage = printError?.response?.data?.message || printError?.message || 'Erro ao imprimir comprovante. Você pode imprimi-lo depois.';
-      toast.error(errorMessage);
+      const { message } = handleApiError(printError, { showToast: false });
+      toast.error(message);
     } finally {
       setIsPrinting(false);
       setShowCreditPrintConfirmation(false);

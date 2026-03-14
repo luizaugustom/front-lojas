@@ -53,7 +53,7 @@ export default function Error({ error, reset }: ErrorProps) {
           {process.env.NODE_ENV === 'development' && (
             <div className="p-4 bg-muted rounded-lg">
               <p className="text-sm font-mono text-muted-foreground break-all">
-                <strong>Erro:</strong> {error.message}
+                <strong>Detalhe técnico (apenas desenvolvimento):</strong> {error.message}
               </p>
               {error.stack && (
                 <details className="mt-2">

@@ -1,5 +1,4 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { toast } from 'react-hot-toast';
 import type {
   Exchange,
   PaymentMethod,
@@ -832,11 +831,4 @@ class ApiClient {
 
 export const api = new ApiClient();
 
-export function handleApiError(error: any) {
-  if (axios.isAxiosError(error)) {
-    const message = error.response?.data?.message || error.message || 'Erro desconhecido';
-    toast.error(message);
-  } else {
-    toast.error('Erro desconhecido');
-  }
-}
+export { handleApiError } from './handleApiError';

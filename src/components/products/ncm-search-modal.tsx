@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { loadNCMData, searchNCM, type NCMItem, clearNCMCache, getCacheInfo } from '@/lib/ncm-data';
 import { ncmApi } from '@/lib/api-endpoints';
+import { handleApiError } from '@/lib/handleApiError';
 import { toast } from 'react-hot-toast';
 
 /** Fetcher que usa o backend (evita CORS) */
@@ -65,7 +66,7 @@ export function NCMSearchModal({ open, onClose, onSelect }: NCMSearchModalProps)
         }
       } catch (err: any) {
         console.error('Erro ao carregar dados NCM:', err);
-        setError(err.message || 'Erro ao carregar dados de NCM. Verifique sua conexão.');
+        setError(handleApiError(err, { showToast: false }).message);
         try {
           const cacheInfo = getCacheInfo();
           if (cacheInfo.exists && cacheInfo.itemCount > 0) {
@@ -178,8 +179,9 @@ export function NCMSearchModal({ open, onClose, onSelect }: NCMSearchModalProps)
       toast.success('Dados atualizados com sucesso!');
     } catch (err: any) {
       console.error('Erro ao atualizar dados:', err);
-      toast.error('Erro ao atualizar dados. Tente novamente.');
-      setError(err.message || 'Erro ao atualizar dados');
+      const { message } = handleApiError(err, { showToast: false });
+      toast.error(message);
+      setError(message);
     } finally {
       setIsRefreshing(false);
     }
