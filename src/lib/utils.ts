@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { logger } from '@/lib/logger';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -23,7 +24,7 @@ export function formatDate(date: string | Date): string {
   
   const dateObj = new Date(date);
   if (isNaN(dateObj.getTime())) {
-    console.warn('Invalid date provided to formatDate:', date);
+    logger.warn('Invalid date provided to formatDate:', date);
     return '';
   }
   
@@ -39,7 +40,7 @@ export function formatDateTime(date: string | Date): string {
   
   const dateObj = new Date(date);
   if (isNaN(dateObj.getTime())) {
-    console.warn('Invalid date provided to formatDateTime:', date);
+    logger.warn('Invalid date provided to formatDateTime:', date);
     return '';
   }
   
@@ -312,7 +313,7 @@ export function isValidId(id: string): boolean {
 
 // Função para garantir que um ID seja coerente com o backend
 export function ensureCoherentId(id: string, context?: string): string {
-  console.log(`[ensureCoherentId] Input ID: ${id}, Context: ${context || 'unknown'}`);
+  logger.log(`[ensureCoherentId] Input ID: ${id}, Context: ${context || 'unknown'}`);
   
   // Validar se o ID não está vazio ou é inválido
   if (!id || typeof id !== 'string' || id.trim() === '') {
@@ -328,20 +329,20 @@ export function ensureCoherentId(id: string, context?: string): string {
   
   // Se já é UUID válido, retornar como está
   if (isUUID(id)) {
-    console.log(`[ensureCoherentId] ID já é UUID válido: ${id}`);
+    logger.log(`[ensureCoherentId] ID já é UUID válido: ${id}`);
     return id.toLowerCase();
   }
   
   // Se é CUID, converter para UUID determinístico
   if (isPrismaId(id)) {
     const converted = convertCuidToUuid(id);
-    console.log(`[ensureCoherentId] CUID convertido para UUID: ${id} -> ${converted}`);
+    logger.log(`[ensureCoherentId] CUID convertido para UUID: ${id} -> ${converted}`);
     return converted;
   }
   
   // Se não é nem UUID nem CUID, gerar UUID determinístico baseado no input
   const generated = generateDeterministicUUID(id);
-  console.log(`[ensureCoherentId] ID convertido para UUID determinístico: ${id} -> ${generated}`);
+  logger.log(`[ensureCoherentId] ID convertido para UUID determinístico: ${id} -> ${generated}`);
   return generated;
 }
 
@@ -437,7 +438,7 @@ export function convertCuidToUuid(cuid: string): string {
   }
   
   // Se não conseguiu converter, gerar um UUID determinístico baseado no input
-  console.warn(`[convertCuidToUuid] Não foi possível converter '${cuid}' para UUID válido. Gerando UUID determinístico.`);
+  logger.warn(`[convertCuidToUuid] Não foi possível converter '${cuid}' para UUID válido. Gerando UUID determinístico.`);
   const fallbackUuid = generateDeterministicUUID(cuid);
   cuidToUuidMap.set(cuid, fallbackUuid);
   return fallbackUuid;
@@ -462,7 +463,7 @@ export function backendRequiresUuids(ids: string[]): boolean {
 
 // Função de teste específica para vendas
 export function testSaleUuidConversion() {
-  console.log('[TEST] Testando comportamento correto para vendas...');
+  logger.log('[TEST] Testando comportamento correto para vendas...');
   
   // Simular produtos com diferentes tipos de ID
   const testProducts = [
@@ -477,16 +478,16 @@ export function testSaleUuidConversion() {
     quantity: 1
   }));
   
-  console.log('[TEST] Produtos originais:', testProducts);
-  console.log('[TEST] Items para venda (IDs originais):', testItems);
+  logger.log('[TEST] Produtos originais:', testProducts);
+  logger.log('[TEST] Items para venda (IDs originais):', testItems);
   
   // Verificar se temos uma mistura de CUIDs e UUIDs (comportamento esperado)
   const hasCuids = testItems.some(item => /^[a-z0-9]{25}$/i.test(item.productId));
   const hasUuids = testItems.some(item => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.productId));
   
-  console.log('[TEST] Contém CUIDs:', hasCuids ? '✅ OK' : '❌ FALHA');
-  console.log('[TEST] Contém UUIDs:', hasUuids ? '✅ OK' : '❌ FALHA');
-  console.log('[TEST] Comportamento correto para vendas:', (hasCuids || hasUuids) ? '✅ OK' : '❌ FALHA');
+  logger.log('[TEST] Contém CUIDs:', hasCuids ? '✅ OK' : '❌ FALHA');
+  logger.log('[TEST] Contém UUIDs:', hasUuids ? '✅ OK' : '❌ FALHA');
+  logger.log('[TEST] Comportamento correto para vendas:', (hasCuids || hasUuids) ? '✅ OK' : '❌ FALHA');
   
   return {
     originalProducts: testProducts,
@@ -500,22 +501,22 @@ export function testSaleUuidConversion() {
 // Função de teste global para debug
 export function testUuidConversion() {
   const testCuid = 'cmgx0svyi0006hmx0ffbzwcwv';
-  console.log('[TEST] Testing CUID conversion with:', testCuid);
+  logger.log('[TEST] Testing CUID conversion with:', testCuid);
   
   const result = convertCuidToUuid(testCuid);
   const isValid = isValidBackendId(result);
   
-  console.log('[TEST] Conversion result:', result);
-  console.log('[TEST] Is valid UUID:', isValid);
-  console.log('[TEST] Length:', result.length);
-  console.log('[TEST] Format check:', /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(result));
+  logger.log('[TEST] Conversion result:', result);
+  logger.log('[TEST] Is valid UUID:', isValid);
+  logger.log('[TEST] Length:', result.length);
+  logger.log('[TEST] Format check:', /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(result));
   
   return { result, isValid };
 }
 
 // Função de teste para verificar consistência de UUIDs
 export function testUuidConsistency() {
-  console.log('[TEST] Testando consistência de UUIDs...');
+  logger.log('[TEST] Testando consistência de UUIDs...');
   
   const testIds = [
     'cmgx0svyi0006hmx0ffbzwcwv', // CUID
@@ -538,13 +539,13 @@ export function testUuidConsistency() {
     };
   });
   
-  console.log('[TEST] Resultados da consistência:', results);
+  logger.log('[TEST] Resultados da consistência:', results);
   
   const allValid = results.every(r => r.isValid);
   const allConsistent = results.every(r => r.isConsistent);
   
-  console.log('[TEST] Todos os IDs são válidos:', allValid ? '✅ OK' : '❌ FALHA');
-  console.log('[TEST] Todos os IDs são consistentes:', allConsistent ? '✅ OK' : '❌ FALHA');
+  logger.log('[TEST] Todos os IDs são válidos:', allValid ? '✅ OK' : '❌ FALHA');
+  logger.log('[TEST] Todos os IDs são consistentes:', allConsistent ? '✅ OK' : '❌ FALHA');
   
   return {
     results,

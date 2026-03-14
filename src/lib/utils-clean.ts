@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { logger } from '@/lib/logger';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -23,7 +24,7 @@ export function formatDate(date: string | Date): string {
   
   const dateObj = new Date(date);
   if (isNaN(dateObj.getTime())) {
-    console.warn('Invalid date provided to formatDate:', date);
+    logger.warn('Invalid date provided to formatDate:', date);
     return '';
   }
   
@@ -39,7 +40,7 @@ export function formatDateTime(date: string | Date): string {
   
   const dateObj = new Date(date);
   if (isNaN(dateObj.getTime())) {
-    console.warn('Invalid date provided to formatDateTime:', date);
+    logger.warn('Invalid date provided to formatDateTime:', date);
     return '';
   }
   

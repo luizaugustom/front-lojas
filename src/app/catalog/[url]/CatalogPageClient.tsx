@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { getImageUrl } from '@/lib/image-utils';
 import { getRandomVerse } from '@/lib/verses';
 import { handleApiError } from '@/lib/handleApiError';
+import { logger } from '@/lib/logger';
 import { ImageViewer } from '@/components/ui/image-viewer';
 
 interface Product {
@@ -84,7 +85,7 @@ export default function CatalogPageClient() {
         baseUrl = baseUrl.replace(/\/+$/, '');
         
         const catalogUrl = `${baseUrl}/public/catalog/${url}/products`;
-        console.log('🔍 Buscando catálogo na URL:', catalogUrl);
+        logger.log('🔍 Buscando catálogo na URL:', catalogUrl);
         
         const response = await fetch(catalogUrl, {
           method: 'GET',
@@ -93,7 +94,7 @@ export default function CatalogPageClient() {
           },
         });
         
-        console.log('📡 Response status:', response.status);
+        logger.log('📡 Response status:', response.status);
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -121,7 +122,7 @@ export default function CatalogPageClient() {
         }
         
         const catalogData = await response.json();
-        console.log('✅ Dados recebidos:', catalogData);
+        logger.log('✅ Dados recebidos:', catalogData);
         setData(catalogData);
       } catch (err) {
         console.error('❌ Erro ao buscar catálogo:', err);

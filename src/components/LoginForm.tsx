@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
+import { logger } from '@/lib/logger';
 
 const schema = z.object({
   login: z.string().min(1, 'Informe o login'),
@@ -36,14 +37,14 @@ export function LoginForm() {
   }, [isAuthenticated, user, router]);
 
   const onSubmit = async (data: FormData) => {
-    console.log('[LoginForm] Tentando login:', { login: data.login, password: '***' });
+    logger.log('[LoginForm] Tentando login:', { login: data.login, password: '***' });
     setLoading(true);
     try {
       const logged = await login(data.login, data.password);
-      console.log('[LoginForm] Login bem-sucedido, redirecionando...');
+      logger.log('[LoginForm] Login bem-sucedido, redirecionando...');
       router.push(logged.role === 'vendedor' ? '/sales' : '/dashboard');
     } catch (e: any) {
-      console.error('[LoginForm] Erro no login:', e);
+      logger.error('[LoginForm] Erro no login:', e);
       // Mensagem amigável (evitar vazamento de detalhes)
       alert(e?.response?.data?.message || 'Falha no login');
     } finally {

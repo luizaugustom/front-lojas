@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, FileText, ShoppingCart, HelpCircle } from 'lucide-react';
@@ -15,9 +16,10 @@ import { useCartStore } from '@/store/cart-store';
 import { ProductGrid } from '@/components/sales/product-grid';
 import { ProductList } from '@/components/sales/product-list';
 import { Cart } from '@/components/sales/cart';
-import { CheckoutDialog } from '@/components/sales/checkout-dialog';
-import { BudgetDialog } from '@/components/sales/budget-dialog';
 import { BarcodeScanner } from '@/components/sales/barcode-scanner';
+
+const CheckoutDialog = dynamic(() => import('@/components/sales/checkout-dialog').then((m) => ({ default: m.CheckoutDialog })), { ssr: false });
+const BudgetDialog = dynamic(() => import('@/components/sales/budget-dialog').then((m) => ({ default: m.BudgetDialog })), { ssr: false });
 import { KeyboardShortcutsHelpDialog } from '@/components/sales/keyboard-shortcuts-help-dialog';
 import { PageHelpModal } from '@/components/help';
 import { salesHelpTitle, salesHelpDescription, salesHelpIcon, getSalesHelpTabs } from '@/components/help/contents/sales-help';
@@ -27,6 +29,7 @@ import type { Product } from '@/types';
 import { parseScaleBarcode } from '@/lib/scale-barcode';
 import { useUIStore } from '@/store/ui-store';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { logger } from '@/lib/logger';
 
 const isValidHex = (hex: string | null | undefined) => {
   if (!hex) return false;
@@ -143,7 +146,7 @@ export default function SalesPage() {
     try {
       const product = (await api.get(`/product/barcode/${barcode}`)).data;
       // Manter ID original do produto
-      console.log('[DEBUG] Produto encontrado por código de barras:', {
+      logger.log('[DEBUG] Produto encontrado por código de barras:', {
         productId: product.id,
         productName: product.name,
         isUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(product.id)
@@ -280,7 +283,7 @@ export default function SalesPage() {
           // Simple debounce: ignore if scanned too recently
           const now = Date.now();
           if (isLikelyScanner && now - lastScanned > 500) {
-            console.log('[Barcode Scanner] Código escaneado:', code, { avgPerCharMs: Math.round(avgPerChar) });
+            logger.log('[Barcode Scanner] Código escaneado:', code, { avgPerCharMs: Math.round(avgPerChar) });
             handleBarcodeScanned(code);
             setLastScanned(now);
           }
@@ -462,7 +465,7 @@ export default function SalesPage() {
             onProductSelect={setSelectedProductIndex}
             onAddToCart={(product) => {
               // Manter ID original do produto no carrinho
-              console.log('[DEBUG] Adicionando produto ao carrinho:', {
+              logger.log('[DEBUG] Adicionando produto ao carrinho:', {
                 productId: product.id,
                 productName: product.name,
                 isUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(product.id)

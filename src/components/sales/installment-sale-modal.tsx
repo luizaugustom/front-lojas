@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { handleApiError } from '@/lib/handleApiError';
 import { customerApi } from '@/lib/api-endpoints';
 import { formatCurrency, formatDate, formatCPFCNPJ, debounce } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Customer } from '@/types';
 
@@ -100,7 +101,7 @@ export function InstallmentSaleModal({
   // Carregar configurações da empresa e clientes quando o modal abrir
   useEffect(() => {
     if (open && isAuthenticated && isInitialLoad) {
-      console.log('[DEBUG] Carregamento inicial do modal');
+      logger.log('[DEBUG] Carregamento inicial do modal');
       loadCompanyConfig();
       loadCustomers();
       // Definir data padrão para um mês após a data atual, preservando o dia corrente quando possível
@@ -132,7 +133,7 @@ export function InstallmentSaleModal({
 
 
   const loadCustomers = useCallback(async (searchTerm?: string) => {
-    console.log('[DEBUG] loadCustomers chamada com:', { 
+    logger.log('[DEBUG] loadCustomers chamada com:', { 
       searchTerm, 
       loading, 
       isAuthenticated, 
@@ -149,7 +150,7 @@ export function InstallmentSaleModal({
 
     // Evitar chamadas desnecessárias
     if (loading) {
-      console.log('[DEBUG] Já está carregando, evitando chamada duplicada');
+      logger.log('[DEBUG] Já está carregando, evitando chamada duplicada');
       return;
     }
 
@@ -165,11 +166,11 @@ export function InstallmentSaleModal({
         params.companyId = user.companyId;
       }
         
-      console.log('[DEBUG] Parâmetros da API:', params);
+      logger.log('[DEBUG] Parâmetros da API:', params);
       
       // Usar customerApi.list() com companyId
       const response = await customerApi.list(params);
-      console.log('[DEBUG] Resposta da API:', response);
+      logger.log('[DEBUG] Resposta da API:', response);
       
       // Tentar diferentes estruturas de resposta (igual à página de clientes)
       let customersList = [];
@@ -183,7 +184,7 @@ export function InstallmentSaleModal({
         customersList = response;
       }
       
-      console.log('[DEBUG] Lista de clientes extraída:', customersList);
+      logger.log('[DEBUG] Lista de clientes extraída:', customersList);
       
       // Carregar informações de dívidas para cada cliente
       const customersWithDebt = await Promise.all(
@@ -223,14 +224,14 @@ export function InstallmentSaleModal({
         })
       );
       
-      console.log('[DEBUG] Clientes com dívidas:', customersWithDebt);
+      logger.log('[DEBUG] Clientes com dívidas:', customersWithDebt);
       setCustomers(customersWithDebt);
       setFilteredCustomers(customersWithDebt);
       
       // Marcar que não é mais carregamento inicial
       if (isInitialLoad) {
         setIsInitialLoad(false);
-        console.log('[DEBUG] Carregamento inicial concluído');
+        logger.log('[DEBUG] Carregamento inicial concluído');
       }
       
     } catch (error: any) {
@@ -244,7 +245,7 @@ export function InstallmentSaleModal({
       }
       
       // Em caso de erro, usar dados mock como fallback
-      console.log('[DEBUG] Usando dados mock como fallback');
+      logger.log('[DEBUG] Usando dados mock como fallback');
       const mockCustomers = [
         {
           id: '1',
@@ -296,19 +297,19 @@ export function InstallmentSaleModal({
     debounce(async (term: string) => {
       // Evitar chamadas duplicadas
       if (term === lastSearchTerm) {
-        console.log('[DEBUG] Busca duplicada evitada:', term);
+        logger.log('[DEBUG] Busca duplicada evitada:', term);
         return;
       }
 
       // Só busca se tiver o número mínimo de caracteres
       if (term.trim().length >= minSearchLength) {
-        console.log('[DEBUG] Buscando na API:', term);
+        logger.log('[DEBUG] Buscando na API:', term);
         setLastSearchTerm(term);
         await loadCustomers(term);
       } else if (term.trim().length === 0) {
         // Se campo estiver vazio, carrega todos os clientes apenas se necessário
         if (customers.length === 0) {
-          console.log('[DEBUG] Carregando todos os clientes');
+          logger.log('[DEBUG] Carregando todos os clientes');
           setLastSearchTerm('');
           await loadCustomers();
         }
@@ -337,7 +338,7 @@ export function InstallmentSaleModal({
     // 2. Não for o carregamento inicial
     // 3. Não for uma busca duplicada
     if (searchTerm.length >= minSearchLength && !isInitialLoad && searchTerm !== lastSearchTerm) {
-      console.log('[DEBUG] Busca local feita, agendando busca na API');
+      logger.log('[DEBUG] Busca local feita, agendando busca na API');
       debouncedSearch(searchTerm);
     }
   }, [searchTerm, customers, debouncedSearch, minSearchLength, isInitialLoad, lastSearchTerm]);

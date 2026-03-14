@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, memo } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,7 +24,7 @@ interface ProductListProps {
   onProductSelect?: (index: number) => void;
 }
 
-export function ProductList({ products, isLoading, onAddToCart, keyboardFocusArea = 'products', keyboardShortcutsEnabled = true, selectedProductIndex, onProductSelect }: ProductListProps) {
+function ProductListComponent({ products, isLoading, onAddToCart, keyboardFocusArea = 'products', keyboardShortcutsEnabled = true, selectedProductIndex, onProductSelect }: ProductListProps) {
   const [selectedImage, setSelectedImage] = useState<{ images: string[], index: number } | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedProductForDetails, setSelectedProductForDetails] = useState<Product | null>(null);
@@ -277,3 +277,5 @@ export function ProductList({ products, isLoading, onAddToCart, keyboardFocusAre
       </>
     );
 }
+
+export const ProductList = memo(ProductListComponent);

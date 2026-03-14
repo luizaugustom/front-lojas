@@ -33,6 +33,7 @@ import {
   Banknote,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { useUIStore } from '@/store/ui-store';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -84,7 +85,7 @@ export function Sidebar() {
 
   const filteredNavigation = navigation.filter((item) => {
     if (!user) {
-      console.log('No user found, filtering out all items');
+      logger.log('No user found, filtering out all items');
       return false;
     }
     // Gestor: apenas itens com role gestor

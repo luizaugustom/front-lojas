@@ -3,6 +3,8 @@
  * Captura e envia erros para análise
  */
 
+import { logger } from '@/lib/logger';
+
 interface ErrorLog {
   message: string;
   stack?: string;
@@ -145,7 +147,7 @@ class ErrorLogger {
     // Se não há endpoint configurado, apenas loga no console em produção
     if (!ERROR_API_ENDPOINT || !IS_PRODUCTION) {
       if (IS_PRODUCTION) {
-        console.warn('Error API endpoint não configurado. Erros não serão enviados.');
+        logger.warn('Error API endpoint não configurado. Erros não serão enviados.');
       }
       return;
     }

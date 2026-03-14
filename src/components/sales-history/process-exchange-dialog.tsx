@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDebounce } from '@/hooks/useDebounce';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { printContent as printContentService } from '@/lib/print-service';
 import { StoreCreditPrintConfirmationDialog } from './store-credit-print-confirmation-dialog';
 import type {
@@ -494,7 +495,7 @@ export function ProcessExchangeDialog({
       
       // Se o backend retornou conteúdo, imprimir localmente (web)
       if (printData?.content && typeof printData.content === 'string') {
-        console.log('[ProcessExchange] Imprimindo comprovante localmente...');
+        logger.log('[ProcessExchange] Imprimindo comprovante localmente...');
         const printResult = await printContentService(printData.content);
         
         if (printResult.success) {

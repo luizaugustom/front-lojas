@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Search, HelpCircle, Download, ChevronDown, FileSpreadsheet, FileText } from 'lucide-react';
@@ -19,8 +20,9 @@ import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { ProductsTable } from '@/components/products/products-table';
-import { ProductDialog } from '@/components/products/product-dialog';
 import { ProductLossDialog } from '@/components/product-losses/product-loss-dialog';
+
+const ProductDialog = dynamic(() => import('@/components/products/product-dialog').then((m) => ({ default: m.ProductDialog })), { ssr: false });
 import { ProductFilters } from '@/components/products/product-filters';
 import { applyProductFilters, getActiveFiltersCount, type ProductFilters as ProductFiltersType } from '@/lib/productFilters';
 import type { Product, PlanUsageStats } from '@/types';
@@ -30,6 +32,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { PageHelpModal } from '@/components/help';
 import { productsHelpTitle, productsHelpDescription, productsHelpIcon, getProductsHelpTabs } from '@/components/help/contents/products-help';
 import { managerApi, companyApi } from '@/lib/api-endpoints';
+import { logger } from '@/lib/logger';
 
 export default function ProductsPage() {
   const { api, user } = useAuth();
@@ -106,20 +109,20 @@ export default function ProductsPage() {
     }
 
     try {
-      console.log('[ProductsPage] Buscando detalhes do produto:', product.id);
+      logger.log('[ProductsPage] Buscando detalhes do produto:', product.id);
       const response = await api.get(`/product/${product.id}`);
-      console.log('[ProductsPage] Resposta completa da API:', response);
-      console.log('[ProductsPage] Resposta data:', response.data);
+      logger.log('[ProductsPage] Resposta completa da API:', response);
+      logger.log('[ProductsPage] Resposta data:', response.data);
       
       const detailedProduct = (response.data as any)?.product ?? response.data;
-      console.log('[ProductsPage] Produto detalhado:', detailedProduct);
-      console.log('[ProductsPage] costPrice no detailedProduct:', detailedProduct?.costPrice);
+      logger.log('[ProductsPage] Produto detalhado:', detailedProduct);
+      logger.log('[ProductsPage] costPrice no detailedProduct:', detailedProduct?.costPrice);
 
       // Preenche com todos os campos disponíveis, garantindo custo
       if (detailedProduct) {
         const merged = { ...product, ...detailedProduct };
-        console.log('[ProductsPage] Produto merged:', merged);
-        console.log('[ProductsPage] costPrice no merged:', merged.costPrice);
+        logger.log('[ProductsPage] Produto merged:', merged);
+        logger.log('[ProductsPage] costPrice no merged:', merged.costPrice);
         setSelectedProduct(merged);
       } else {
         setSelectedProduct(product);

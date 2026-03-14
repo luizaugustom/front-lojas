@@ -19,6 +19,7 @@ import { PlanUsageCard } from '@/components/plan-limits/plan-usage-card';
 import { PageHelpModal } from '@/components/help';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { dashboardHelpTitle, dashboardHelpDescription, dashboardHelpIcon, getDashboardHelpTabs } from '@/components/help/contents/dashboard-help';
+import { logger } from '@/lib/logger';
 
 interface MetricCardProps {
   title: string;
@@ -298,7 +299,9 @@ export default function DashboardPage() {
   const revenueTotal = sales.reduce((acc, s) => acc + Number(s.total || 0) - Number(s.change || 0), 0);
 
   const products: Product[] = normalizeList<Product>(productsData, 'products');
+  const totalProductsCount = typeof productsData?.total === 'number' ? productsData.total : products.length;
   const customers: Customer[] = normalizeList<Customer>(customersData, 'customers');
+  const totalCustomersCount = typeof customersData?.total === 'number' ? customersData.total : customers.length;
 
   // Produtos vencidos ou a vencer em 5 dias
   const nowDate = new Date();
@@ -330,7 +333,7 @@ export default function DashboardPage() {
     // Debug: log produtos e lowStock para inspecionar no console do navegador
     if (!isProductsLoading) {
       // eslint-disable-next-line no-console
-      console.log('[Dashboard] products count=', products.length, 'lowStockCount=', lowStockCount, 'preview=', lowStockPreview);
+      logger.log('[Dashboard] products count=', products.length, 'lowStockCount=', lowStockCount, 'preview=', lowStockPreview);
     }
   }, [isProductsLoading, products, lowStockCount, lowStockPreview]);
 
@@ -590,12 +593,12 @@ export default function DashboardPage() {
         />
         <MetricCard
           title="Produtos"
-          value={products.length}
+          value={totalProductsCount}
           icon={Package}
         />
         <MetricCard
           title="Clientes"
-          value={customers.length}
+          value={totalCustomersCount}
           icon={Users}
         />
       </div>

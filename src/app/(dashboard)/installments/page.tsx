@@ -20,6 +20,7 @@ import { CustomersDebtList } from '@/components/installments/customers-debt-list
 import { PaymentDialog } from '@/components/installments/payment-dialog';
 import { CustomerDebtPaymentDialog } from '@/components/installments/customer-debt-payment-dialog';
 import { formatCurrency } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { useDeviceStore } from '@/store/device-store';
 import toast from 'react-hot-toast';
 
@@ -321,7 +322,7 @@ export default function InstallmentsPage() {
 
           const now = Date.now();
           if (isLikelyScanner && now - lastScanned > 500 && isMounted) {
-            console.log('[Installments Barcode Scanner] Código escaneado:', code);
+            logger.log('[Installments Barcode Scanner] Código escaneado:', code);
             handleBarcodeScanned(code);
             setLastScanned(now);
           }

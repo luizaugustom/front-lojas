@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +18,7 @@ interface ProductGridProps {
   onAddToCart: (product: Product, quantity?: number) => void;
 }
 
-export function ProductGrid({ products, isLoading, onAddToCart }: ProductGridProps) {
+function ProductGridComponent({ products, isLoading, onAddToCart }: ProductGridProps) {
   const [selectedImage, setSelectedImage] = useState<{ images: string[], index: number } | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -162,3 +162,5 @@ export function ProductGrid({ products, isLoading, onAddToCart }: ProductGridPro
     </>
   );
 }
+
+export const ProductGrid = memo(ProductGridComponent);

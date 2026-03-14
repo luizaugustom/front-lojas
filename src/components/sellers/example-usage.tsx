@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DeleteSellerModal } from '@/components/sellers/delete-seller-modal';
+import { logger } from '@/lib/logger';
 import type { Seller } from '@/types';
 
 // Exemplo de dados de vendedor
@@ -25,7 +26,7 @@ export function ExampleUsage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleDeleteSuccess = () => {
-    console.log('Vendedor excluído com sucesso!');
+    logger.log('Vendedor excluído com sucesso!');
     // Aqui você pode atualizar a lista de vendedores
     // ou fazer qualquer outra ação necessária
   };

@@ -1,0 +1,76 @@
+# Testes diários às 5h BRT. Em caso de falha, envia WhatsApp para 5548992151944.
+# Secrets opcionais para notificação: MONTSHOP_API_URL, MONTSHOP_ADMIN_LOGIN, MONTSHOP_ADMIN_PASSWORD
+name: Testes diários (5h BRT)
+
+on:
+  schedule:
+    # 5h da manhã BRT (08:00 UTC)
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  test-api:
+    name: Testes API (api-lojas)
+    runs-on: ubuntu-latest
+    if: hashFiles('api-lojas/package.json') != ''
+    defaults:
+      run:
+        working-directory: api-lojas
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: api-lojas/package-lock.json
+      - run: npm ci
+      - run: npm run test -- --passWithNoTests
+        id: api-unit
+      - name: Notificar falha no WhatsApp
+        if: failure() && steps.api-unit.outcome == 'failure'
+        env:
+          API_URL: ${{ secrets.MONTSHOP_API_URL }}
+          ADMIN_LOGIN: ${{ secrets.MONTSHOP_ADMIN_LOGIN }}
+          ADMIN_PASSWORD: ${{ secrets.MONTSHOP_ADMIN_PASSWORD }}
+        run: |
+          if [ -n "$API_URL" ] && [ -n "$ADMIN_LOGIN" ] && [ -n "$ADMIN_PASSWORD" ]; then
+            TOKEN=$(curl -s -X POST "$API_URL/auth/login" -H "Content-Type: application/json" -d "{\"login\":\"$ADMIN_LOGIN\",\"password\":\"$ADMIN_PASSWORD\"}" | jq -r '.access_token')
+            if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
+              MSG="MontShop – Falha nos testes: job test-api (unit) | branch ${{ github.ref_name }} | run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              curl -s -X POST "$API_URL/whatsapp/send-message" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"to\":\"5548992151944\",\"message\":\"$MSG\"}"
+            fi
+          fi
+
+  test-front:
+    name: Testes Front (front-lojas)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run test -- --passWithNoTests
+        id: front-unit
+      - name: Notificar falha no WhatsApp
+        if: failure() && steps.front-unit.outcome == 'failure'
+        env:
+          API_URL: ${{ secrets.MONTSHOP_API_URL }}
+          ADMIN_LOGIN: ${{ secrets.MONTSHOP_ADMIN_LOGIN }}
+          ADMIN_PASSWORD: ${{ secrets.MONTSHOP_ADMIN_PASSWORD }}
+        run: |
+          if [ -n "$API_URL" ] && [ -n "$ADMIN_LOGIN" ] && [ -n "$ADMIN_PASSWORD" ]; then
+            TOKEN=$(curl -s -X POST "$API_URL/auth/login" -H "Content-Type: application/json" -d "{\"login\":\"$ADMIN_LOGIN\",\"password\":\"$ADMIN_PASSWORD\"}" | jq -r '.access_token')
+            if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
+              MSG="MontShop – Falha nos testes: job test-front (unit) | branch ${{ github.ref_name }} | run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              curl -s -X POST "$API_URL/whatsapp/send-message" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"to\":\"5548992151944\",\"message\":\"$MSG\"}"
+            fi
+          fi

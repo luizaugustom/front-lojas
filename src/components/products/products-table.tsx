@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { Edit, Trash2, Package, AlertCircle, AlertTriangle, Tag, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
@@ -17,6 +17,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { ImageViewer } from '@/components/ui/image-viewer';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/handleApiError';
+import { logger } from '@/lib/logger';
 import { formatCurrency, formatDate, generateUUID } from '@/lib/utils';
 import { ensureValidUUID as ensureUUID } from '@/lib/utils-clean';
 import { getImageUrl } from '@/lib/image-utils';
@@ -41,7 +42,7 @@ interface ProductsTableProps {
   onPageChange?: (page: number) => void;
 }
 
-export function ProductsTable({
+function ProductsTableComponent({
   products,
   isLoading,
   onEdit,
@@ -131,12 +132,12 @@ export function ProductsTable({
     try {
       // Usar o ID original do Prisma
       const productId = id;
-      console.log('[ProductsTable] Deletando produto com ID original:', productId);
+      logger.log('[ProductsTable] Deletando produto com ID original:', productId);
       await api.delete(`/product/${productId}`);
       toast.success('Produto excluído com sucesso!');
       onRefetch();
     } catch (error) {
-      console.error('[ProductsTable] Erro ao deletar produto:', error);
+      logger.error('[ProductsTable] Erro ao deletar produto:', error);
       handleApiError(error);
     } finally {
       setDeleting(null);
@@ -384,3 +385,5 @@ export function ProductsTable({
     </Card>
   );
 }
+
+export const ProductsTable = memo(ProductsTableComponent);

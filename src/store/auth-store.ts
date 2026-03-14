@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { User } from '@/types';
 import { setAuthToken, setUser, removeAuthToken, getUser, getAuthToken } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 interface AuthState {
   user: User | null;
@@ -17,11 +18,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   
   login: (user, token) => {
-    console.log('Auth store login called with:', { user, token });
+    logger.log('Auth store login called with:', { user, token });
     setAuthToken(token);
     setUser(user);
     set({ user, token, isAuthenticated: true });
-    console.log('Auth store state updated, isAuthenticated: true');
+    logger.log('Auth store state updated, isAuthenticated: true');
   },
   
   logout: () => {

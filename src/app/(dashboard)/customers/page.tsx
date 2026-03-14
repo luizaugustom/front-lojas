@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { customerApi } from '@/lib/api-endpoints';
 import { handleApiError } from '@/lib/handleApiError';
+import { logger } from '@/lib/logger';
 import { CustomersTable } from '@/components/customers/customers-table';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import type { Customer } from '@/types';
@@ -22,14 +23,14 @@ export default function CustomersPage() {
   const { data: customersResponse, isLoading, refetch, error } = useQuery({
     queryKey: ['customers', search, user?.companyId],
     queryFn: async () => {
-      console.log('[CustomersPage] Buscando clientes com search:', search, 'companyId:', user?.companyId);
-      console.log('[CustomersPage] Usuário completo:', user);
+      logger.log('[CustomersPage] Buscando clientes com search:', search, 'companyId:', user?.companyId);
+      logger.log('[CustomersPage] Usuário completo:', user);
       try {
         const response = await customerApi.list({
           search,
           companyId: user?.companyId ?? undefined,
         });
-        console.log('[CustomersPage] Resposta da API:', response);
+        logger.log('[CustomersPage] Resposta da API:', response);
         return response;
       } catch (error) {
         console.error('[CustomersPage] Erro ao buscar clientes:', error);
@@ -40,7 +41,7 @@ export default function CustomersPage() {
   });
 
   // Log adicional para debug
-  console.log('[CustomersPage] Estado da query:', {
+  logger.log('[CustomersPage] Estado da query:', {
     isLoading,
     hasData: !!customersResponse,
     hasError: !!error,

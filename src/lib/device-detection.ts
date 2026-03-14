@@ -2,6 +2,8 @@
  * Utilitários para detectar e registrar dispositivos do computador do usuário
  */
 
+import { logger } from '@/lib/logger';
+
 const COMPUTER_ID_KEY = 'montshop_computer_id';
 
 /**
@@ -61,9 +63,9 @@ export async function detectClientPrinters(): Promise<any[]> {
       try {
         // Web Serial API não lista portas diretamente, mas podemos tentar descobrir
         // Por enquanto, deixamos vazio pois requer interação do usuário
-        console.log('[DeviceDetection] Web Serial API disponível, mas requer seleção manual de porta');
+        logger.log('[DeviceDetection] Web Serial API disponível, mas requer seleção manual de porta');
       } catch (error) {
-        console.warn('[DeviceDetection] Erro ao acessar Web Serial API:', error);
+        logger.warn('[DeviceDetection] Erro ao acessar Web Serial API:', error);
       }
     }
 
@@ -73,7 +75,7 @@ export async function detectClientPrinters(): Promise<any[]> {
     
     // Tentativa de detectar usando endpoint que executa no cliente
     // Isso requer que o cliente tenha permissões apropriadas
-    console.log('[DeviceDetection] Detecção de impressoras requer agente local ou extensão');
+    logger.log('[DeviceDetection] Detecção de impressoras requer agente local ou extensão');
     
   } catch (error) {
     console.error('[DeviceDetection] Erro ao detectar impressoras:', error);
@@ -109,11 +111,11 @@ export async function detectClientScales(): Promise<any[]> {
       } catch (error: any) {
         // Erro esperado se usuário cancelar ou se não houver permissão
         if (error.name !== 'NotFoundError' && error.name !== 'SecurityError') {
-          console.warn('[DeviceDetection] Erro ao acessar portas seriais:', error);
+          logger.warn('[DeviceDetection] Erro ao acessar portas seriais:', error);
         }
       }
     } else {
-      console.log('[DeviceDetection] Web Serial API não disponível neste navegador');
+      logger.log('[DeviceDetection] Web Serial API não disponível neste navegador');
     }
 
     // Para detecção automática sem interação do usuário,
@@ -155,7 +157,7 @@ export async function detectDevicesViaLocalService(): Promise<{ printers: any[];
       }
     } catch (error) {
       // Serviço local não disponível - isso é esperado
-      console.log('[DeviceDetection] Serviço local não disponível (normal se não estiver rodando)');
+      logger.log('[DeviceDetection] Serviço local não disponível (normal se não estiver rodando)');
     }
   } catch (error) {
     console.error('[DeviceDetection] Erro ao detectar via serviço local:', error);
@@ -171,7 +173,7 @@ export async function detectDevicesViaLocalService(): Promise<{ printers: any[];
  * 3. Solicita informações ao usuário se necessário
  */
 export async function detectAllDevices(): Promise<{ printers: any[]; scales: any[] }> {
-  console.log('[DeviceDetection] Iniciando detecção de dispositivos...');
+  logger.log('[DeviceDetection] Iniciando detecção de dispositivos...');
   
   const [localDevices, clientPrinters, clientScales] = await Promise.all([
     detectDevicesViaLocalService(),
@@ -183,7 +185,7 @@ export async function detectAllDevices(): Promise<{ printers: any[]; scales: any
   const printers = [...localDevices.printers, ...clientPrinters];
   const scales = [...localDevices.scales, ...clientScales];
 
-  console.log(`[DeviceDetection] Detectados: ${printers.length} impressora(s), ${scales.length} balança(s)`);
+  logger.log(`[DeviceDetection] Detectados: ${printers.length} impressora(s), ${scales.length} balança(s)`);
 
   return { printers, scales };
 }
@@ -193,7 +195,7 @@ export async function detectAllDevices(): Promise<{ printers: any[]; scales: any
  */
 export async function requestSerialPort(): Promise<any | null> {
   if (!('serial' in navigator)) {
-    console.warn('[DeviceDetection] Web Serial API não disponível');
+    logger.warn('[DeviceDetection] Web Serial API não disponível');
     return null;
   }
 
@@ -208,7 +210,7 @@ export async function requestSerialPort(): Promise<any | null> {
     };
   } catch (error: any) {
     if (error.name === 'NotFoundError') {
-      console.log('[DeviceDetection] Usuário cancelou seleção de porta');
+      logger.log('[DeviceDetection] Usuário cancelou seleção de porta');
     } else {
       console.error('[DeviceDetection] Erro ao solicitar porta serial:', error);
     }

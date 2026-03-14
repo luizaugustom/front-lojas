@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency } from '@/lib/utils-clean';
+import { logger } from '@/lib/logger';
 import { useCartStore } from '@/store/cart-store';
 import { useAuth } from '@/hooks/useAuth';
 import { sellerApi } from '@/lib/api-endpoints';
@@ -152,11 +153,11 @@ export function BudgetDialog({ open, onClose, onSuccess }: BudgetDialogProps) {
         budgetData.sellerId = user.id;
       }
 
-      console.log('[Budget] Criando orçamento:', budgetData);
+      logger.log('[Budget] Criando orçamento:', budgetData);
 
       const response = await api.post('/budget', budgetData);
 
-      console.log('[Budget] Orçamento criado:', response.data);
+      logger.log('[Budget] Orçamento criado:', response.data);
 
       toast.success('Orçamento criado com sucesso!');
       

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { printContent } from '@/lib/print-service';
 import { handleApiError } from '@/lib/handleApiError';
 import { ProcessExchangeDialog } from './process-exchange-dialog';
@@ -77,10 +78,10 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
         printType = data?.printType || 'nfce';
 
         if (content) {
-          console.log(`[SaleDetailsDialog] Conteúdo de impressão obtido (${printType})`);
+          logger.log(`[SaleDetailsDialog] Conteúdo de impressão obtido (${printType})`);
         }
       } catch (error) {
-        console.warn('[SaleDetailsDialog] Falha ao obter conteúdo de impressão direto, tentando reprint.', error);
+        logger.warn('[SaleDetailsDialog] Falha ao obter conteúdo de impressão direto, tentando reprint.', error);
       }
 
       // Se não conseguiu, tentar via reprint
@@ -93,7 +94,7 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
 
       // Se conseguiu obter conteúdo, imprimir localmente
       if (content) {
-        console.log('[SaleDetailsDialog] Imprimindo localmente...');
+        logger.log('[SaleDetailsDialog] Imprimindo localmente...');
         const result = await printContent(content);
 
         if (result.success) {
@@ -114,7 +115,7 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
         }
       } else {
         // Se não conseguiu conteúdo, tentar impressão no servidor diretamente
-        console.log('[SaleDetailsDialog] Sem conteúdo local, tentando impressão no servidor...');
+        logger.log('[SaleDetailsDialog] Sem conteúdo local, tentando impressão no servidor...');
         await api.post(`/sale/${saleId}/reprint`);
         toast.success('Cupom enviado para impressão!');
       }
@@ -308,7 +309,7 @@ export function SaleDetailsDialog({ open, onClose, saleId }: SaleDetailsDialogPr
                                     
                                     // Se o backend retornou conteúdo, imprimir localmente (web)
                                     if (printData?.content && typeof printData.content === 'string') {
-                                      console.log('[SaleDetails] Imprimindo comprovante localmente...');
+                                      logger.log('[SaleDetails] Imprimindo comprovante localmente...');
                                       const printResult = await printContent(printData.content);
                                       
                                       if (printResult.success) {

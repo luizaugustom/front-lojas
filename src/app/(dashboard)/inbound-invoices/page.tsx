@@ -19,6 +19,7 @@ import { handleApiError } from '@/lib/handleApiError';
 import { MAX_PRODUCT_PHOTOS, ACCEPTED_IMAGE_STRING, validateImageFile } from '@/lib/constants/upload.constants';
 import { fiscalApi, productApi, billToPayApi } from '@/lib/api-endpoints';
 import { PageHelpModal } from '@/components/help';
+import { OptimizedImage } from '@/components/ui/optimized-image';
 import { inboundInvoicesHelpTitle, inboundInvoicesHelpDescription, inboundInvoicesHelpIcon, getInboundInvoicesHelpTabs } from '@/components/help/contents/inbound-invoices-help';
 
 interface InboundDoc {
@@ -1584,7 +1585,11 @@ export default function InboundInvoicesPage() {
                   </div>
                   {createProductModalPhotoPreviewUrls.map((url, idx) => (
                     <div key={idx} className="relative group">
-                      <img src={url} alt="" className="w-16 h-16 object-cover rounded border border-border" />
+                      {url.startsWith('blob:') || url.startsWith('data:') ? (
+                        <img src={url} alt="" className="w-16 h-16 object-cover rounded border border-border" />
+                      ) : (
+                        <OptimizedImage src={url} alt="" width={64} height={64} className="w-16 h-16 object-cover rounded border border-border" />
+                      )}
                       <button
                         type="button"
                         className="absolute -top-1 -right-1 rounded-full bg-destructive text-destructive-foreground w-5 h-5 flex items-center justify-center opacity-90 hover:opacity-100"

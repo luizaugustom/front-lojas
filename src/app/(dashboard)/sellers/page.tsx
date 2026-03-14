@@ -12,6 +12,7 @@ import { SellersTable } from '@/components/sellers/sellers-table';
 import { SellerDialog } from '@/components/sellers/seller-dialog';
 import { SellerDetailsDialog } from '@/components/sellers/seller-details-dialog';
 import { formatCurrency } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import type { Seller } from '@/types';
 import { PageHelpModal } from '@/components/help';
 import { sellersHelpTitle, sellersHelpDescription, sellersHelpIcon, getSellersHelpTabs } from '@/components/help/contents/sellers-help';
@@ -27,16 +28,16 @@ export default function SellersPage() {
   const { data: sellersResponse, isLoading, refetch } = useQuery({
     queryKey: ['sellers', search, user?.companyId],
     queryFn: async () => {
-      console.log('[SellersPage] Buscando vendedores com search:', search, 'companyId:', user?.companyId);
+      logger.log('[SellersPage] Buscando vendedores com search:', search, 'companyId:', user?.companyId);
       try {
         const response = await sellerApi.list({ 
           search,
           companyId: user?.companyId || undefined
         });
-        console.log('[SellersPage] Resposta da API:', response);
+        logger.log('[SellersPage] Resposta da API:', response);
         return response;
       } catch (error) {
-        console.error('[SellersPage] Erro ao buscar vendedores:', error);
+        logger.error('[SellersPage] Erro ao buscar vendedores:', error);
         throw error;
       }
     },

@@ -74,11 +74,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listener para logout automático (login em outro dispositivo)
     const handleAutoLogout = (event: CustomEvent) => {
-      if (event.detail?.reason === 'login-em-outro-dispositivo') {
-        setAccessToken(null);
-        setToken(null);
-        setUser(null);
-        removeAuthToken();
+      const reason = event.detail?.reason;
+      // Sempre limpa estado em qualquer logout automático; toast só para login em outro dispositivo
+      setAccessToken(null);
+      setToken(null);
+      setUser(null);
+      removeAuthToken();
+      if (reason === 'login-em-outro-dispositivo') {
         toast.error('Você foi desconectado porque fez login em outro dispositivo');
       }
     };
@@ -108,6 +110,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
   }, []);
+
+  // Polling: verifica periodicamente se a sessão ainda é válida (ex.: login em outro dispositivo)
+  useEffect(() => {
+    if (!isAuthenticated || typeof window === 'undefined') return;
+
+    const SESSION_CHECK_INTERVAL_MS = 2 * 60 * 1000; // 2 minutos
+
+    const checkSession = async () => {
+      try {
+        const data = await authRefresh();
+        setAccessToken(data.access_token);
+        setToken(data.access_token);
+        setUser(data.user);
+        setUserInAuth(data.user);
+      } catch (err: unknown) {
+        const ax = err as { response?: { status?: number; data?: { message?: string } } };
+        const msg = ax?.response?.data?.message ?? '';
+        const isRevoked =
+          ax?.response?.status === 401 &&
+          (msg === 'Refresh token revoked' ||
+            msg.toLowerCase().includes('invalid') ||
+            msg.toLowerCase().includes('expired') ||
+            msg.toLowerCase().includes('revoked'));
+
+        if (isRevoked) {
+          setAccessToken(null);
+          setToken(null);
+          setUser(null);
+          removeAuthToken();
+          queryClient.clear();
+          window.dispatchEvent(
+            new CustomEvent('auth:auto-logout', { detail: { reason: 'login-em-outro-dispositivo' } })
+          );
+        }
+      }
+    };
+
+    const intervalId = window.setInterval(checkSession, SESSION_CHECK_INTERVAL_MS);
+    return () => window.clearInterval(intervalId);
+  }, [isAuthenticated, queryClient]);
 
   const getDeviceInfo = useCallback((): DeviceInfo => {
     // Gerar ou recuperar deviceId único para este navegador

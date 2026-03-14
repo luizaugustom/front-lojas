@@ -2,6 +2,8 @@
  * Utilitários para trabalhar com URLs de imagens
  */
 
+import { logger } from '@/lib/logger';
+
 /**
  * Constrói a URL completa para uma imagem
  * Suporta URLs do Firebase Storage e URLs locais
@@ -28,7 +30,7 @@ export function getImageUrl(url: string | undefined | null): string {
   // Garantir que a URL final tenha apenas uma barra entre base e path
   const fullUrl = `${cleanBaseUrl}${cleanUrl.startsWith('/') ? cleanUrl : '/' + cleanUrl}`;
   
-  console.log('🔍 [getImageUrl] Construindo URL:', { 
+  logger.log('🔍 [getImageUrl] Construindo URL:', { 
     input: url, 
     cleanUrl, 
     baseUrl: cleanBaseUrl, 

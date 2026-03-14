@@ -11,6 +11,7 @@ import { TrialConversionModal } from '@/components/trial/trial-conversion-modal'
 import { TermsAcceptanceModal } from '@/components/terms/terms-acceptance-modal';
 import { PlanType } from '@/types';
 import { getAuthToken, getUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -45,7 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (isInitializing) return;
     
     if (!isAuthenticated) {
-      console.log('[DashboardLayout] Usuário não autenticado, redirecionando para login');
+      logger.log('[DashboardLayout] Usuário não autenticado, redirecionando para login');
       router.replace('/login');
     }
   }, [isAuthenticated, isInitializing, router]);

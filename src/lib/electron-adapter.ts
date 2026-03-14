@@ -2,6 +2,8 @@
  * Adaptador para usar a aplicação tanto em browser quanto em Electron
  */
 
+import { logger } from '@/lib/logger';
+
 // Verificar se está rodando no Electron
 export const isElectron = (): boolean => {
   return typeof window !== 'undefined' && (window as any).electron?.isElectron === true;
@@ -35,7 +37,7 @@ export const setApiConfig = async (config: {
   if (isElectron()) {
     return await (window as any).electron.setApiConfig(config);
   }
-  console.warn('setApiConfig só funciona no Electron');
+  logger.warn('setApiConfig só funciona no Electron');
   return { success: false };
 };
 
@@ -78,7 +80,7 @@ export const syncNow = async () => {
   if (isElectron()) {
     return await (window as any).electron.syncNow();
   }
-  console.warn('syncNow só funciona no Electron');
+  logger.warn('syncNow só funciona no Electron');
   return { success: false };
 };
 

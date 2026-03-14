@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Search, Printer, Download, Eye, Trash2, CheckCircle, XCircle, Clock, Edit, HelpCircle } from 'lucide-react';
@@ -32,11 +33,13 @@ import { formatCurrency } from '@/lib/utils-clean';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { printContent as printContentService } from '@/lib/print-service';
+import { logger } from '@/lib/logger';
 import { PageHelpModal } from '@/components/help';
 import { budgetsHelpTitle, budgetsHelpDescription, budgetsHelpIcon, getBudgetsHelpTabs } from '@/components/help/contents/budgets-help';
 import { useCartStore } from '@/store/cart-store';
-import { CheckoutDialog } from '@/components/sales/checkout-dialog';
 import type { Product } from '@/types';
+
+const CheckoutDialog = dynamic(() => import('@/components/sales/checkout-dialog').then((m) => ({ default: m.CheckoutDialog })), { ssr: false });
 
 interface Budget {
   id: string;
@@ -145,7 +148,7 @@ export default function BudgetsPage() {
         const data = response.data?.data || response.data;
         content = data?.content || data?.printContent || null;
       } catch (error) {
-        console.warn(`[Budgets] Falha ao obter conteúdo de impressão do orçamento ${budget.id}`, error);
+        logger.warn(`[Budgets] Falha ao obter conteúdo de impressão do orçamento ${budget.id}`, error);
       }
 
       if (content) {
