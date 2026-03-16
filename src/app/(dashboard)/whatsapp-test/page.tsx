@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { MessageSquare, Send, Loader2, CheckCircle, XCircle, Phone, FileText, Info } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { MessageSquare, Send, Loader2, CheckCircle, XCircle, Phone, FileText, Info, Wifi, WifiOff, RefreshCw, QrCode } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { handleApiError } from '@/lib/handleApiError';
 import { toast } from 'react-hot-toast';
+import { whatsappApi } from '@/lib/api-endpoints';
+
+type ConnectionStatus = {
+  connected: boolean;
+  status?: string;
+  instanceName?: string;
+} | null;
 
 export default function WhatsAppTestPage() {
   const { api } = useAuth();
@@ -17,11 +24,60 @@ export default function WhatsAppTestPage() {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [validating, setValidating] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [loadingQr, setLoadingQr] = useState(false);
   const [lastResult, setLastResult] = useState<{
     success: boolean;
     message: string;
     timestamp: Date;
   } | null>(null);
+
+  const fetchConnectionStatus = useCallback(async () => {
+    try {
+      const res = await whatsappApi.getConnectionStatus();
+      setConnectionStatus(res.data);
+      return res.data;
+    } catch {
+      setConnectionStatus({ connected: false, status: 'error' });
+      return null;
+    } finally {
+      setLoadingStatus(false);
+    }
+  }, []);
+
+  const fetchQr = useCallback(async () => {
+    setLoadingQr(true);
+    try {
+      const res = await whatsappApi.getConnectionQr();
+      setQrCode(res.data?.qr ?? null);
+    } catch {
+      setQrCode(null);
+    } finally {
+      setLoadingQr(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchConnectionStatus();
+  }, [fetchConnectionStatus]);
+
+  useEffect(() => {
+    if (loadingStatus || connectionStatus?.connected) {
+      setQrCode(null);
+      return;
+    }
+    fetchQr();
+    const t = setInterval(fetchQr, 12000);
+    return () => clearInterval(t);
+  }, [loadingStatus, connectionStatus?.connected, fetchQr]);
+
+  useEffect(() => {
+    if (connectionStatus?.connected) return;
+    const t = setInterval(fetchConnectionStatus, 8000);
+    return () => clearInterval(t);
+  }, [connectionStatus?.connected, fetchConnectionStatus]);
 
   // Templates de mensagens de teste
   const messageTemplates = [
@@ -35,7 +91,7 @@ export default function WhatsAppTestPage() {
     },
     {
       name: 'Teste Completo',
-      message: '📱 *TESTE COMPLETO DO SISTEMA*\n\n✅ Validação de telefone\n✅ Formatação de número\n✅ Envio via Z-API\n✅ Mensagem com emojis\n✅ Texto formatado\n\n*Negrito*\n_Itálico_\n~Riscado~\n\nSistema funcionando corretamente! 🎉'
+      message: '📱 *TESTE COMPLETO DO SISTEMA*\n\n✅ Validação de telefone\n✅ Formatação de número\n✅ Envio via Evolution\n✅ Mensagem com emojis\n✅ Texto formatado\n\n*Negrito*\n_Itálico_\n~Riscado~\n\nSistema funcionando corretamente! 🎉'
     }
   ];
 
@@ -136,22 +192,99 @@ export default function WhatsAppTestPage() {
     toast.success(`📝 Template "${template.name}" carregado`);
   };
 
+  const handleRefreshStatus = () => {
+    setLoadingStatus(true);
+    fetchConnectionStatus();
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <MessageSquare className="h-8 w-8 text-green-500" />
             Teste WhatsApp
           </h1>
           <p className="text-muted-foreground mt-1">
-            Envie mensagens de teste via Z-API
+            Envie mensagens de teste via Evolution
           </p>
+        </div>
+        {/* Status da conexão */}
+        <div className="flex items-center gap-3">
+          {loadingStatus ? (
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm bg-muted text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Verificando conexão...
+            </span>
+          ) : connectionStatus?.connected ? (
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">
+              <Wifi className="h-4 w-4" />
+              Conectado
+              {connectionStatus.instanceName && (
+                <span className="opacity-90 font-mono text-xs">({connectionStatus.instanceName})</span>
+              )}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+              <WifiOff className="h-4 w-4" />
+              Não conectado
+              {connectionStatus?.status && connectionStatus.status !== 'not_configured' && (
+                <span className="opacity-90 text-xs">({connectionStatus.status})</span>
+              )}
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={handleRefreshStatus} disabled={loadingStatus}>
+            <RefreshCw className={`h-4 w-4 ${loadingStatus ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
       </div>
 
-      {/* Informações da Z-API */}
+      {/* QR Code - exibido quando não conectado */}
+      {!loadingStatus && !connectionStatus?.connected && (
+        <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-400">
+              <QrCode className="h-5 w-5" />
+              Conectar WhatsApp
+            </CardTitle>
+            <CardDescription>
+              Escaneie o QR code abaixo com o WhatsApp (Dispositivos conectados ou vinculação)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center gap-4">
+            {loadingQr && !qrCode ? (
+              <div className="flex flex-col items-center gap-2 py-8">
+                <Loader2 className="h-10 w-10 animate-spin text-amber-600" />
+                <p className="text-sm text-muted-foreground">Carregando QR code...</p>
+              </div>
+            ) : qrCode ? (
+              <>
+                <div className="p-4 bg-white rounded-lg shadow-inner">
+                  <img
+                    src={qrCode}
+                    alt="QR Code para conectar WhatsApp"
+                    className="w-64 h-64 object-contain"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  O QR code é atualizado automaticamente. Se expirar, a página recarrega um novo em alguns segundos.
+                </p>
+                <Button variant="outline" size="sm" onClick={fetchQr} disabled={loadingQr}>
+                  {loadingQr ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  <span className="ml-2">Atualizar QR</span>
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4">
+                QR code não disponível. Configure WHATSMONT_BASE_URL e WHATSMONT_TOKEN no .env da API para exibir o QR aqui.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Informações da Evolution */}
       <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
@@ -161,7 +294,7 @@ export default function WhatsAppTestPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-blue-900 dark:text-blue-300">
           <p>• O número padrão <strong>48998482590</strong> já está pré-configurado para testes</p>
-          <p>• As mensagens são enviadas via Z-API (certifique-se de que está configurada no .env)</p>
+          <p>• As mensagens são enviadas via Evolution (configure EVOLUTION_BASE_URL e EVOLUTION_API_KEY no .env)</p>
           <p>• Formatos aceitos: 11987654321, (11) 98765-4321, +55 11 98765-4321</p>
           <p>• O sistema faz 3 tentativas automáticas em caso de falha</p>
         </CardContent>
@@ -356,7 +489,7 @@ export default function WhatsAppTestPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
               <h4 className="font-medium mb-2">Provider</h4>
-              <p className="text-muted-foreground">Z-API</p>
+              <p className="text-muted-foreground">Evolution</p>
             </div>
             <div>
               <h4 className="font-medium mb-2">Endpoint</h4>

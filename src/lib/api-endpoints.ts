@@ -1241,6 +1241,18 @@ export const n8nApi = {
 
 export const whatsappApi = {
   /**
+   * GET /whatsapp/connection/status
+   * Roles: ADMIN
+   */
+  getConnectionStatus: () => api.get<{ connected: boolean; status?: string; instanceName?: string }>('/whatsapp/connection/status'),
+
+  /**
+   * GET /whatsapp/connection/qr
+   * Roles: ADMIN
+   */
+  getConnectionQr: () => api.get<{ qr: string | null }>('/whatsapp/connection/qr'),
+
+  /**
    * POST /whatsapp/send-message
    * Roles: ADMIN, COMPANY
    * Body: { to, message, type, mediaUrl, filename }
