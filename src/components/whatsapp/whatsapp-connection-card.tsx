@@ -122,11 +122,27 @@ export function WhatsAppConnectionCard({ onConnectionChange }: Props) {
           toast.error('WhatsApp não está disponível no servidor (Evolution não configurada).');
         }
       }
-      const connectRes = await whatsappApi.connect();
-      setQr(connectRes.data?.qr ?? null);
-      setPairingCode(connectRes.data?.pairingCode ?? null);
+      let finalQr: string | null = null;
+      let finalPairingCode: string | null = null;
+
+      for (let attempt = 1; attempt <= 6; attempt++) {
+        const connectRes = await whatsappApi.connect();
+        finalQr = connectRes.data?.qr ?? null;
+        finalPairingCode = connectRes.data?.pairingCode ?? null;
+
+        if (finalQr || finalPairingCode) {
+          break;
+        }
+
+        if (attempt < 6) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      }
+
+      setQr(finalQr);
+      setPairingCode(finalPairingCode);
       await fetchStatus();
-      if (!connectRes.data?.qr && !connectRes.data?.pairingCode) {
+      if (!finalQr && !finalPairingCode) {
         toast.error('Não foi possível obter o QR code. Verifique a Evolution e tente novamente.');
       }
     } catch (e) {
