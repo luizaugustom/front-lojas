@@ -7,8 +7,9 @@ import type {
   StoreCreditTransactionsResponse,
 } from '@/types';
 import { getAccessToken, clearAccessToken } from './apiClient';
+import { getApiBaseUrl } from './api-base-url';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = getApiBaseUrl();
 const USE_MOCK = false; // Sempre usar backend real
 
 export interface ProcessExchangePayload {

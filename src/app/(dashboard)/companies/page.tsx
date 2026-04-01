@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { CompaniesTable } from '@/components/companies/companies-table';
 import { CompanyDialog } from '@/components/companies/company-dialog';
 import { CompanyStatusModal } from '@/components/companies/company-status-modal';
-import { FocusNfeConfigModal } from '@/components/companies/focus-nfe-config-modal';
+import { SefazFiscalConfigModal } from '@/components/companies/sefaz-fiscal-config-modal';
 import { Company, CreateCompanyDto } from '@/types';
 import { companyApi } from '@/lib/api-endpoints';
 import { handleApiError } from '@/lib/handleApiError';
@@ -28,8 +28,8 @@ export default function CompaniesPage() {
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [companyToToggle, setCompanyToToggle] = useState<Company | null>(null);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
-  const [isFocusNfeModalOpen, setIsFocusNfeModalOpen] = useState(false);
-  const [companyForFocusNfe, setCompanyForFocusNfe] = useState<Company | null>(null);
+  const [isFiscalModalOpen, setIsFiscalModalOpen] = useState(false);
+  const [companyForFiscalModal, setCompanyForFiscalModal] = useState<Company | null>(null);
 
   const fetchCompanies = async () => {
     try {
@@ -229,9 +229,9 @@ export default function CompaniesPage() {
           onEdit={handleEditCompany}
           onDelete={handleDeleteCompany}
           onToggleStatus={handleToggleStatus}
-          onConfigureFocusNfe={(company) => {
-            setCompanyForFocusNfe(company);
-            setIsFocusNfeModalOpen(true);
+          onConfigureCompanyFiscal={(company) => {
+            setCompanyForFiscalModal(company);
+            setIsFiscalModalOpen(true);
           }}
         />
       </Card>
@@ -264,15 +264,15 @@ export default function CompaniesPage() {
         loading={isTogglingStatus}
       />
 
-      <FocusNfeConfigModal
-        open={isFocusNfeModalOpen}
+      <SefazFiscalConfigModal
+        open={isFiscalModalOpen}
         onOpenChange={(open) => {
-          setIsFocusNfeModalOpen(open);
+          setIsFiscalModalOpen(open);
           if (!open) {
-            setCompanyForFocusNfe(null);
+            setCompanyForFiscalModal(null);
           }
         }}
-        company={companyForFocusNfe}
+        company={companyForFiscalModal}
         onSuccess={() => {
           fetchCompanies();
         }}

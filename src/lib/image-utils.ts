@@ -1,33 +1,30 @@
 /**
  * Utilitários para trabalhar com URLs de imagens
+ * Suporta URLs do DigitalOcean Spaces, Firebase Storage (legado) e caminhos relativos
  */
 
 import { logger } from '@/lib/logger';
+import { getApiBaseUrl } from '@/lib/api-base-url';
 
 /**
  * Constrói a URL completa para uma imagem
- * Suporta URLs do Firebase Storage e URLs locais
+ * Suporta URLs absolutas (DO Spaces, Firebase Storage) e caminhos relativos
  * @param url - URL relativa ou absoluta da imagem
  * @returns URL completa da imagem
  */
 export function getImageUrl(url: string | undefined | null): string {
   if (!url) return '';
   
-  // Limpar espaços e caracteres indesejados
   const cleanUrl = url.trim();
   
-  // Se já é uma URL completa (Firebase Storage ou outro CDN), usar como está
+  // URLs absolutas (DO Spaces, Firebase Storage, ou qualquer CDN) — usar como está
   if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
     return cleanUrl;
   }
   
-  // Se é um caminho relativo (antigo sistema de upload local), construir URL completa
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-  
-  // Remover barra final da baseUrl se existir
+  // Caminho relativo — construir URL com base na API
+  const baseUrl = getApiBaseUrl();
   const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-  
-  // Garantir que a URL final tenha apenas uma barra entre base e path
   const fullUrl = `${cleanBaseUrl}${cleanUrl.startsWith('/') ? cleanUrl : '/' + cleanUrl}`;
   
   logger.log('🔍 [getImageUrl] Construindo URL:', { 

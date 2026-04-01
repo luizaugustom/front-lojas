@@ -3,6 +3,7 @@
  */
 
 import { logger } from '@/lib/logger';
+import { getApiBaseUrl } from '@/lib/api-base-url';
 
 // Verificar se está rodando no Electron
 export const isElectron = (): boolean => {
@@ -23,7 +24,7 @@ export const getApiConfig = async () => {
     return await (window as any).electron.getApiConfig();
   }
   return {
-    url: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+    url: getApiBaseUrl(),
     timeout: 30000,
     retryAttempts: 3,
   };

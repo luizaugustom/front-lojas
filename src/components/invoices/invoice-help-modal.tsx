@@ -238,7 +238,7 @@ export function InvoiceHelpModal({ open, onClose }: InvoiceHelpModalProps) {
                     Antes de Emitir
                   </h4>
                   <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-2">
-                    Certifique-se de que a empresa possui configuração fiscal completa (CNPJ, IE, Código IBGE, CEP, API Key Focus NFe, etc.)
+                    Certifique-se de que a empresa possui configuração fiscal completa (CNPJ, IE, Código IBGE, CEP, certificado A1, ambiente SEFAZ, etc.)
                   </p>
                   <p className="text-sm text-yellow-700 dark:text-yellow-300">
                     Para NFC-e emitidas na venda: acima do valor configurado pela empresa (ex.: R$ 200), o CPF ou CNPJ do cliente é obrigatório por lei.
@@ -622,7 +622,7 @@ export function InvoiceHelpModal({ open, onClose }: InvoiceHelpModalProps) {
                 <div className="space-y-4">
                   <TroubleshootItem
                     problem="Erro: 'Dados fiscais incompletos'"
-                    solution="Acesse Configurações e preencha todos os dados fiscais da empresa (CNPJ, IE, Código IBGE, CEP, API Key Focus NFe)"
+                    solution="Acesse Configurações e preencha todos os dados fiscais da empresa (CNPJ, IE, Código IBGE, CEP, certificado A1, SEFAZ)"
                   />
                   <TroubleshootItem
                     problem="Erro: 'CPF/CNPJ inválido'"

@@ -7,7 +7,7 @@ import { FeatureCard, StepItem, TipItem, TroubleshootItem, type PageHelpTab } fr
 const STAGGER = 50;
 
 export const companiesHelpTitle = 'Central de Ajuda - Empresas';
-export const companiesHelpDescription = 'Gerencie empresas (admin): cadastro, status ativo/inativo e configuração Focus NFe.';
+export const companiesHelpDescription = 'Gerencie empresas (admin): cadastro, status ativo/inativo e configuração fiscal (SEFAZ).';
 export const companiesHelpIcon = <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />;
 
 export function getCompaniesHelpTabs(): PageHelpTab[] {
@@ -72,7 +72,7 @@ export function getCompaniesHelpTabs(): PageHelpTab[] {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-orange-500" />Problemas comuns</CardTitle></CardHeader>
             <CardContent>
-              <TroubleshootItem problem="Empresa não consegue emitir nota" solution="Verifique a configuração Focus NFe (API Key e dados fiscais) na empresa. A empresa deve preencher em Configurações ou o admin pode configurar aqui." />
+              <TroubleshootItem problem="Empresa não consegue emitir nota" solution="Verifique certificado A1, senha, dados fiscais e ambiente SEFAZ. A empresa configura em Configurações; o admin pode ajustar SEFAZ/IBPT no menu da empresa." />
             </CardContent>
           </Card>
         </div>

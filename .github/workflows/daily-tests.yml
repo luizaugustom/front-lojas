@@ -1,5 +1,7 @@
 # Testes diários às 5h BRT. Em caso de falha, envia WhatsApp para 5548992151944.
-# Secrets opcionais para notificação: MONTSHOP_API_URL, MONTSHOP_ADMIN_LOGIN, MONTSHOP_ADMIN_PASSWORD
+# Secrets opcionais para notificação: MONTSHOP_API_URL, MONTSHOP_ADMIN_LOGIN, MONTSHOP_ADMIN_PASSWORD,
+# MONTSHOP_WHATSAPP_COMPANY_ID (UUID da empresa cuja instância Evolution enviará a mensagem — obrigatório para admin)
+# MONTSHOP_API_URL = base pública da API (ex.: https://api.seudominio.com), sem path extra — usado em /auth/login
 name: Testes diários (5h BRT)
 
 on:
@@ -35,12 +37,15 @@ jobs:
           API_URL: ${{ secrets.MONTSHOP_API_URL }}
           ADMIN_LOGIN: ${{ secrets.MONTSHOP_ADMIN_LOGIN }}
           ADMIN_PASSWORD: ${{ secrets.MONTSHOP_ADMIN_PASSWORD }}
+          WHATSAPP_COMPANY_ID: ${{ secrets.MONTSHOP_WHATSAPP_COMPANY_ID }}
         run: |
           if [ -n "$API_URL" ] && [ -n "$ADMIN_LOGIN" ] && [ -n "$ADMIN_PASSWORD" ]; then
             TOKEN=$(curl -s -X POST "$API_URL/auth/login" -H "Content-Type: application/json" -d "{\"login\":\"$ADMIN_LOGIN\",\"password\":\"$ADMIN_PASSWORD\"}" | jq -r '.access_token')
             if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
               MSG="MontShop – Falha nos testes: job test-api (unit) | branch ${{ github.ref_name }} | run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-              curl -s -X POST "$API_URL/whatsapp/send-message" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"to\":\"5548992151944\",\"message\":\"$MSG\"}"
+              BODY=$(jq -n --arg to "5548992151944" --arg msg "$MSG" --arg cid "${WHATSAPP_COMPANY_ID:-}" \
+                '{to:$to, message:$msg} + (if $cid != "" then {companyId:$cid} else {} end)')
+              curl -s -X POST "$API_URL/whatsapp/send-message" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$BODY"
             fi
           fi
 
@@ -66,11 +71,14 @@ jobs:
           API_URL: ${{ secrets.MONTSHOP_API_URL }}
           ADMIN_LOGIN: ${{ secrets.MONTSHOP_ADMIN_LOGIN }}
           ADMIN_PASSWORD: ${{ secrets.MONTSHOP_ADMIN_PASSWORD }}
+          WHATSAPP_COMPANY_ID: ${{ secrets.MONTSHOP_WHATSAPP_COMPANY_ID }}
         run: |
           if [ -n "$API_URL" ] && [ -n "$ADMIN_LOGIN" ] && [ -n "$ADMIN_PASSWORD" ]; then
             TOKEN=$(curl -s -X POST "$API_URL/auth/login" -H "Content-Type: application/json" -d "{\"login\":\"$ADMIN_LOGIN\",\"password\":\"$ADMIN_PASSWORD\"}" | jq -r '.access_token')
             if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
               MSG="MontShop – Falha nos testes: job test-front (unit) | branch ${{ github.ref_name }} | run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-              curl -s -X POST "$API_URL/whatsapp/send-message" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"to\":\"5548992151944\",\"message\":\"$MSG\"}"
+              BODY=$(jq -n --arg to "5548992151944" --arg msg "$MSG" --arg cid "${WHATSAPP_COMPANY_ID:-}" \
+                '{to:$to, message:$msg} + (if $cid != "" then {companyId:$cid} else {} end)')
+              curl -s -X POST "$API_URL/whatsapp/send-message" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$BODY"
             fi
           fi

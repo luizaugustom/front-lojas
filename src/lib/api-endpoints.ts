@@ -284,22 +284,17 @@ export const companyApi = {
   hasValidFiscalConfig: () => api.get('/company/my-company/fiscal-config/valid'),
 
   /**
-   * PATCH /company/:id/focus-nfe-config
-   * Roles: ADMIN - Atualizar configuração do Focus NFe da empresa
-   */
-  updateFocusNfeConfig: (id: string, data: any) => api.patch(`/company/${id}/focus-nfe-config`, data),
-
-  /**
-   * GET /company/:id/focus-nfe-config
-   * Roles: ADMIN - Obter configuração do Focus NFe da empresa
-   */
-  getFocusNfeConfig: (id: string) => api.get(`/company/${id}/focus-nfe-config`),
-
-  /**
    * GET /company/:id/fiscal-config
    * Roles: ADMIN - Obter configurações fiscais completas da empresa (sem mascaramento)
    */
   getFiscalConfigForAdmin: (id: string) => api.get(`/company/${id}/fiscal-config`),
+
+  /**
+   * PATCH /company/:id/fiscal-config
+   * Roles: ADMIN - Atualizar configurações fiscais da empresa (SEFAZ, IBPT, etc.)
+   */
+  updateFiscalConfigForAdmin: (id: string, data: any) =>
+    api.patch(`/company/${id}/fiscal-config`, data),
 };
 
 // ============================================================================
@@ -1241,21 +1236,50 @@ export const n8nApi = {
 
 export const whatsappApi = {
   /**
-   * GET /whatsapp/connection/status
-   * Roles: ADMIN
+   * POST /whatsapp/instance/create
+   * Roles: ADMIN only
    */
-  getConnectionStatus: () => api.get<{ connected: boolean; status?: string; instanceName?: string }>('/whatsapp/connection/status'),
+  createInstance: () =>
+    api.post('/whatsapp/instance/create', {}),
 
   /**
-   * GET /whatsapp/connection/qr
-   * Roles: ADMIN
+   * GET /whatsapp/instance/connect — QR / pareamento
+   * Roles: ADMIN only
    */
-  getConnectionQr: () => api.get<{ qr: string | null }>('/whatsapp/connection/qr'),
+  connect: () =>
+    api.get<{ qr: string | null; pairingCode?: string; instanceName?: string }>('/whatsapp/instance/connect'),
+
+  /**
+   * GET /whatsapp/instance/status
+   * Roles: ADMIN, COMPANY, SELLER, MANAGER
+   */
+  getInstanceStatus: () =>
+    api.get<{
+      hasInstance: boolean;
+      connected: boolean;
+      status: string;
+      instanceName?: string;
+      connectedPhone?: string | null;
+    }>('/whatsapp/instance/status'),
+
+  /**
+   * DELETE /whatsapp/instance/disconnect
+   * Roles: ADMIN only
+   */
+  disconnectInstance: () =>
+    api.delete('/whatsapp/instance/disconnect'),
+
+  /**
+   * DELETE /whatsapp/instance/delete
+   * Roles: ADMIN only
+   */
+  deleteInstance: () =>
+    api.delete('/whatsapp/instance/delete'),
 
   /**
    * POST /whatsapp/send-message
-   * Roles: ADMIN, COMPANY
-   * Body: { to, message, type, mediaUrl, filename }
+   * Roles: ADMIN, COMPANY, SELLER, MANAGER
+   * Body: { to, message, type, mediaUrl, filename, companyId? }
    */
   sendMessage: (data: any) => api.post('/whatsapp/send-message', data),
 
@@ -1446,14 +1470,13 @@ export const adminApi = {
 
   /**
    * PATCH /admin/focus-nfe-config
-   * Roles: ADMIN - Atualizar configuração global do Focus NFe
-   * Body: { focusNfeApiKey?, focusNfeEnvironment?, ibptToken? }
+   * Roles: ADMIN - Atualizar token IBPT global (legado: rota mantida; envie apenas ibptToken se desejar)
    */
   updateFocusNfeConfig: (data: any) => api.patch('/admin/focus-nfe-config', data),
 
   /**
    * GET /admin/focus-nfe-config
-   * Roles: ADMIN - Obter configuração global do Focus NFe
+   * Roles: ADMIN - Obter metadados do token IBPT global (e campos legados Focus, se existirem)
    */
   getFocusNfeConfig: () => api.get('/admin/focus-nfe-config'),
 

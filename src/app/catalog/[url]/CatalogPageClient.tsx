@@ -9,6 +9,7 @@ import { getRandomVerse } from '@/lib/verses';
 import { handleApiError } from '@/lib/handleApiError';
 import { logger } from '@/lib/logger';
 import { ImageViewer } from '@/components/ui/image-viewer';
+import { getApiBaseUrl } from '@/lib/api-base-url';
 
 interface Product {
   id: string;
@@ -76,10 +77,7 @@ export default function CatalogPageClient() {
       try {
         setLoading(true);
         let baseUrl =
-          process.env.NEXT_PUBLIC_PUBLIC_API_URL ||
-          process.env.NEXT_PUBLIC_API_BASE_URL ||
-          process.env.NEXT_PUBLIC_API_URL ||
-          'https://montshop-api-qi3v4.ondigitalocean.app';
+          process.env.NEXT_PUBLIC_PUBLIC_API_URL?.trim() || getApiBaseUrl();
 
         // Remover barra final se existir para evitar barras duplicadas
         baseUrl = baseUrl.replace(/\/+$/, '');

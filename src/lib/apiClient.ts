@@ -3,9 +3,10 @@ import type { User, UserRole } from '@/types';
 import { logApiError } from './error-logger';
 import { logger } from './logger';
 import { getComputerId } from './device-detection';
+import { getApiBaseUrl } from './api-base-url';
 
 // Configurações de ambiente
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE_URL = getApiBaseUrl();
 const USE_HTTPS = process.env.NEXT_PUBLIC_USE_HTTPS === 'true';
 
 

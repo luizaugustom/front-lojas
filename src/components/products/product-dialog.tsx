@@ -44,44 +44,32 @@ import {
 } from '@/lib/constants/upload.constants';
 import { logger } from '@/lib/logger';
 
-// Função para normalizar URL da foto (extrair apenas o caminho necessário para o backend)
+// Função para normalizar URL da foto (extrair apenas o caminho/key para comparação)
 function normalizePhotoUrl(url: string): string {
   if (!url) return url;
   
-  // Se é uma URL do Firebase Storage (gs:// ou https://firebasestorage...)
-  if (url.includes('firebasestorage') || url.includes('firebase')) {
-    try {
-      const urlObj = new URL(url);
-      // Para Firebase Storage, usar o pathname completo ou apenas o nome do arquivo
-      // O backend pode precisar do pathname completo ou apenas da parte após /o/
-      const pathname = urlObj.pathname;
-      // Extrair o path após /o/ se existir (formato Firebase Storage)
-      const firebasePathMatch = pathname.match(/\/o\/(.+?)(\?|$)/);
-      if (firebasePathMatch) {
-        return decodeURIComponent(firebasePathMatch[1]);
-      }
-      // Caso contrário, retornar o pathname sem a barra inicial
-      return pathname.startsWith('/') ? pathname.substring(1) : pathname;
-    } catch {
-      // Se falhar, retornar a URL original
-      return url;
-    }
-  }
-  
-  // Se é uma URL completa HTTP/HTTPS, tentar extrair apenas o caminho
+  // Se é uma URL completa, extrair o path/key
   if (url.startsWith('http://') || url.startsWith('https://')) {
     try {
       const urlObj = new URL(url);
-      // Retornar o pathname (caminho sem o domínio)
+
+      // DO Spaces: https://{bucket}.{region}.digitaloceanspaces.com/{key}
+      const spacesMatch = url.match(/digitaloceanspaces\.com\/(.+?)(\?|$)/);
+      if (spacesMatch) return decodeURIComponent(spacesMatch[1]);
+
+      // Firebase Storage (legado): https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media
+      const firebaseMatch = urlObj.pathname.match(/\/o\/(.+?)(\?|$)/);
+      if (firebaseMatch) return decodeURIComponent(firebaseMatch[1]);
+
+      // Genérico: retornar pathname sem barra inicial
       const pathname = urlObj.pathname.startsWith('/') ? urlObj.pathname.substring(1) : urlObj.pathname;
-      return pathname || url; // Se pathname vazio, retornar URL original
+      return pathname || url;
     } catch {
-      // Se não é uma URL válida, retornar como está
       return url;
     }
   }
   
-  // Se é um caminho relativo, remover barra inicial se existir
+  // Caminho relativo: remover barra inicial se existir
   return url.startsWith('/') ? url.substring(1) : url;
 }
 
