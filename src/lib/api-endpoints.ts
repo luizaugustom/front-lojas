@@ -679,6 +679,15 @@ export const fiscalApi = {
   parseInboundXml: (xml: string) => api.post('/fiscal/parse-inbound-xml', { xml }),
 
   /**
+   * POST /fiscal/inbound-nfe/xml-from-access-key
+   * Busca XML na SEFAZ (Distribuição DF-e / consChNFe) com o certificado da empresa.
+   */
+  fetchInboundXmlByAccessKey: (accessKeyOrBarcode: string) =>
+    api.post<{ xml: string }>('/fiscal/inbound-nfe/xml-from-access-key', {
+      accessKey: accessKeyOrBarcode,
+    }),
+
+  /**
    * POST /fiscal/upload-xml
    * Roles: COMPANY - Upload de arquivo XML de nota fiscal de entrada
    * Content-Type: multipart/form-data
