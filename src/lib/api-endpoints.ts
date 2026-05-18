@@ -295,6 +295,19 @@ export const companyApi = {
    */
   updateFiscalConfigForAdmin: (id: string, data: any) =>
     api.patch(`/company/${id}/fiscal-config`, data),
+
+  /**
+   * GET /company/:id/focus-nfe-config
+   * Roles: ADMIN - Obter configuração FocusNFE da empresa (com mascara)
+   */
+  getFocusNfeConfigForAdmin: (id: string) => api.get(`/company/${id}/focus-nfe-config`),
+
+  /**
+   * PATCH /company/:id/focus-nfe-config
+   * Roles: ADMIN - Atualizar token e ambiente FocusNFE da empresa
+   */
+  updateFocusNfeConfigForAdmin: (id: string, data: any) =>
+    api.patch(`/company/${id}/focus-nfe-config`, data),
 };
 
 // ============================================================================
