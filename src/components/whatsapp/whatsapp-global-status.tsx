@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { whatsappApi } from '@/lib/api-endpoints';
 import { handleApiError } from '@/lib/handleApiError';
+import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
 type StatusPayload = {
@@ -43,11 +44,18 @@ export function WhatsAppGlobalStatus({ onConnectionChange }: Props) {
       const data = res.data;
       setStatus(data);
       onChangeRef.current?.(data.connected);
-    } catch (e) {
+    } catch (e: unknown) {
+      if (axios.isAxiosError(e) && e.response?.status === 404) {
+        setStatus(null);
+        onChangeRef.current?.(false);
+        setLoading(false);
+        return null;
+      }
       const { message } = handleApiError(e, { showToast: false });
       toast.error(message);
       setStatus(null);
       onChangeRef.current?.(false);
+      return null;
     } finally {
       setLoading(false);
     }

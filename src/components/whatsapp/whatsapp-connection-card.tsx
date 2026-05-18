@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dialog';
 import { whatsappApi } from '@/lib/api-endpoints';
 import { handleApiError } from '@/lib/handleApiError';
+import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
 export type WhatsappInstanceStatusPayload = {
@@ -68,7 +69,13 @@ export function WhatsAppConnectionCard({ onConnectionChange }: Props) {
       setStatus(data);
       onConnectionChangeRef.current?.(data.connected, data);
       return data;
-    } catch (e) {
+    } catch (e: unknown) {
+      if (axios.isAxiosError(e) && e.response?.status === 404) {
+        setStatus(null);
+        onConnectionChangeRef.current?.(false, null);
+        setLoadingStatus(false);
+        return null;
+      }
       const { message } = handleApiError(e, { showToast: false });
       toast.error(message);
       setStatus(null);
