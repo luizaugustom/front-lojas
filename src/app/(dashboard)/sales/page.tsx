@@ -273,6 +273,12 @@ export default function SalesPage() {
       // Verificar se e.key existe
       if (!e.key) return;
 
+      // Não processar se estiver em um input/textarea (dentro ou fora de dialogs)
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        return;
+      }
+
       // Aceitar caracteres imprimíveis e Enter, mesmo com foco em inputs (sempre ativo)
       if (e.key === 'Enter') {
         const code = barcodeBuffer.trim();

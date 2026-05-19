@@ -35,6 +35,7 @@ export function QuantityModal({ open, onClose, onConfirm, product }: QuantityMod
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    e.stopPropagation(); // Impedir que eventos subam para a página
     if (e.key === 'Enter') {
       e.preventDefault();
       handleConfirm();
