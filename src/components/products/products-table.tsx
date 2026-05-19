@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, memo } from 'react';
-import { Edit, Trash2, Package, AlertCircle, AlertTriangle, Tag, Eye } from 'lucide-react';
+import { Edit, Trash2, Package, AlertCircle, AlertTriangle, Tag, Eye, PlusCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import {
   Table,
@@ -34,6 +34,7 @@ interface ProductsTableProps {
   onRefetch: () => void;
   canManage?: boolean; // quando false, esconde/impede editar/excluir
   onRegisterLoss?: (product: Product) => void; // callback para registrar perda
+  onAddStock?: (product: Product) => void; // callback para adicionar estoque
   /** Paginação no servidor: quando informado, products já vêm da página atual e não se faz slice */
   page?: number;
   totalPages?: number;
@@ -49,6 +50,7 @@ function ProductsTableComponent({
   onRefetch,
   canManage = true,
   onRegisterLoss,
+  onAddStock,
   page: pageProp = 1,
   totalPages: totalPagesProp = 1,
   totalItems: totalItemsProp,
@@ -311,6 +313,18 @@ function ProductsTableComponent({
                         title="Registrar perda"
                       >
                         <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" />
+                      </Button>
+                    )}
+                    {onAddStock && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => onAddStock(product)}
+                        aria-label={`Adicionar estoque do produto ${product.name}`}
+                        className="focus:ring-2 focus:ring-primary focus:ring-offset-2 text-green-600 hover:text-green-700"
+                        title="Adicionar estoque"
+                      >
+                        <PlusCircle className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" />
                       </Button>
                     )}
                   </div>

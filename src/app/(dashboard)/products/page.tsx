@@ -21,6 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { ProductsTable } from '@/components/products/products-table';
 import { ProductLossDialog } from '@/components/product-losses/product-loss-dialog';
+import { StockAddDialog } from '@/components/stock/stock-add-dialog';
 
 const ProductDialog = dynamic(() => import('@/components/products/product-dialog').then((m) => ({ default: m.ProductDialog })), { ssr: false });
 import { ProductFilters } from '@/components/products/product-filters';
@@ -40,6 +41,7 @@ export default function ProductsPage() {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [lossDialogOpen, setLossDialogOpen] = useState(false);
+  const [stockAddDialogOpen, setStockAddDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productForLoss, setProductForLoss] = useState<Product | null>(null);
   const [filters, setFilters] = useState<ProductFiltersType>({
@@ -176,6 +178,21 @@ export default function ProductsPage() {
 
   const handleLossClose = () => {
     setLossDialogOpen(false);
+    setProductForLoss(null);
+    refetch();
+  };
+
+  const handleAddStock = (product: Product) => {
+    if (!canManageProducts) {
+      toast.error('Você não tem permissão para adicionar estoque.');
+      return;
+    }
+    setProductForLoss(product);
+    setStockAddDialogOpen(true);
+  };
+
+  const handleStockAddClose = () => {
+    setStockAddDialogOpen(false);
     setProductForLoss(null);
     refetch();
   };
@@ -535,6 +552,7 @@ export default function ProductsPage() {
         onRefetch={refetch}
         canManage={canManageProducts}
         onRegisterLoss={handleRegisterLoss}
+        onAddStock={canManageProducts ? handleAddStock : undefined}
         page={page}
         totalPages={totalPages}
         totalItems={total}
@@ -553,6 +571,11 @@ export default function ProductsPage() {
       <ProductLossDialog
         open={lossDialogOpen}
         onClose={handleLossClose}
+        initialProduct={productForLoss}
+      />
+      <StockAddDialog
+        open={stockAddDialogOpen}
+        onClose={handleStockAddClose}
         initialProduct={productForLoss}
       />
       <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={productsHelpTitle} description={productsHelpDescription} icon={productsHelpIcon} tabs={getProductsHelpTabs()} />
