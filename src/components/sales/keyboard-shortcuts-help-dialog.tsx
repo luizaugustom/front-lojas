@@ -30,7 +30,7 @@ export function KeyboardShortcutsHelpDialog({
       category: 'Navegação (lista de produtos)',
       items: [
         { keys: ['↑', '↓'], description: 'Navegar entre produtos (quando foco está nos produtos)' },
-        { keys: ['Enter'], description: 'Adicionar produto selecionado ao carrinho' },
+        { keys: ['Enter'], description: 'Abrir modal de quantidade para produto selecionado' },
         { keys: ['Tab'], description: 'Navegar para o próximo campo' },
         { keys: ['Shift', '+', 'Tab'], description: 'Voltar para o campo anterior' },
       ],

@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCartStore } from '@/store/cart-store';
 import { ProductGrid } from '@/components/sales/product-grid';
 import { ProductList } from '@/components/sales/product-list';
+import { QuantityModal } from '@/components/sales/quantity-modal';
 import { Cart } from '@/components/sales/cart';
 import { BarcodeScanner } from '@/components/sales/barcode-scanner';
 
@@ -74,6 +75,8 @@ export default function SalesPage() {
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
   const [pageHelpOpen, setPageHelpOpen] = useState(false);
+  const [quantityModalOpen, setQuantityModalOpen] = useState(false);
+  const [productForQuantity, setProductForQuantity] = useState<Product | null>(null);
   const { addItem, items, clearCart } = useCartStore();
   const [lastScanned, setLastScanned] = useState(0);
   const [selectedProductIndex, setSelectedProductIndex] = useState<number | null>(null);
@@ -329,7 +332,28 @@ export default function SalesPage() {
   };
 
   // Quando qualquer modal está aberto, atalhos da página não devem interferir (apenas o modal responde)
-  const anyModalOpen = checkoutOpen || budgetOpen || openingDialogOpen || helpDialogOpen || pageHelpOpen || scannerOpen || mobileCartOpen;
+  const anyModalOpen = checkoutOpen || budgetOpen || openingDialogOpen || helpDialogOpen || pageHelpOpen || scannerOpen || mobileCartOpen || quantityModalOpen;
+
+  const handleRequestQuantity = (product: Product) => {
+    setProductForQuantity(product);
+    setQuantityModalOpen(true);
+  };
+
+  const handleQuantityConfirm = (quantity: number) => {
+    if (productForQuantity) {
+      logger.log('[DEBUG] Adicionando produto ao carrinho:', {
+        productId: productForQuantity.id,
+        productName: productForQuantity.name,
+        quantity,
+      });
+      try {
+        addItem(productForQuantity, quantity);
+      } catch (error) {
+        console.error('[DEBUG] Erro ao adicionar produto ao carrinho:', error);
+        handleApiError(error);
+      }
+    }
+  };
 
   // Atalhos de teclado para página de vendas (desabilitados quando há modal aberto)
   useKeyboardShortcuts({
@@ -463,6 +487,7 @@ export default function SalesPage() {
             keyboardShortcutsEnabled={!anyModalOpen}
             selectedProductIndex={selectedProductIndex ?? undefined}
             onProductSelect={setSelectedProductIndex}
+            onRequestQuantity={handleRequestQuantity}
             onAddToCart={(product) => {
               // Manter ID original do produto no carrinho
               logger.log('[DEBUG] Adicionando produto ao carrinho:', {
@@ -470,7 +495,7 @@ export default function SalesPage() {
                 productName: product.name,
                 isUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(product.id)
               });
-              
+
               try {
                 addItem(product);
               } catch (error) {
@@ -568,6 +593,13 @@ export default function SalesPage() {
         onClose={() => setHelpDialogOpen(false)}
       />
       <PageHelpModal open={pageHelpOpen} onClose={() => setPageHelpOpen(false)} title={salesHelpTitle} description={salesHelpDescription} icon={salesHelpIcon} tabs={getSalesHelpTabs()} />
+
+      <QuantityModal
+        open={quantityModalOpen}
+        onClose={() => setQuantityModalOpen(false)}
+        onConfirm={handleQuantityConfirm}
+        product={productForQuantity}
+      />
 
       {/* Mobile Cart Dialog */}
       <Dialog open={mobileCartOpen} onOpenChange={setMobileCartOpen}>

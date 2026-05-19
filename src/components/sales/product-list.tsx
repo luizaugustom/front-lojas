@@ -18,13 +18,14 @@ interface ProductListProps {
   products: Product[];
   isLoading: boolean;
   onAddToCart: (product: Product, quantity?: number) => void;
+  onRequestQuantity?: (product: Product) => void;
   keyboardFocusArea?: 'products' | 'cart';
   keyboardShortcutsEnabled?: boolean;
   selectedProductIndex?: number;
   onProductSelect?: (index: number) => void;
 }
 
-function ProductListComponent({ products, isLoading, onAddToCart, keyboardFocusArea = 'products', keyboardShortcutsEnabled = true, selectedProductIndex, onProductSelect }: ProductListProps) {
+function ProductListComponent({ products, isLoading, onAddToCart, onRequestQuantity, keyboardFocusArea = 'products', keyboardShortcutsEnabled = true, selectedProductIndex, onProductSelect }: ProductListProps) {
   const [selectedImage, setSelectedImage] = useState<{ images: string[], index: number } | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedProductForDetails, setSelectedProductForDetails] = useState<Product | null>(null);
@@ -99,7 +100,11 @@ function ProductListComponent({ products, isLoading, onAddToCart, keyboardFocusA
           if (currentSelectedIndex !== null && currentSelectedIndex >= 0 && currentSelectedIndex < paginatedProducts.length) {
             const product = paginatedProducts[currentSelectedIndex];
             if (product && product.stockQuantity > 0) {
-              onAddToCart(product, 1);
+              if (onRequestQuantity) {
+                onRequestQuantity(product);
+              } else {
+                onAddToCart(product, 1);
+              }
             }
           }
         },
@@ -232,7 +237,13 @@ function ProductListComponent({ products, isLoading, onAddToCart, keyboardFocusA
                   <Button
                     variant="ghost"
                     className="h-9 w-9 p-0"
-                    onClick={() => onAddToCart(product, 1)}
+                    onClick={() => {
+                      if (onRequestQuantity) {
+                        onRequestQuantity(product);
+                      } else {
+                        onAddToCart(product, 1);
+                      }
+                    }}
                     disabled={product.stockQuantity <= 0}
                     aria-label={`Adicionar ${product.name}`}
                     title={`Adicionar ${product.name}`}

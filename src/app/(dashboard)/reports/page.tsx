@@ -31,6 +31,8 @@ import { reportsHelpTitle, reportsHelpDescription, reportsHelpIcon, getReportsHe
 const reportTypes = [
   { value: 'sales', label: 'Relatório de Vendas', icon: ShoppingCart },
   { value: 'cancelled_sales', label: 'Relatório de Vendas Canceladas', icon: XCircle },
+  { value: 'sales_with_fiscal', label: 'Vendas com NF (NFCe/NFe)', icon: FileText },
+  { value: 'sales_without_fiscal', label: 'Vendas sem NF (Cupom)', icon: ShoppingCart },
   { value: 'products', label: 'Relatório de Produtos', icon: Package },
   { value: 'invoices', label: 'Relatório de Notas Fiscais (Saída)', icon: FileText },
   { value: 'inbound_invoices', label: 'Relatório de Notas Fiscais de Entrada', icon: FileText },
