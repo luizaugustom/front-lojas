@@ -208,17 +208,19 @@ function ProductsTableComponent({
             const minNum = Number(product.minStockQuantity ?? 0);
             const threshold = product.lowStockAlertThreshold ?? 3;
             const isLowStock = !Number.isNaN(stockNum) && stockNum <= threshold;
-            const isExpiringSoon = product.expirationDate && 
-              new Date(product.expirationDate) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-            const isExpired = product.expirationDate && 
-              new Date(product.expirationDate) <= new Date();
+            // Use nearestExpirationDate for expiry check, fallback to product.expirationDate
+            const effectiveExpirationDate = product.nearestExpirationDate ?? product.expirationDate;
+            const isExpiringSoon = effectiveExpirationDate &&
+              new Date(effectiveExpirationDate) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+            const isExpired = effectiveExpirationDate &&
+              new Date(effectiveExpirationDate) <= new Date();
 
             return (
               <TableRow key={product.id}>
                 <TableCell>
-                  <ProductImage 
-                    photos={product.photos} 
-                    name={product.name} 
+                  <ProductImage
+                    photos={product.photos}
+                    name={product.name}
                     size="md"
                     onClick={() => handleImageClick(product)}
                   />
@@ -246,7 +248,7 @@ function ProductsTableComponent({
                 <TableCell>{product.category || '-'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {product.expirationDate && product.expirationDate !== 'null' ? formatDate(product.expirationDate) : '-'}
+                    {effectiveExpirationDate && effectiveExpirationDate !== 'null' ? formatDate(effectiveExpirationDate) : '-'}
                     {isExpiringSoon && (
                       <AlertCircle className="h-4 w-4 text-red-500" />
                     )}

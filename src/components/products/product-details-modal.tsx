@@ -260,6 +260,62 @@ export function ProductDetailsModal({
               />
             </div>
 
+            {/* Seção de Lotes em Estoque */}
+            {product.stockEntries && product.stockEntries.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wide">
+                  Lotes em Estoque
+                </h3>
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="text-left px-4 py-2 font-medium text-muted-foreground">Data de Validade</th>
+                        <th className="text-right px-4 py-2 font-medium text-muted-foreground">Quantidade</th>
+                        <th className="text-left px-4 py-2 font-medium text-muted-foreground">Lote</th>
+                        <th className="text-center px-4 py-2 font-medium text-muted-foreground">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {product.stockEntries.map((entry) => {
+                        const entryDate = entry.expirationDate ? new Date(entry.expirationDate) : null;
+                        const now = new Date();
+                        const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+                        let status: React.ReactNode = null;
+                        if (entryDate) {
+                          if (entryDate <= now) {
+                            status = <span className="text-red-600 font-medium">Vencido</span>;
+                          } else if (entryDate <= thirtyDays) {
+                            status = <span className="text-orange-600 font-medium">Vence em breve</span>;
+                          } else {
+                            status = <span className="text-green-600">OK</span>;
+                          }
+                        } else {
+                          status = <span className="text-muted-foreground">Sem validade</span>;
+                        }
+                        return (
+                          <tr key={entry.id}>
+                            <td className="px-4 py-2">
+                              {entryDate ? formatDate(entryDate) : '-'}
+                            </td>
+                            <td className="px-4 py-2 text-right font-medium">
+                              {entry.quantity} {product.unitOfMeasure || 'un'}
+                            </td>
+                            <td className="px-4 py-2 text-muted-foreground">
+                              {entry.batchNumber || '-'}
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              {status}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* Seção Fiscal */}
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wide">

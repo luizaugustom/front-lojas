@@ -123,6 +123,15 @@ export interface CreateCompanyDto {
 }
 
 // Product Types
+export interface StockEntry {
+  id: string;
+  quantity: number;
+  expirationDate: string | null;
+  batchNumber: string | null;
+  unitCost: number;
+  createdAt?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -136,6 +145,7 @@ export interface Product {
   description?: string;
   photos?: string[];
   expirationDate?: string;
+  nearestExpirationDate?: string | null;
   unitOfMeasure?: string;
   ncm?: string;
   cfop?: string;
@@ -148,6 +158,8 @@ export interface Product {
   isOnPromotion?: boolean;
   promotionName?: string;
   originalPrice?: number;
+  // Batch stock entries
+  stockEntries?: StockEntry[];
 }
 
 // Payment Types
