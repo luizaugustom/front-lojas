@@ -31,6 +31,15 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
+  async rewrites() {
+    const target = (process.env.API_REWRITE_TARGET || 'https://api.montshop.app').replace(/\/+$/, '');
+    return [
+      {
+        source: '/api-backend/:path*',
+        destination: `${target}/:path*`,
+      },
+    ];
+  },
   typescript: {
     ignoreBuildErrors: false, // Em produção, deveria ser false
   },

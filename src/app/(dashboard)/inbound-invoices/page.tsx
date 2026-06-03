@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileText, RefreshCw, Search, Download, Upload, PlusCircle, Trash2, Pencil, Loader2, RotateCcw, FileCode2, HelpCircle, Plus, X } from 'lucide-react';
+import { FileText, RefreshCw, Search, Download, Upload, PlusCircle, Trash2, Pencil, Loader2, RotateCcw, FileCode2, HelpCircle, Plus, X, Barcode } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -21,6 +21,7 @@ import { fiscalApi, productApi, billToPayApi } from '@/lib/api-endpoints';
 import { PageHelpModal } from '@/components/help';
 import { OptimizedImage } from '@/components/ui/optimized-image';
 import { inboundInvoicesHelpTitle, inboundInvoicesHelpDescription, inboundInvoicesHelpIcon, getInboundInvoicesHelpTabs } from '@/components/help/contents/inbound-invoices-help';
+import { BarcodeScanner } from '@/components/sales/barcode-scanner';
 
 interface InboundDoc {
   id: string;
@@ -119,6 +120,8 @@ export default function InboundInvoicesPage() {
   const [createProductModalPhotoPreviewUrls, setCreateProductModalPhotoPreviewUrls] = useState<string[]>([]);
   const createProductModalFileInputRef = useRef<HTMLInputElement>(null);
   const [itemNewProductPhotos, setItemNewProductPhotos] = useState<Record<number, File[]>>({});
+  const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
+  const [consultingNfe, setConsultingNfe] = useState(false);
 
   // Protege rota para empresa
   useEffect(() => {
@@ -217,6 +220,7 @@ export default function InboundInvoicesPage() {
     if (inboundSefazFetchLockRef.current) return;
     inboundSefazFetchLockRef.current = true;
     setSefazInboundXmlLoading(true);
+    setConsultingNfe(true);
     try {
       const { data } = await fiscalApi.fetchInboundXmlByAccessKey(key44);
       const xml = data.xml;
@@ -232,6 +236,7 @@ export default function InboundInvoicesPage() {
     } finally {
       inboundSefazFetchLockRef.current = false;
       setSefazInboundXmlLoading(false);
+      setConsultingNfe(false);
     }
   };
 
@@ -997,28 +1002,41 @@ export default function InboundInvoicesPage() {
           <div className="space-y-3">
             <div className="space-y-1">
               <Label htmlFor="accessKey">Chave de Acesso (opcional)</Label>
-              <Input
-                id="accessKey"
-                placeholder="44 dígitos ou leia o código de barras da DANFE"
-                value={accessKey}
-                disabled={sefazInboundXmlLoading}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, '');
-                  const value = digits.length > 44 ? digits.slice(-44) : digits;
-                  setAccessKey(value);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter') return;
-                  if (editingDoc || !addOpen) return;
-                  if (accessKey.length !== 44) return;
-                  e.preventDefault();
-                  if (inboundSefazFetchTimerRef.current) {
-                    clearTimeout(inboundSefazFetchTimerRef.current);
-                    inboundSefazFetchTimerRef.current = null;
-                  }
-                  void runSefazInboundFetchAndParse(accessKey);
-                }}
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  id="accessKey"
+                  placeholder="44 dígitos ou leia o código de barras da DANFE"
+                  value={accessKey}
+                  disabled={sefazInboundXmlLoading}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '');
+                    const value = digits.length > 44 ? digits.slice(-44) : digits;
+                    setAccessKey(value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return;
+                    if (editingDoc || !addOpen) return;
+                    if (accessKey.length !== 44) return;
+                    e.preventDefault();
+                    if (inboundSefazFetchTimerRef.current) {
+                      clearTimeout(inboundSefazFetchTimerRef.current);
+                      inboundSefazFetchTimerRef.current = null;
+                    }
+                    void runSefazInboundFetchAndParse(accessKey);
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setBarcodeScannerOpen(true)}
+                  disabled={sefazInboundXmlLoading}
+                  title="Escanear código de barras da DANFE"
+                >
+                  <Barcode className="h-4 w-4" />
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
                 {sefazInboundXmlLoading ? (
                   <span className="inline-flex items-center gap-1">
@@ -1729,6 +1747,35 @@ export default function InboundInvoicesPage() {
       </Dialog>
 
       <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={inboundInvoicesHelpTitle} description={inboundInvoicesHelpDescription} icon={inboundInvoicesHelpIcon} tabs={getInboundInvoicesHelpTabs()} />
+
+      {/* Dialog: Loading consulta SEFAZ */}
+      <Dialog open={consultingNfe}>
+        <DialogContent onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+          <div className="flex flex-col items-center gap-4 py-6">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <div className="text-center">
+              <p className="text-lg font-medium text-foreground">Consultando nota fiscal na SEFAZ...</p>
+              <p className="text-sm text-muted-foreground mt-1">Aguarde enquanto buscamos o XML</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Scanner de código de barras */}
+      <BarcodeScanner
+        open={barcodeScannerOpen}
+        onClose={() => setBarcodeScannerOpen(false)}
+        onScanned={(code) => {
+          setBarcodeScannerOpen(false);
+          const digits = code.replace(/\D/g, '');
+          if (digits.length === 44) {
+            setAccessKey(digits);
+            void runSefazInboundFetchAndParse(digits);
+          } else {
+            toast.error('Código escaneado não é uma chave de acesso válida (44 dígitos)');
+          }
+        }}
+      />
     </div>
   );
 }

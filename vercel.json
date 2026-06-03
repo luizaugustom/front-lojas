@@ -6,8 +6,8 @@
   "devCommand": "npm run dev",
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
+      "source": "/api-backend/:path*",
+      "destination": "https://api.montshop.app/:path*"
     }
   ],
   "headers": [
@@ -38,6 +38,8 @@
     }
   ],
   "env": {
-    "NEXT_PUBLIC_APP_ENV": "production"
+    "NEXT_PUBLIC_APP_ENV": "production",
+    "NEXT_PUBLIC_USE_API_PROXY": "true",
+    "API_REWRITE_TARGET": "https://api.montshop.app"
   }
 }
