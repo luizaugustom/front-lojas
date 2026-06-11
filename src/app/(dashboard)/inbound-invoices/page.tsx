@@ -122,6 +122,8 @@ export default function InboundInvoicesPage() {
   const [itemNewProductPhotos, setItemNewProductPhotos] = useState<Record<number, File[]>>({});
   const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
   const [consultingNfe, setConsultingNfe] = useState(false);
+  const [sefazFetchStatus, setSefazFetchStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [sefazFetchError, setSefazFetchError] = useState<string | null>(null);
 
   // Protege rota para empresa
   useEffect(() => {
@@ -216,11 +218,13 @@ export default function InboundInvoicesPage() {
     setRegisterBillsFromXml((res.duplicatas?.length ?? 0) > 0);
   };
 
-  const runSefazInboundFetchAndParse = async (key44: string) => {
+  const runSefazInboundFetchAndParse = async (key44: string, isManual = false) => {
     if (inboundSefazFetchLockRef.current) return;
     inboundSefazFetchLockRef.current = true;
     setSefazInboundXmlLoading(true);
     setConsultingNfe(true);
+    setSefazFetchStatus('loading');
+    setSefazFetchError(null);
     try {
       const { data } = await fiscalApi.fetchInboundXmlByAccessKey(key44);
       const xml = data.xml;
@@ -228,11 +232,18 @@ export default function InboundInvoicesPage() {
       const { data: res } = await fiscalApi.parseInboundXml(xml);
       applyInboundParseResult(res as ParsedData, xml);
       lastSefazAutoFetchedKeyRef.current = key44;
-      toast.success('XML obtido na SEFAZ. Revise os dados e defina o que fazer com os produtos.');
+      setSefazFetchStatus('success');
+      if (!isManual) {
+        toast.success('XML obtido na SEFAZ. Revise os dados e defina o que fazer com os produtos.');
+      }
     } catch (err: any) {
       lastSefazAutoFetchedKeyRef.current = null;
       const { message } = handleApiError(err, { showToast: false });
-      toast.error(message);
+      setSefazFetchStatus('error');
+      setSefazFetchError(message);
+      if (!isManual) {
+        toast.error(message);
+      }
     } finally {
       inboundSefazFetchLockRef.current = false;
       setSefazInboundXmlLoading(false);
@@ -922,6 +933,8 @@ export default function InboundInvoicesPage() {
           setCreateProductModalForm(null);
           setCreateProductModalPhotos([]);
           setItemNewProductPhotos({});
+          setSefazFetchStatus('idle');
+          setSefazFetchError(null);
         }
       }}>
         <DialogContent className="max-w-[89vw] w-[89vw] max-h-[90vh] overflow-y-auto">
@@ -1003,29 +1016,67 @@ export default function InboundInvoicesPage() {
             <div className="space-y-1">
               <Label htmlFor="accessKey">Chave de Acesso (opcional)</Label>
               <div className="flex items-center gap-2">
-                <Input
-                  id="accessKey"
-                  placeholder="44 dígitos ou leia o código de barras da DANFE"
-                  value={accessKey}
-                  disabled={sefazInboundXmlLoading}
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, '');
-                    const value = digits.length > 44 ? digits.slice(-44) : digits;
-                    setAccessKey(value);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key !== 'Enter') return;
-                    if (editingDoc || !addOpen) return;
-                    if (accessKey.length !== 44) return;
-                    e.preventDefault();
-                    if (inboundSefazFetchTimerRef.current) {
-                      clearTimeout(inboundSefazFetchTimerRef.current);
-                      inboundSefazFetchTimerRef.current = null;
-                    }
-                    void runSefazInboundFetchAndParse(accessKey);
-                  }}
-                  className="flex-1"
-                />
+                <div className="relative flex-1">
+                  <Input
+                    id="accessKey"
+                    placeholder="44 dígitos ou leia o código de barras da DANFE"
+                    value={accessKey}
+                    disabled={sefazInboundXmlLoading}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, '');
+                      const value = digits.length > 44 ? digits.slice(-44) : digits;
+                      setAccessKey(value);
+                      if (sefazFetchStatus === 'error' || sefazFetchStatus === 'success') {
+                        setSefazFetchStatus('idle');
+                        setSefazFetchError(null);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return;
+                      if (editingDoc || !addOpen) return;
+                      if (accessKey.length !== 44) return;
+                      e.preventDefault();
+                      if (inboundSefazFetchTimerRef.current) {
+                        clearTimeout(inboundSefazFetchTimerRef.current);
+                        inboundSefazFetchTimerRef.current = null;
+                      }
+                      void runSefazInboundFetchAndParse(accessKey, true);
+                    }}
+                    className={`flex-1 pr-10 ${
+                      sefazFetchStatus === 'success' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''
+                    } ${
+                      sefazFetchStatus === 'error' ? 'border-red-500 bg-red-50 dark:bg-red-950/20' : ''
+                    }`}
+                  />
+                  {sefazInboundXmlLoading && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                  {!sefazInboundXmlLoading && sefazFetchStatus === 'success' && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                  {!sefazInboundXmlLoading && sefazFetchStatus === 'error' && (
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+                      onClick={() => {
+                        if (accessKey.length === 44) {
+                          setSefazFetchStatus('idle');
+                          setSefazFetchError(null);
+                          void runSefazInboundFetchAndParse(accessKey, true);
+                        }
+                      }}
+                      title="Tentar novamente"
+                    >
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
                 <Button
                   type="button"
                   variant="outline"
@@ -1043,6 +1094,20 @@ export default function InboundInvoicesPage() {
                     <Loader2 className="h-3 w-3 animate-spin shrink-0" />
                     Buscando XML na SEFAZ (certificado da empresa)…
                   </span>
+                ) : sefazFetchStatus === 'error' ? (
+                  <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                    <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {sefazFetchError || 'Falha ao buscar XML. Clique no ícone de retry ou preencha manualmente.'}
+                  </span>
+                ) : sefazFetchStatus === 'success' ? (
+                  <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
+                    <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    XML obtido com sucesso! Dados preenchidos automaticamente.
+                  </span>
                 ) : (
                   <>
                     {accessKey.length}/44 dígitos — ao completar 44, a busca na Distribuição DF-e ocorre automaticamente; Enter aciona de imediato.
@@ -1052,18 +1117,39 @@ export default function InboundInvoicesPage() {
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="supplierName">Fornecedor *</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="supplierName">Fornecedor *</Label>
+                {sefazFetchStatus === 'success' && parsedData && (
+                  <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    do XML
+                  </span>
+                )}
+              </div>
               <Input
                 id="supplierName"
                 placeholder="Nome do fornecedor"
                 value={supplierName}
                 onChange={(e) => setSupplierName(e.target.value)}
                 maxLength={255}
+                className={sefazFetchStatus === 'success' && supplierName ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''}
               />
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="totalValue">Valor Total *</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="totalValue">Valor Total *</Label>
+                {sefazFetchStatus === 'success' && parsedData && (
+                  <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    do XML
+                  </span>
+                )}
+              </div>
               <Input
                 id="totalValue"
                 placeholder="0,00"
@@ -1072,6 +1158,7 @@ export default function InboundInvoicesPage() {
                   const value = e.target.value.replace(/[^\d,]/g, '');
                   setTotalValue(value);
                 }}
+                className={sefazFetchStatus === 'success' && totalValue ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''}
               />
               <p className="text-xs text-muted-foreground">
                 Use vírgula para separar os centavos (ex: 1500,50)
@@ -1115,6 +1202,100 @@ export default function InboundInvoicesPage() {
                 </p>
               )}
             </div>
+
+            {/* Fallback visual quando falha busca na SEFAZ */}
+            {!editingDoc && sefazFetchStatus === 'error' && (
+              <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                    <svg className="h-5 w-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-medium text-red-800 dark:text-red-200">
+                      Não foi possível obter o XML da SEFAZ
+                    </h4>
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                      {sefazFetchError || 'Verifique se o certificado digital está configurado e se a nota está disponível na Receita Federal.'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-red-200 dark:border-red-800">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (accessKey.length === 44) {
+                        setSefazFetchStatus('idle');
+                        setSefazFetchError(null);
+                        void runSefazInboundFetchAndParse(accessKey, true);
+                      }
+                    }}
+                    disabled={accessKey.length !== 44}
+                    className="border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30"
+                  >
+                    <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Tentar novamente
+                  </Button>
+                  <span className="text-xs text-red-500 dark:text-red-400">ou</span>
+                  <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Use a área de XML acima para colar manualmente o arquivo
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Indicador visual de sucesso na busca */}
+            {!editingDoc && sefazFetchStatus === 'success' && parsedData && (
+              <div className="rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                    <svg className="h-5 w-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-medium text-green-800 dark:text-green-200">
+                      XML carregado com sucesso!
+                    </h4>
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                      {parsedData.items.length} item(s) encontrado(s) · Fornecedor: {parsedData.form.supplierName}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSefazFetchStatus('idle');
+                      setParsedData(null);
+                      setAccessKey('');
+                      setSupplierName('');
+                      setTotalValue('');
+                      setXmlPasted('');
+                      setXmlStringForSubmit(null);
+                      setItemDecisions([]);
+                      setItemLinkedIds([]);
+                      setItemNewProductData({});
+                      setRegisterBillsFromXml(false);
+                    }}
+                    className="text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30"
+                    title="Limpar dados do XML"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {!editingDoc && parsedData?.items && parsedData.items.length > 0 && (
               <div className="space-y-2 rounded-md border bg-muted/30 p-3">
