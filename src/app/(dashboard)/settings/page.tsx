@@ -753,7 +753,7 @@ export default function SettingsPage() {
       // Depois fazer upload do certificado
       await companyApi.uploadCertificate(certificateFile);
       
-      toast.success('Certificado enviado com sucesso!');
+      toast.success('Certificado armazenado com sucesso para consulta na SEFAZ!');
       setCertificateFile(null);
       setCertificatePassword('');
       
@@ -2277,7 +2277,6 @@ export default function SettingsPage() {
                       <li>• Inscrição Estadual</li>
                       <li>• Código IBGE do Município</li>
                       <li>• Ambiente SEFAZ (homologação ou produção)</li>
-                      <li>• Certificado digital A1 — senha e arquivo .pfx (próxima seção)</li>
                     </ul>
                   </div>
                 </>
@@ -2295,7 +2294,7 @@ export default function SettingsPage() {
                 Certificado Digital
               </CardTitle>
               <CardDescription>
-                Configure o certificado digital e senha para emissão de notas fiscais
+                Certificado digital para consultar notas fiscais de entrada na SEFAZ (não é usado na emissão via NFe.io)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -2420,10 +2419,11 @@ export default function SettingsPage() {
                       ℹ️ Sobre o Certificado Digital
                     </p>
                     <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
-                      <li>• O certificado digital é necessário para emissão de notas fiscais</li>
+                      <li>• Usado exclusivamente para buscar XML de notas de entrada na SEFAZ</li>
+                      <li>• Não é enviado ao Focus NFe — a emissão de NF-e/NFC-e usa a NFe.io</li>
                       <li>• Configure primeiro a senha do certificado</li>
                       <li>• Depois faça upload do arquivo .pfx ou .p12</li>
-                      <li>• O arquivo é armazenado com segurança para assinatura e transmissão à SEFAZ</li>
+                      <li>• O arquivo é armazenado com segurança no sistema</li>
                     </ul>
                   </div>
                 </>

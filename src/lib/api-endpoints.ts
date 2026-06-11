@@ -267,7 +267,7 @@ export const companyApi = {
 
   /**
    * POST /company/my-company/upload-certificate
-   * Roles: COMPANY - Upload do certificado digital
+   * Roles: COMPANY - Upload do certificado digital para consulta SEFAZ (notas de entrada)
    */
   uploadCertificate: (file: File) => {
     const formData = new FormData();

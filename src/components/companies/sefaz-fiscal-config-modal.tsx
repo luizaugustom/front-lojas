@@ -164,7 +164,8 @@ export function SefazFiscalConfigModal({
             <div className="rounded-lg border p-3 text-sm bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100 flex items-start gap-2">
               <Key className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <span>
-                A NFe.io gerencia os certificados digitais automaticamente. Não é necessário enviar arquivo .pfx.
+                A NFe.io gerencia os certificados digitais de emissão automaticamente. O certificado A1 enviado pela
+                empresa nas configurações fiscais serve apenas para consultar notas de entrada na SEFAZ.
               </span>
             </div>
 
