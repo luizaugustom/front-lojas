@@ -297,17 +297,17 @@ export const companyApi = {
     api.patch(`/company/${id}/fiscal-config`, data),
 
   /**
-   * GET /company/:id/focus-nfe-config
-   * Roles: ADMIN - Obter configuração FocusNFE da empresa (com mascara)
+   * GET /company/:id/nfeio-config
+   * Roles: ADMIN - Obter configuração NFe.io da empresa (com mascara)
    */
-  getFocusNfeConfigForAdmin: (id: string) => api.get(`/company/${id}/focus-nfe-config`),
+  getNfeioConfigForAdmin: (id: string) => api.get(`/company/${id}/nfeio-config`),
 
   /**
-   * PATCH /company/:id/focus-nfe-config
-   * Roles: ADMIN - Atualizar token e ambiente FocusNFE da empresa
+   * PATCH /company/:id/nfeio-config
+   * Roles: ADMIN - Atualizar token e ambiente NFe.io da empresa
    */
-  updateFocusNfeConfigForAdmin: (id: string, data: any) =>
-    api.patch(`/company/${id}/focus-nfe-config`, data),
+  updateNfeioConfigForAdmin: (id: string, data: any) =>
+    api.patch(`/company/${id}/nfeio-config`, data),
 };
 
 // ============================================================================
@@ -1491,16 +1491,16 @@ export const adminApi = {
   delete: (id: string) => api.delete(`/admin/${id}`),
 
   /**
-   * PATCH /admin/focus-nfe-config
+   * PATCH /admin/nfeio-config
    * Roles: ADMIN - Atualizar token IBPT global (legado: rota mantida; envie apenas ibptToken se desejar)
    */
-  updateFocusNfeConfig: (data: any) => api.patch('/admin/focus-nfe-config', data),
+  updateNfeioConfig: (data: any) => api.patch('/admin/nfeio-config', data),
 
   /**
-   * GET /admin/focus-nfe-config
+   * GET /admin/nfeio-config
    * Roles: ADMIN - Obter metadados do token IBPT global (e campos legados Focus, se existirem)
    */
-  getFocusNfeConfig: () => api.get('/admin/focus-nfe-config'),
+  getNfeioConfig: () => api.get('/admin/nfeio-config'),
 
   /**
    * PATCH /admin/boleto-cloud-config

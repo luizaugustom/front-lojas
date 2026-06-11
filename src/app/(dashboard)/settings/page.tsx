@@ -140,7 +140,7 @@ export default function SettingsPage() {
   });
   const [savingFiscalData, setSavingFiscalData] = useState(false);
 
-  // Token IBPT global opcional (admin) — rota legada /admin/focus-nfe-config
+  // Token IBPT global opcional (admin) — rota legada /admin/nfeio-config
   const [adminIbptGlobalConfig, setAdminIbptGlobalConfig] = useState<any>(null);
   const [loadingAdminIbptGlobal, setLoadingAdminIbptGlobal] = useState(false);
   const [savingAdminIbptGlobal, setSavingAdminIbptGlobal] = useState(false);
@@ -256,7 +256,7 @@ export default function SettingsPage() {
   const loadAdminIbptGlobalConfig = useCallback(async () => {
     try {
       setLoadingAdminIbptGlobal(true);
-      const response = await adminApi.getFocusNfeConfig();
+      const response = await adminApi.getNfeioConfig();
       setAdminIbptGlobalConfig(response.data);
       setAdminIbptGlobalForm({
         ibptToken: response.data?.ibptToken || '',
@@ -272,7 +272,7 @@ export default function SettingsPage() {
   const handleSaveAdminIbptGlobalConfig = async () => {
     try {
       setSavingAdminIbptGlobal(true);
-      await adminApi.updateFocusNfeConfig({ ibptToken: adminIbptGlobalForm.ibptToken });
+      await adminApi.updateNfeioConfig({ ibptToken: adminIbptGlobalForm.ibptToken });
       toast.success('Token IBPT global salvo com sucesso!');
       await loadAdminIbptGlobalConfig();
     } catch (error: any) {
