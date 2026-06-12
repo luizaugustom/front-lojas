@@ -291,23 +291,24 @@ export const companyApi = {
 
   /**
    * PATCH /company/:id/fiscal-config
-   * Roles: ADMIN - Atualizar configurações fiscais da empresa (SEFAZ, IBPT, etc.)
+   * Roles: ADMIN - Atualizar configurações fiscais da empresa (FocusNFE + SEFAZ + IBPT)
    */
   updateFiscalConfigForAdmin: (id: string, data: any) =>
     api.patch(`/company/${id}/fiscal-config`, data),
 
   /**
-   * GET /company/:id/nfeio-config
-   * Roles: ADMIN - Obter configuração NFe.io da empresa (com mascara)
+   * GET /admin/focus-nfe-config
+   * Como o token FocusNFE é global no Admin, esse endpoint delega para
+   * a rota admin. O `_id` é ignorado e mantido por compatibilidade de assinatura.
    */
-  getNfeioConfigForAdmin: (id: string) => api.get(`/company/${id}/nfeio-config`),
+  getFocusNfeConfigForAdmin: (_id?: string) => api.get('/admin/focus-nfe-config'),
 
   /**
-   * PATCH /company/:id/nfeio-config
-   * Roles: ADMIN - Atualizar token e ambiente NFe.io da empresa
+   * PATCH /admin/focus-nfe-config
+   * Atualiza o token e ambiente FocusNFE globais.
    */
-  updateNfeioConfigForAdmin: (id: string, data: any) =>
-    api.patch(`/company/${id}/nfeio-config`, data),
+  updateFocusNfeConfigForAdmin: (_id: string, data: any) =>
+    api.patch('/admin/focus-nfe-config', data),
 };
 
 // ============================================================================
@@ -1491,16 +1492,17 @@ export const adminApi = {
   delete: (id: string) => api.delete(`/admin/${id}`),
 
   /**
-   * PATCH /admin/nfeio-config
-   * Roles: ADMIN - Atualizar token IBPT global (legado: rota mantida; envie apenas ibptToken se desejar)
+   * GET /admin/focus-nfe-config
+   * Roles: ADMIN - Obter config FocusNFE global (apiKey mascarada + ambiente + ibptToken)
    */
-  updateNfeioConfig: (data: any) => api.patch('/admin/nfeio-config', data),
+  getFocusNfeConfig: () => api.get('/admin/focus-nfe-config'),
 
   /**
-   * GET /admin/nfeio-config
-   * Roles: ADMIN - Obter metadados do token IBPT global (e campos legados Focus, se existirem)
+   * PATCH /admin/focus-nfe-config
+   * Roles: ADMIN - Atualizar token FocusNFE, ambiente e token IBPT
    */
-  getNfeioConfig: () => api.get('/admin/nfeio-config'),
+  updateFocusNfeConfig: (data: { focusNfeApiKey?: string; focusNfeEnvironment?: 'sandbox' | 'production'; ibptToken?: string }) =>
+    api.patch('/admin/focus-nfe-config', data),
 
   /**
    * PATCH /admin/boleto-cloud-config

@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { CompaniesTable } from '@/components/companies/companies-table';
 import { CompanyDialog } from '@/components/companies/company-dialog';
 import { CompanyStatusModal } from '@/components/companies/company-status-modal';
-import { SefazFiscalConfigModal } from '@/components/companies/sefaz-fiscal-config-modal';
+import { FocusNfeConfigModal } from '@/components/companies/focus-nfe-config-modal';
 import { Company, CreateCompanyDto } from '@/types';
 import { companyApi } from '@/lib/api-endpoints';
 import { handleApiError } from '@/lib/handleApiError';
@@ -264,7 +264,7 @@ export default function CompaniesPage() {
         loading={isTogglingStatus}
       />
 
-      <SefazFiscalConfigModal
+      <FocusNfeConfigModal
         open={isFiscalModalOpen}
         onOpenChange={(open) => {
           setIsFiscalModalOpen(open);

@@ -140,7 +140,7 @@ export default function SettingsPage() {
   });
   const [savingFiscalData, setSavingFiscalData] = useState(false);
 
-  // Token IBPT global opcional (admin) — rota legada /admin/nfeio-config
+  // Token IBPT global opcional (admin) — configurado via /admin/focus-nfe-config
   const [adminIbptGlobalConfig, setAdminIbptGlobalConfig] = useState<any>(null);
   const [loadingAdminIbptGlobal, setLoadingAdminIbptGlobal] = useState(false);
   const [savingAdminIbptGlobal, setSavingAdminIbptGlobal] = useState(false);
@@ -256,7 +256,7 @@ export default function SettingsPage() {
   const loadAdminIbptGlobalConfig = useCallback(async () => {
     try {
       setLoadingAdminIbptGlobal(true);
-      const response = await adminApi.getNfeioConfig();
+      const response = await adminApi.getFocusNfeConfig();
       setAdminIbptGlobalConfig(response.data);
       setAdminIbptGlobalForm({
         ibptToken: response.data?.ibptToken || '',
@@ -272,7 +272,7 @@ export default function SettingsPage() {
   const handleSaveAdminIbptGlobalConfig = async () => {
     try {
       setSavingAdminIbptGlobal(true);
-      await adminApi.updateNfeioConfig({ ibptToken: adminIbptGlobalForm.ibptToken });
+      await adminApi.updateFocusNfeConfig({ ibptToken: adminIbptGlobalForm.ibptToken });
       toast.success('Token IBPT global salvo com sucesso!');
       await loadAdminIbptGlobalConfig();
     } catch (error: any) {
@@ -2294,7 +2294,7 @@ export default function SettingsPage() {
                 Certificado Digital
               </CardTitle>
               <CardDescription>
-                Certificado digital para consultar notas fiscais de entrada na SEFAZ (não é usado na emissão via NFe.io)
+                Certificado digital para consultar notas fiscais de entrada na SEFAZ. A emissão de NF-e/NFC-e é feita pela FocusNFE — o token e o ambiente FocusNFE são configurados por empresa (modal "Configuração FocusNFE").
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -2419,10 +2419,9 @@ export default function SettingsPage() {
                       ℹ️ Sobre o Certificado Digital
                     </p>
                     <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
-                      <li>• Usado exclusivamente para buscar XML de notas de entrada na SEFAZ</li>
-                      <li>• Não é enviado ao Focus NFe — a emissão de NF-e/NFC-e usa a NFe.io</li>
+                      <li>• Usado para emissão de NF-e/NFC-e via FocusNFE e para buscar XML de notas de entrada na SEFAZ</li>
                       <li>• Configure primeiro a senha do certificado</li>
-                      <li>• Depois faça upload do arquivo .pfx ou .p12</li>
+                      <li>• Depois faça upload do arquivo .pfx ou .p12 — ele será enviado à FocusNFE</li>
                       <li>• O arquivo é armazenado com segurança no sistema</li>
                     </ul>
                   </div>

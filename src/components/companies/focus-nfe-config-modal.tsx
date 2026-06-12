@@ -18,77 +18,82 @@ import { companyApi } from '@/lib/api-endpoints';
 import { toast } from 'react-hot-toast';
 import { Loader2, Key } from 'lucide-react';
 
-interface SefazFiscalConfigModalProps {
+interface FocusNfeConfigModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   company: Company | null;
   onSuccess?: () => void;
 }
 
-export function SefazFiscalConfigModal({
+/**
+ * Modal de configuração da API FocusNFE por empresa.
+ * Substitui o antigo `SefazFiscalConfigModal` (NFe.io). O token FocusNFE
+ * é global no Admin, então este modal delega para a rota /admin/focus-nfe-config.
+ */
+export function FocusNfeConfigModal({
   open,
   onOpenChange,
   company,
   onSuccess,
-}: SefazFiscalConfigModalProps) {
+}: FocusNfeConfigModalProps) {
   const [loading, setLoading] = useState(false);
-  const [loadingFiscalConfig, setLoadingFiscalConfig] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(false);
   const [formData, setFormData] = useState({
-    nfeioApiKey: '',
-    nfeioEnvironment: 'sandbox' as 'sandbox' | 'production',
+    focusNfeApiKey: '',
+    focusNfeEnvironment: 'sandbox' as 'sandbox' | 'production',
     ibptToken: '',
   });
 
-  const loadNfeioConfig = useCallback(async () => {
+  const loadConfig = useCallback(async () => {
     if (!company) return;
 
-    setLoadingFiscalConfig(true);
+    setLoadingConfig(true);
     try {
-      const response = await companyApi.getNfeioConfigForAdmin(company.id);
+      const response = await companyApi.getFocusNfeConfigForAdmin(company.id);
       const data = response.data;
       setFormData({
-        nfeioApiKey: data?.nfeioApiKey || '',
-        nfeioEnvironment: data?.nfeioEnvironment === 'production' ? 'production' : 'sandbox',
+        focusNfeApiKey: data?.focusNfeApiKey || '',
+        focusNfeEnvironment: data?.focusNfeEnvironment === 'production' ? 'production' : 'sandbox',
         ibptToken: data?.ibptToken || '',
       });
     } catch (error: any) {
-      console.error('Erro ao carregar configuração NFe.io:', error);
-      toast.error('Erro ao carregar configuração NFe.io');
+      console.error('Erro ao carregar configuração FocusNFE:', error);
+      toast.error('Erro ao carregar configuração FocusNFE');
     } finally {
-      setLoadingFiscalConfig(false);
+      setLoadingConfig(false);
     }
   }, [company]);
 
   useEffect(() => {
     if (open && company) {
-      loadNfeioConfig();
+      loadConfig();
     } else {
-      setFormData({ nfeioApiKey: '', nfeioEnvironment: 'sandbox', ibptToken: '' });
+      setFormData({ focusNfeApiKey: '', focusNfeEnvironment: 'sandbox', ibptToken: '' });
     }
-  }, [open, company, loadNfeioConfig]);
+  }, [open, company, loadConfig]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!company) return;
 
-    if (!formData.nfeioApiKey.trim()) {
-      toast.error('Token NFe.io é obrigatório');
+    if (!formData.focusNfeApiKey.trim() || formData.focusNfeApiKey === '••••••••') {
+      toast.error('Token FocusNFE é obrigatório');
       return;
     }
 
     setLoading(true);
     try {
-      await companyApi.updateNfeioConfigForAdmin(company.id, {
-        nfeioApiKey: formData.nfeioApiKey.trim(),
-        nfeioEnvironment: formData.nfeioEnvironment,
+      await companyApi.updateFocusNfeConfigForAdmin(company.id, {
+        focusNfeApiKey: formData.focusNfeApiKey.trim(),
+        focusNfeEnvironment: formData.focusNfeEnvironment,
         ibptToken: formData.ibptToken.trim() || undefined,
       });
-      toast.success('Configuração NFe.io salva com sucesso!');
+      toast.success('Configuração FocusNFE salva com sucesso!');
       onSuccess?.();
       onOpenChange(false);
     } catch (error: any) {
       console.error('Erro ao salvar:', error);
-      toast.error(error.response?.data?.message || 'Erro ao salvar configuração NFe.io');
+      toast.error(error.response?.data?.message || 'Erro ao salvar configuração FocusNFE');
     } finally {
       setLoading(false);
     }
@@ -100,41 +105,41 @@ export function SefazFiscalConfigModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Configuração NFe.io — {company.name}</DialogTitle>
+          <DialogTitle>Configuração FocusNFE — {company.name}</DialogTitle>
           <DialogDescription>
-            Token da API NFe.io e ambiente para emissão de NF-e e NFC-e desta empresa.
+            Token da API FocusNFE e ambiente para emissão de NF-e e NFC-e desta empresa.
           </DialogDescription>
         </DialogHeader>
 
-        {loadingFiscalConfig ? (
+        {loadingConfig ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="nfeioApiKey">Token NFe.io *</Label>
+              <Label htmlFor="focusNfeApiKey">Token FocusNFE *</Label>
               <Input
-                id="nfeioApiKey"
+                id="focusNfeApiKey"
                 type="password"
-                value={formData.nfeioApiKey}
-                onChange={(e) => setFormData({ ...formData, nfeioApiKey: e.target.value })}
-                placeholder="Token da API NFe.io"
+                value={formData.focusNfeApiKey}
+                onChange={(e) => setFormData({ ...formData, focusNfeApiKey: e.target.value })}
+                placeholder="Token da API FocusNFE (v2)"
               />
               <p className="text-xs text-muted-foreground">
-                Obrigatório. Token da conta NFe.io para esta empresa.
+                Obrigatório. Token da conta FocusNFE para esta empresa.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="nfeioEnvironment">Ambiente NFe.io *</Label>
+              <Label htmlFor="focusNfeEnvironment">Ambiente FocusNFE *</Label>
               <Select
-                value={formData.nfeioEnvironment}
+                value={formData.focusNfeEnvironment}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, nfeioEnvironment: value as 'sandbox' | 'production' })
+                  setFormData({ ...formData, focusNfeEnvironment: value as 'sandbox' | 'production' })
                 }
               >
-                <SelectTrigger id="nfeioEnvironment">
+                <SelectTrigger id="focusNfeEnvironment">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
@@ -143,7 +148,7 @@ export function SefazFiscalConfigModal({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Define se as notas serão emitidas no ambiente de testes ou produção da NFe.io.
+                Define se as notas serão emitidas no ambiente de testes ou produção da FocusNFE.
               </p>
             </div>
 
@@ -164,8 +169,9 @@ export function SefazFiscalConfigModal({
             <div className="rounded-lg border p-3 text-sm bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-100 flex items-start gap-2">
               <Key className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <span>
-                A NFe.io gerencia os certificados digitais de emissão automaticamente. O certificado A1 enviado pela
-                empresa nas configurações fiscais serve apenas para consultar notas de entrada na SEFAZ.
+                A FocusNFE exige que o certificado digital A1 seja enviado separadamente
+                pelo botão <strong>Enviar Certificado</strong> na seção de Configurações
+                Fiscais da empresa. Apenas o token autoriza a comunicação com a API.
               </span>
             </div>
 
