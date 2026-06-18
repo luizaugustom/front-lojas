@@ -2,8 +2,7 @@
  * Constantes para upload de arquivos no frontend
  */
 
-// Limite de fotos por produto
-export const MAX_PRODUCT_PHOTOS = 3;
+export type PhotoLimit = number | null; // null = ilimitado (definido pelo admin)
 
 // Tipos de arquivo aceitos (para input)
 export const ACCEPTED_IMAGE_TYPES = {
@@ -19,9 +18,27 @@ export const ACCEPTED_IMAGE_STRING = 'image/jpeg,image/jpg,image/png,image/webp,
 // Tamanho máximo por arquivo (5MB)
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+export function formatPhotoLimitDisplay(count: number, max: PhotoLimit): string {
+  if (max === null) return String(count);
+  return `${count} / ${max}`;
+}
+
+export function canAddMorePhotos(count: number, max: PhotoLimit): boolean {
+  return max === null || count < max;
+}
+
+export function getAvailablePhotoSlots(count: number, max: PhotoLimit): number {
+  if (max === null) return Infinity;
+  return Math.max(0, max - count);
+}
+
+export function getTooManyFilesMessage(max: PhotoLimit): string {
+  if (max === null) return 'Limite de fotos excedido';
+  return `Você pode adicionar no máximo ${max} foto(s) por produto`;
+}
+
 // Mensagens de erro
 export const UPLOAD_ERROR_MESSAGES = {
-  TOO_MANY_FILES: `Você pode adicionar no máximo ${MAX_PRODUCT_PHOTOS} fotos por produto`,
   FILE_TOO_LARGE: 'Arquivo muito grande. Tamanho máximo: 5MB',
   INVALID_TYPE: 'Tipo de arquivo inválido. Use apenas imagens (JPG, PNG, WEBP, GIF)',
 };
@@ -53,4 +70,3 @@ export function formatFileSize(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
-

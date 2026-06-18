@@ -16,7 +16,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency, formatDateTime, downloadFile, generateCoherentUUID } from '@/lib/utils';
 import { handleApiError } from '@/lib/handleApiError';
-import { MAX_PRODUCT_PHOTOS, ACCEPTED_IMAGE_STRING, validateImageFile } from '@/lib/constants/upload.constants';
+import { useCompany } from '@/hooks/useCompany';
+import {
+  ACCEPTED_IMAGE_STRING,
+  validateImageFile,
+  formatPhotoLimitDisplay,
+  canAddMorePhotos,
+  getAvailablePhotoSlots,
+  getTooManyFilesMessage,
+} from '@/lib/constants/upload.constants';
 import { fiscalApi, productApi, billToPayApi } from '@/lib/api-endpoints';
 import { PageHelpModal } from '@/components/help';
 import { OptimizedImage } from '@/components/ui/optimized-image';
@@ -57,6 +65,8 @@ type ParsedData = { form: ParsedForm; items: ParsedItem[]; duplicatas: ParsedDup
 
 export default function InboundInvoicesPage() {
   const { api, user } = useAuth();
+  const { company } = useCompany();
+  const maxPhotosPerProduct = company?.maxPhotosPerProduct ?? null;
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -1853,7 +1863,9 @@ export default function InboundInvoicesPage() {
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-xs">Fotos do produto</Label>
-                <p className="text-xs text-muted-foreground">{createProductModalPhotos.length} / {MAX_PRODUCT_PHOTOS} fotos</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatPhotoLimitDisplay(createProductModalPhotos.length, maxPhotosPerProduct)} fotos
+                </p>
                 <input
                   ref={createProductModalFileInputRef}
                   type="file"
@@ -1869,8 +1881,12 @@ export default function InboundInvoicesPage() {
                       if (!valid) { toast.error(error ?? 'Arquivo de imagem inválido.'); continue; }
                       toAdd.push(f);
                     }
-                    const next = [...createProductModalPhotos, ...toAdd].slice(0, MAX_PRODUCT_PHOTOS);
-                    if (next.length > createProductModalPhotos.length + toAdd.length) toast.error(`Máximo de ${MAX_PRODUCT_PHOTOS} fotos.`);
+                    const slots = getAvailablePhotoSlots(createProductModalPhotos.length, maxPhotosPerProduct);
+                    const photosToAdd = slots === Infinity ? toAdd : toAdd.slice(0, slots);
+                    const next = [...createProductModalPhotos, ...photosToAdd];
+                    if (photosToAdd.length < toAdd.length && maxPhotosPerProduct !== null) {
+                      toast.error(getTooManyFilesMessage(maxPhotosPerProduct));
+                    }
                     setCreateProductModalPhotos(next);
                   }}
                 />
@@ -1878,9 +1894,9 @@ export default function InboundInvoicesPage() {
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => createProductModalPhotos.length < MAX_PRODUCT_PHOTOS && createProductModalFileInputRef.current?.click()}
-                    onKeyDown={(e) => e.key === 'Enter' && createProductModalPhotos.length < MAX_PRODUCT_PHOTOS && createProductModalFileInputRef.current?.click()}
-                    className={`w-16 h-16 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${createProductModalPhotos.length >= MAX_PRODUCT_PHOTOS ? 'opacity-50 cursor-not-allowed border-muted' : 'border-border hover:border-primary hover:bg-muted'}`}
+                    onClick={() => canAddMorePhotos(createProductModalPhotos.length, maxPhotosPerProduct) && createProductModalFileInputRef.current?.click()}
+                    onKeyDown={(e) => e.key === 'Enter' && canAddMorePhotos(createProductModalPhotos.length, maxPhotosPerProduct) && createProductModalFileInputRef.current?.click()}
+                    className={`w-16 h-16 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${!canAddMorePhotos(createProductModalPhotos.length, maxPhotosPerProduct) ? 'opacity-50 cursor-not-allowed border-muted' : 'border-border hover:border-primary hover:bg-muted'}`}
                   >
                     <Plus className="h-5 w-5 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">Adicionar</span>

@@ -32,15 +32,18 @@ import { handleApiError } from '@/lib/handleApiError';
 import { productFormSchema } from '@/lib/validations';
 import { generateCoherentUUID } from '@/lib/utils';
 import { getImageUrl } from '@/lib/image-utils';
-import { productApi } from '@/lib/api-endpoints';
+import { productApi, managerApi } from '@/lib/api-endpoints';
 import type { Product, CreateProductDto } from '@/types';
 import { useDeviceStore } from '@/store/device-store';
 import { NCMSearchModal } from './ncm-search-modal';
 import {
-  MAX_PRODUCT_PHOTOS,
   ACCEPTED_IMAGE_STRING,
   validateImageFile,
-  UPLOAD_ERROR_MESSAGES,
+  formatPhotoLimitDisplay,
+  canAddMorePhotos as canAddMorePhotosByLimit,
+  getAvailablePhotoSlots,
+  getTooManyFilesMessage,
+  type PhotoLimit,
 } from '@/lib/constants/upload.constants';
 import { logger } from '@/lib/logger';
 
@@ -179,6 +182,7 @@ export function ProductDialog({ open, onClose, product, companyIdForCreate }: Pr
   const isEditing = !!product;
   const { api, user } = useAuth();
   const [companyPlan, setCompanyPlan] = useState<string | null>(null);
+  const [maxPhotosPerProduct, setMaxPhotosPerProduct] = useState<PhotoLimit>(null);
 
   const {
     register,
@@ -192,21 +196,28 @@ export function ProductDialog({ open, onClose, product, companyIdForCreate }: Pr
     resolver: zodResolver(productFormSchema),
   });
 
-  // Carregar plano da empresa
+  // Carregar plano e limites da empresa
   useEffect(() => {
-    const loadCompanyPlan = async () => {
+    const loadCompanyLimits = async () => {
       try {
-        const response = await api.get('/company/my-company');
-        setCompanyPlan(response.data?.plan || null);
+        if (user?.role === 'empresa') {
+          const response = await api.get('/company/my-company');
+          setCompanyPlan(response.data?.plan || null);
+          setMaxPhotosPerProduct(response.data?.maxPhotosPerProduct ?? null);
+        } else if (user?.role === 'gestor' && companyIdForCreate) {
+          const response = await managerApi.myCompanies();
+          const companies = Array.isArray(response.data) ? response.data : [];
+          const company = companies.find((c: { id: string }) => c.id === companyIdForCreate);
+          setCompanyPlan(company?.plan || null);
+          setMaxPhotosPerProduct(company?.maxPhotosPerProduct ?? null);
+        }
       } catch (error) {
-        console.error('Erro ao carregar plano da empresa:', error);
+        console.error('Erro ao carregar limites da empresa:', error);
       }
     };
-    
-    if (user?.role === 'empresa') {
-      loadCompanyPlan();
-    }
-  }, [api, user]);
+
+    loadCompanyLimits();
+  }, [api, user, companyIdForCreate]);
 
   // Salvar categoria quando um produto é editado
   useEffect(() => {
@@ -294,7 +305,7 @@ export function ProductDialog({ open, onClose, product, companyIdForCreate }: Pr
   };
 
   const canAddMorePhotos = () => {
-    return getTotalPhotosCount() < MAX_PRODUCT_PHOTOS;
+    return canAddMorePhotosByLimit(getTotalPhotosCount(), maxPhotosPerProduct);
   };
 
   // Verificar se o plano permite upload de fotos
@@ -326,8 +337,8 @@ export function ProductDialog({ open, onClose, product, companyIdForCreate }: Pr
     const currentNewPhotos = selectedPhotos.length;
     const totalPhotos = existingPhotosCount + currentNewPhotos + files.length;
 
-    if (totalPhotos > MAX_PRODUCT_PHOTOS) {
-      toast.error(UPLOAD_ERROR_MESSAGES.TOO_MANY_FILES);
+    if (maxPhotosPerProduct !== null && totalPhotos > maxPhotosPerProduct) {
+      toast.error(getTooManyFilesMessage(maxPhotosPerProduct));
       return;
     }
 
@@ -347,11 +358,14 @@ export function ProductDialog({ open, onClose, product, companyIdForCreate }: Pr
     }
 
     // Calcular quantas fotos podem ser adicionadas
-    const availableSlots = MAX_PRODUCT_PHOTOS - existingPhotosCount - currentNewPhotos;
+    const availableSlots = getAvailablePhotoSlots(
+      existingPhotosCount + currentNewPhotos,
+      maxPhotosPerProduct,
+    );
     const photosToAdd = validFiles.slice(0, availableSlots);
 
-    if (photosToAdd.length < validFiles.length) {
-      toast.error(`Apenas ${photosToAdd.length} foto(s) foram adicionadas devido ao limite de ${MAX_PRODUCT_PHOTOS}`);
+    if (photosToAdd.length < validFiles.length && maxPhotosPerProduct !== null) {
+      toast.error(`Apenas ${photosToAdd.length} foto(s) foram adicionadas devido ao limite de ${maxPhotosPerProduct}`);
     }
 
     // Adicionar fotos válidas
@@ -990,7 +1004,7 @@ export function ProductDialog({ open, onClose, product, companyIdForCreate }: Pr
                 )}
               </Label>
               <span className="text-sm text-muted-foreground">
-                {getTotalPhotosCount()} / {MAX_PRODUCT_PHOTOS}
+                {formatPhotoLimitDisplay(getTotalPhotosCount(), maxPhotosPerProduct)} fotos
               </span>
             </div>
             
@@ -1170,9 +1184,9 @@ export function ProductDialog({ open, onClose, product, companyIdForCreate }: Pr
               </div>
             )}
             
-            {isPlanAllowedForPhotos() && !canAddMorePhotos() && (
+            {isPlanAllowedForPhotos() && !canAddMorePhotos() && maxPhotosPerProduct !== null && (
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                Limite máximo de {MAX_PRODUCT_PHOTOS} fotos atingido
+                Limite máximo de {maxPhotosPerProduct} fotos atingido
               </p>
             )}
             {isPlanAllowedForPhotos() && isEditing && (
