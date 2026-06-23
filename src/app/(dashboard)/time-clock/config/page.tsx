@@ -1,19 +1,19 @@
 'use client';
 
-import { TimeClockConfigForm } from '@/components/time-clock/TimeClockConfigForm';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
+/**
+ * Página legada — agora redireciona para `/time-clock?tab=config`.
+ */
 export default function TimeClockConfigPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/time-clock?tab=config');
+  }, [router]);
   return (
-    <div className="space-y-4 max-w-3xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold">Configuração de Ponto Eletrônico</h1>
-        <p className="text-sm text-muted-foreground">
-          Defina o local da loja, raio de tolerância, requisitos e regras de
-          notificação.
-        </p>
-      </div>
-
-      <TimeClockConfigForm />
+    <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+      Redirecionando para Ponto Eletrônico...
     </div>
   );
 }

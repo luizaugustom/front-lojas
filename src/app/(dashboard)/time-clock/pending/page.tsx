@@ -1,28 +1,19 @@
 'use client';
 
-import { PendingApprovalsList } from '@/components/time-clock/PendingApprovalsList';
-import { TimeClockStatsCard } from '@/components/time-clock/TimeClockStatsCard';
-import { useTimeClockStats } from '@/hooks/useTimeClock';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
+/**
+ * Página legada — agora redireciona para `/time-clock?tab=pending`.
+ */
 export default function TimeClockPendingPage() {
-  const { data: stats, isLoading } = useTimeClockStats();
-
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/time-clock?tab=pending');
+  }, [router]);
   return (
-    <div className="space-y-4 max-w-3xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold">Pontos pendentes</h1>
-        <p className="text-sm text-muted-foreground">
-          Marcações feitas fora do raio da loja, aguardando aprovação.
-        </p>
-      </div>
-
-      <PendingApprovalsList />
-
-      <TimeClockStatsCard
-        stats={stats}
-        loading={isLoading}
-        title="Indicadores da empresa"
-      />
+    <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+      Redirecionando para Ponto Eletrônico...
     </div>
   );
 }

@@ -1,21 +1,19 @@
 'use client';
 
-import { QrCodeDisplay } from '@/components/time-clock/QrCodeDisplay';
-import { TimeClockConfigForm } from '@/components/time-clock/TimeClockConfigForm';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
+/**
+ * Página legada — agora redireciona para `/time-clock?tab=qr`.
+ */
 export default function TimeClockQrPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/time-clock?tab=qr');
+  }, [router]);
   return (
-    <div className="space-y-4 max-w-3xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold">QR Code da Loja</h1>
-        <p className="text-sm text-muted-foreground">
-          Imprima e cole em local visível para os funcionários baterem ponto.
-        </p>
-      </div>
-
-      <QrCodeDisplay />
-
-      <TimeClockConfigForm />
+    <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+      Redirecionando para Ponto Eletrônico...
     </div>
   );
 }

@@ -33,10 +33,6 @@ import {
   Banknote,
   Store,
   Clock,
-  ScanLine,
-  QrCode,
-  AlertCircle,
-  ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
@@ -56,12 +52,8 @@ const navigation = [
   { name: 'Contas e Gastos', href: '/bills', icon: CreditCard, roles: ['admin', 'empresa'] },
   { name: 'Fechamento de Caixa', href: '/cash-closure', icon: DollarSign, roles: ['admin', 'empresa', 'vendedor'] },
   { name: 'Relatórios', href: '/reports', icon: FileBarChart, roles: ['admin', 'empresa', 'gestor'] },
-  // Ponto Eletrônico - vendedor bate ponto, empresa gerencia
-  { name: 'Ponto Eletrônico', href: '/time-clock', icon: Clock, roles: ['vendedor', 'empresa', 'admin'] },
-  { name: 'Histórico de Ponto', href: '/time-clock/history', icon: ListChecks, roles: ['vendedor'] },
-  { name: 'Aprovar Pontos', href: '/time-clock/pending', icon: AlertCircle, roles: ['empresa', 'admin', 'gestor'] },
-  { name: 'QR Code da Loja', href: '/time-clock/qr-display', icon: QrCode, roles: ['empresa', 'admin'] },
-  { name: 'Config. Ponto', href: '/time-clock/config', icon: ScanLine, roles: ['empresa', 'admin'] },
+  // Ponto Eletrônico - entrada única; demais ações via abas internas
+  { name: 'Ponto Eletrônico', href: '/time-clock', icon: Clock, roles: ['vendedor', 'empresa', 'admin', 'gestor'] },
   { name: 'Métricas', href: '/metrics', icon: BarChart3, roles: ['gestor'] },
   { name: 'Transferência de estoque', href: '/stock-transfer', icon: ArrowLeftRight, roles: ['gestor'] },
   // Visível apenas para empresas: Notas Fiscais

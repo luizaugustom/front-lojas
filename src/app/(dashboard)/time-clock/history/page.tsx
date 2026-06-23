@@ -1,222 +1,30 @@
 'use client';
 
-import { useState } from 'react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { PaginationControls } from '@/components/ui/pagination-controls';
-import { PunchTypeIcon, PUNCH_TYPE_LABELS } from '@/components/time-clock/PunchTypeIcon';
-import { PunchStatusBadge } from '@/components/time-clock/PunchStatusBadge';
-import { formatMinutesLong } from '@/components/time-clock/format';
-import { useMyHistory } from '@/hooks/useTimeClock';
-import type { TimeClockStatus, TimeClockType } from '@/types';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
-const STATUS_FILTERS: Array<{ value: TimeClockStatus | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'Todos os status' },
-  { value: 'VALID', label: 'Válidos' },
-  { value: 'PENDING_REVIEW', label: 'Pendentes' },
-  { value: 'REJECTED', label: 'Rejeitados' },
-  { value: 'ADJUSTED', label: 'Ajustados' },
-];
-
-const TYPE_FILTERS: Array<{ value: TimeClockType | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'Todos os tipos' },
-  ...(Object.keys(PUNCH_TYPE_LABELS) as TimeClockType[]).map((t) => ({
-    value: t,
-    label: PUNCH_TYPE_LABELS[t],
-  })),
-];
-
+/**
+ * Página legada — agora redireciona para `/time-clock?tab=history`,
+ * onde o conteúdo é renderizado como aba (visão pessoal do vendedor).
+ */
 export default function TimeClockHistoryPage() {
-  const [startDate, setStartDate] = useState(
-    format(firstDayOfMonth(), 'yyyy-MM-dd'),
-  );
-  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [type, setType] = useState<TimeClockType | 'ALL'>('ALL');
-  const [status, setStatus] = useState<TimeClockStatus | 'ALL'>('ALL');
-  const [page, setPage] = useState(1);
-  const limit = 20;
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
 
-  const { data, isLoading } = useMyHistory({
-    startDate: new Date(startDate).toISOString(),
-    endDate: new Date(`${endDate}T23:59:59`).toISOString(),
-    type: type === 'ALL' ? undefined : type,
-    status: status === 'ALL' ? undefined : status,
-    page,
-    limit,
-  });
-
-  const items: any[] = Array.isArray(data)
-    ? data
-    : (data as any)?.data ?? [];
-  const total: number = (data as any)?.total ?? items.length;
-  const totalPages = Math.max(1, Math.ceil(total / limit));
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (user?.role === 'vendedor') {
+      router.replace('/time-clock?tab=history');
+    } else {
+      // Empresa/gestor/admin usam a aba "Histórico Geral" do mesmo modo
+      router.replace('/time-clock?tab=history');
+    }
+  }, [isAuthenticated, user?.role, router]);
 
   return (
-    <div className="space-y-4 max-w-3xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold">Histórico de Ponto</h1>
-        <p className="text-sm text-muted-foreground">
-          Todas as suas marcações, com filtros por período, tipo e status.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Filtros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="start" className="text-xs">
-                De
-              </Label>
-              <Input
-                id="start"
-                type="date"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  setPage(1);
-                }}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="end" className="text-xs">
-                Até
-              </Label>
-              <Input
-                id="end"
-                type="date"
-                value={endDate}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  setPage(1);
-                }}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Tipo</Label>
-              <Select
-                value={type}
-                onValueChange={(v) => {
-                  setType(v as TimeClockType | 'ALL');
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPE_FILTERS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Status</Label>
-              <Select
-                value={status}
-                onValueChange={(v) => {
-                  setStatus(v as TimeClockStatus | 'ALL');
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_FILTERS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {isLoading
-              ? 'Carregando...'
-              : `${total} marcações encontradas`}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : items.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">
-              Nenhuma marcação no período selecionado.
-            </p>
-          ) : (
-            <ul className="divide-y">
-              {items.map((p) => (
-                <li
-                  key={p.id}
-                  className="py-2.5 flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <PunchTypeIcon type={p.type} size="sm" />
-                    <div>
-                      <p className="text-sm">
-                        {format(new Date(p.timestamp), "dd/MM/yyyy 'às' HH:mm", {
-                          locale: ptBR,
-                        })}
-                      </p>
-                      {typeof p.lateMinutes === 'number' && p.lateMinutes > 0 && (
-                        <p className="text-[11px] text-amber-700">
-                          {formatMinutesLong(p.lateMinutes)} de atraso
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <PunchStatusBadge status={p.status} />
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {totalPages > 1 && (
-            <div className="pt-3">
-              <PaginationControls
-                page={page}
-                totalPages={totalPages}
-                onPageChange={setPage}
-                totalItems={total}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+      Redirecionando para Ponto Eletrônico...
     </div>
   );
-}
-
-function firstDayOfMonth(): Date {
-  const d = new Date();
-  d.setDate(1);
-  d.setHours(0, 0, 0, 0);
-  return d;
 }
