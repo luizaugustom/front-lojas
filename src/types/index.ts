@@ -633,5 +633,142 @@ export interface Promotion {
     originalPrice: number;
   }>;
   createdAt: string;
+}
+
+// ===========================
+// Time Clock (Ponto Eletrônico)
+// ===========================
+
+export type TimeClockType = 'ENTRY' | 'LUNCH_OUT' | 'LUNCH_IN' | 'EXIT';
+export type TimeClockStatus =
+  | 'VALID'
+  | 'PENDING_REVIEW'
+  | 'REJECTED'
+  | 'ADJUSTED';
+
+export interface TimeClock {
+  id: string;
+  companyId: string;
+  sellerId: string;
+  type: TimeClockType;
+  timestamp: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracyMeters?: number | null;
+  distanceMeters?: number | null;
+  withinRadius?: boolean | null;
+  qrTokenUsed?: string | null;
+  status: TimeClockStatus;
+  notes?: string | null;
+  adjustedById?: string | null;
+  adjustedByRole?: string | null;
+  adjustedAt?: string | null;
+  adjustmentReason?: string | null;
+  deviceInfo?: Record<string, any> | null;
+  seller?: {
+    id: string;
+    name: string;
+  };
+  createdAt: string;
   updatedAt: string;
+}
+
+export interface TimeClockConfig {
+  id: string;
+  companyId: string;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+  qrToken: string;
+  requireQrCode: boolean;
+  requireLocation: boolean;
+  notifyOnEntryTime?: string | null;
+  notifyOnLunchOutTime?: string | null;
+  notifyOnLunchInTime?: string | null;
+  notifyOnExitTime?: string | null;
+  notificationsEnabled: boolean;
+  lateToleranceMinutes: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TimeClockDaySummary {
+  date: string;
+  punches: Array<{ type: TimeClockType; timestamp: string }>;
+  workedMinutes: number;
+  lateMinutes: number;
+  overtimeMinutes: number;
+  completed: boolean;
+  status: 'NORMAL' | 'INCOMPLETE' | 'MISSED' | 'OFF';
+}
+
+export interface TimeClockTodayResponse {
+  date: string;
+  punches: Array<{ type: TimeClockType; timestamp: string; status: TimeClockStatus }>;
+  nextExpected: TimeClockType | null;
+  daySummary: TimeClockDaySummary | null;
+  config: TimeClockConfig;
+}
+
+export interface TimeClockStats {
+  month: string;
+  totalDays: number;
+  workedDays: number;
+  missedDays: number;
+  totalWorkedMinutes: number;
+  totalLateMinutes: number;
+  totalOvertimeMinutes: number;
+  averageDailyMinutes: number;
+}
+
+export interface TimeClockQrCode {
+  qrToken: string;
+  dataUrl: string;
+}
+
+export interface RegisterTimeClockDto {
+  type?: TimeClockType;
+  latitude?: number;
+  longitude?: number;
+  accuracyMeters?: number;
+  qrToken?: string;
+  deviceInfo?: Record<string, any>;
+  notes?: string;
+}
+
+export interface UpdateTimeClockConfigDto {
+  latitude?: number;
+  longitude?: number;
+  radiusMeters?: number;
+  requireQrCode?: boolean;
+  requireLocation?: boolean;
+  notifyOnEntryTime?: string | null;
+  notifyOnLunchOutTime?: string | null;
+  notifyOnLunchInTime?: string | null;
+  notifyOnExitTime?: string | null;
+  notificationsEnabled?: boolean;
+  lateToleranceMinutes?: number;
+}
+
+export interface AdjustTimeClockDto {
+  type?: TimeClockType;
+  timestamp?: string;
+  latitude?: number;
+  longitude?: number;
+  reason: string;
+}
+
+export interface RejectTimeClockDto {
+  reason: string;
+}
+
+export interface TimeClockFilterDto {
+  sellerId?: string;
+  startDate?: string;
+  endDate?: string;
+  type?: TimeClockType;
+  status?: TimeClockStatus;
+  page?: number;
+  limit?: number;
+  companyId?: string;
 }

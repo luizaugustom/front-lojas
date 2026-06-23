@@ -135,6 +135,8 @@ export default function SettingsPage() {
     nfceSerie: '1',
     nfeSerie: '1',
     sefazEnvironment: 'homologacao' as 'homologacao' | 'producao',
+    csc: '',
+    idTokenCsc: '000001',
     aliquotaCbsDefault: '0.9',
     aliquotaIbsDefault: '0.1',
   });
@@ -704,6 +706,8 @@ export default function SettingsPage() {
         nfceSerie: config.nfceSerie || '1',
         nfeSerie: config.nfeSerie || '1',
         sefazEnvironment: (config.sefazEnvironment || 'homologacao') as 'homologacao' | 'producao',
+        csc: config.csc || '',
+        idTokenCsc: config.idTokenCsc || '000001',
         aliquotaCbsDefault: config.aliquotaCbsDefault?.toString() || '0.9',
         aliquotaIbsDefault: config.aliquotaIbsDefault?.toString() || '0.1',
       });
@@ -2160,6 +2164,38 @@ export default function SettingsPage() {
                       <p className="text-xs text-muted-foreground">
                         Atual: {fiscalConfig?.sefazEnvironment === 'producao' ? 'Produção' : 'Homologação'}
                       </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="csc">CSC — Código de Segurança do Contribuinte (NFC-e)</Label>
+                      <Input
+                        id="csc"
+                        value={fiscalDataForm.csc}
+                        onChange={(e) =>
+                          setFiscalDataForm({ ...fiscalDataForm, csc: e.target.value.trim() })
+                        }
+                        placeholder="Token obtido na SEFAZ do seu estado"
+                        autoComplete="off"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Obrigatório para QR Code da NFC-e. Será sincronizado com a FocusNFE ao salvar.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="idTokenCsc">ID Token CSC</Label>
+                      <Input
+                        id="idTokenCsc"
+                        value={fiscalDataForm.idTokenCsc}
+                        onChange={(e) =>
+                          setFiscalDataForm({
+                            ...fiscalDataForm,
+                            idTokenCsc: e.target.value.replace(/\D/g, '').slice(0, 6),
+                          })
+                        }
+                        placeholder="000001"
+                        maxLength={6}
+                      />
                     </div>
 
                     {/* CNAE */}

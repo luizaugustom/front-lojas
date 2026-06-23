@@ -825,6 +825,137 @@ export const fiscalApi = {
    * Roles: COMPANY - Listar NFC-e em contingência pendentes de sincronização
    */
   listarContingenciaPendentes: () => api.get('/fiscal/contingencia/pendentes'),
+
+  /**
+   * POST /fiscal/contingencia/change-type
+   * Roles: COMPANY - Mudar TTD em modo contingência (Art. 5º — 1 vez)
+   * Body: { ttdType: 'TTD_706'|'TTD_707'|'TTD_710' }
+   */
+  changeTtdType: (data: { ttdType: 'TTD_706' | 'TTD_707' | 'TTD_710' }) =>
+    api.post('/fiscal/contingencia/change-type', data),
+
+  /**
+   * POST /fiscal/contingencia/dtec/credential
+   * Roles: COMPANY - Registrar credenciamento DTEC (Art. 2º)
+   * Body: { protocol, expiresAt }
+   */
+  registrarDtecCredential: (data: { protocol: string; expiresAt: string }) =>
+    api.post('/fiscal/contingencia/dtec/credential', data),
+
+  /**
+   * GET /fiscal/contingencia/dtec/status
+   * Roles: COMPANY, ADMIN - Status do credenciamento DTEC
+   */
+  getDtecStatus: () => api.get('/fiscal/contingencia/dtec/status'),
+
+  /**
+   * GET /fiscal/contingencia/termo-compromisso/pdf
+   * Roles: COMPANY - Gerar PDF do Termo de Compromisso
+   * Query: type ('TTD_706'|'TTD_707'|'TTD_710'|'ALL')
+   */
+  getTermoCompromissoPdf: (type: 'TTD_706' | 'TTD_707' | 'TTD_710' | 'ALL' = 'ALL') =>
+    api.get('/fiscal/contingencia/termo-compromisso/pdf', {
+      params: { type },
+      responseType: 'blob',
+    }),
+
+  /**
+   * POST /fiscal/contingencia/aceitar-termo
+   * Roles: COMPANY - Aceitar Termo de Compromisso (Anexos I/II)
+   * Body: { type: 'TTD_706'|'TTD_707'|'TTD_710'|'ALL' }
+   */
+  aceitarTermoCompromisso: (data: {
+    type: 'TTD_706' | 'TTD_707' | 'TTD_710' | 'ALL';
+  }) => api.post('/fiscal/contingencia/aceitar-termo', data),
+
+  /**
+   * GET /fiscal/contingencia/termo-compromisso/historico
+   * Roles: COMPANY, ADMIN - Histórico de aceites
+   */
+  listarTermosCompromisso: () => api.get('/fiscal/contingencia/termo-compromisso/historico'),
+
+  /**
+   * POST /fiscal/contingencia/sincronizar/:id
+   * Roles: COMPANY - Sincronizar 1 NFC-e contingencial com SEFAZ
+   */
+  sincronizarContingencia: (id: string) =>
+    api.post(`/fiscal/contingencia/sincronizar/${id}`),
+
+  /**
+   * POST /fiscal/contingencia/sincronizar-todos
+   * Roles: COMPANY - Sincronizar todos os pendentes
+   */
+  sincronizarTodasContingencias: () =>
+    api.post('/fiscal/contingencia/sincronizar-todos'),
+
+  /**
+   * GET /fiscal/contingencia/bloco-x
+   * Roles: COMPANY, ADMIN - Gerar registros do Bloco X (Art. 19 §único)
+   * Query: inicio, fim (ISO 8601)
+   */
+  gerarBlocoX: (inicio: string, fim: string) =>
+    api.get('/fiscal/contingencia/bloco-x', { params: { inicio, fim } }),
+
+  /**
+   * PATCH /fiscal/contingencia/fuel-retailer
+   * Roles: ADMIN - Marcar empresa como revendedor de combustíveis (Art. 3º)
+   * Body: { isFuelRetailer, companyId? }
+   */
+  setFuelRetailer: (data: { isFuelRetailer: boolean; companyId?: string }) =>
+    api.patch('/fiscal/contingencia/fuel-retailer', data),
+
+  /**
+   * GET /fiscal/contingencia/numeracao
+   * Roles: COMPANY, ADMIN - Listar séries de numeração (Art. 13)
+   */
+  listarNumeracao: () => api.get('/fiscal/contingencia/numeracao'),
+};
+
+// ============================================================================
+// ESTABLISHMENTS (Multi-estabelecimento — Art. 4º §2º)
+// ============================================================================
+
+export const establishmentApi = {
+  /** GET /establishments — Lista estabelecimentos ativos da empresa */
+  list: () => api.get('/establishments'),
+
+  /** GET /establishments/all — Lista TODOS, inclusive inativos (admin) */
+  listAll: () => api.get('/establishments/all'),
+
+  /** GET /establishments/:id */
+  get: (id: string) => api.get(`/establishments/${id}`),
+
+  /** POST /establishments — Criar */
+  create: (data: {
+    cnpj: string;
+    name: string;
+    stateRegistration?: string;
+    address?: string;
+    number?: string;
+    complement?: string;
+    district?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    isMain?: boolean;
+    pdvSeries?: Record<string, string>;
+  }) => api.post('/establishments', data),
+
+  /** PATCH /establishments/:id */
+  update: (id: string, data: any) => api.patch(`/establishments/${id}`, data),
+
+  /** DELETE /establishments/:id — soft delete */
+  deactivate: (id: string) => api.delete(`/establishments/${id}`),
+
+  /** DELETE /establishments/:id/hard — hard delete (admin) */
+  hardDelete: (id: string) => api.delete(`/establishments/${id}/hard`),
+
+  /** POST /establishments/:id/dtec/credential — Art. 4º §2º */
+  credentialDtec: (id: string, data: { protocol: string; expiresAt: string }) =>
+    api.post(`/establishments/${id}/dtec/credential`, data),
+
+  /** GET /establishments/:id/nfces — últimas 100 NFC-e do estabelecimento */
+  listNfces: (id: string) => api.get(`/establishments/${id}/nfces`),
 };
 
 // ============================================================================
@@ -1515,4 +1646,122 @@ export const adminApi = {
    * Roles: ADMIN - Obter configuração global do Boleto Cloud
    */
   getBoletoCloudConfig: () => api.get('/admin/boleto-cloud-config'),
+};
+
+// ============================================================================
+// TIME CLOCK (Ponto Eletrônico)
+// ============================================================================
+
+export const timeClockApi = {
+  /**
+   * POST /time-clock/register
+   * Roles: SELLER - Bater ponto (infere o tipo se não enviado)
+   * Body: { type?, latitude?, longitude?, accuracyMeters?, qrToken?, deviceInfo?, notes? }
+   */
+  register: (data: any) => api.post('/time-clock/register', data),
+
+  /**
+   * GET /time-clock/my-today
+   * Roles: SELLER - Marcações de hoje + próxima esperada
+   */
+  myToday: () => api.get('/time-clock/my-today'),
+
+  /**
+   * GET /time-clock/my-history
+   * Roles: SELLER - Histórico do vendedor (filtros por data/tipo/status)
+   */
+  myHistory: (params?: any) => api.get('/time-clock/my-history', { params }),
+
+  /**
+   * GET /time-clock/my-stats
+   * Roles: SELLER - Estatísticas do mês
+   */
+  myStats: (params?: { month?: string }) =>
+    api.get('/time-clock/my-stats', { params }),
+
+  /**
+   * GET /time-clock/config
+   * Roles: COMPANY, ADMIN, MANAGER - Obter configuração de ponto
+   */
+  getConfig: (params?: { companyId?: string }) =>
+    api.get('/time-clock/config', { params }),
+
+  /**
+   * PUT /time-clock/config
+   * Roles: COMPANY - Atualizar configuração
+   */
+  updateConfig: (data: any) => api.put('/time-clock/config', data),
+
+  /**
+   * POST /time-clock/config/regenerate-qr
+   * Roles: COMPANY - Rotacionar o QR estático
+   */
+  regenerateQr: () => api.post('/time-clock/config/regenerate-qr'),
+
+  /**
+   * GET /time-clock/qr-code
+   * Roles: COMPANY - QR em base64 PNG para imprimir
+   */
+  getQrCode: () => api.get('/time-clock/qr-code'),
+
+  /**
+   * GET /time-clock
+   * Roles: COMPANY, MANAGER, ADMIN - Listar marcações com filtros
+   */
+  list: (params?: any) => api.get('/time-clock', { params }),
+
+  /**
+   * GET /time-clock/pending
+   * Roles: COMPANY, MANAGER - Pontos pendentes de aprovação
+   */
+  pending: () => api.get('/time-clock/pending'),
+
+  /**
+   * GET /time-clock/seller/:sellerId
+   * Roles: COMPANY, MANAGER, ADMIN - Histórico de um funcionário
+   */
+  bySeller: (sellerId: string, params?: any) =>
+    api.get(`/time-clock/seller/${sellerId}`, { params }),
+
+  /**
+   * POST /time-clock/:id/approve
+   * Roles: COMPANY, MANAGER, ADMIN - Aprovar ponto pendente
+   */
+  approve: (id: string) => api.post(`/time-clock/${id}/approve`),
+
+  /**
+   * POST /time-clock/:id/reject
+   * Roles: COMPANY, MANAGER, ADMIN - Rejeitar marcação
+   * Body: { reason: string }
+   */
+  reject: (id: string, data: { reason: string }) =>
+    api.post(`/time-clock/${id}/reject`, data),
+
+  /**
+   * POST /time-clock/:id/adjust
+   * Roles: COMPANY, MANAGER, ADMIN - Corrigir manualmente
+   * Body: { type?, timestamp?, latitude?, longitude?, reason }
+   */
+  adjust: (id: string, data: any) => api.post(`/time-clock/${id}/adjust`, data),
+
+  /**
+   * GET /time-clock/stats
+   * Roles: COMPANY, MANAGER - Estatísticas agregadas
+   */
+  stats: (params?: { month?: string }) =>
+    api.get('/time-clock/stats', { params }),
+
+  /**
+   * GET /time-clock/report/pdf
+   * Roles: COMPANY, MANAGER, ADMIN - Espelho mensal em PDF (blob)
+   */
+  reportPdf: (params?: any) =>
+    api.get('/time-clock/report/pdf', { params, responseType: 'blob' }),
+
+  /**
+   * GET /time-clock/report/csv
+   * Roles: COMPANY, MANAGER, ADMIN - Exportar pontos em CSV (blob)
+   */
+  reportCsv: (params?: any) =>
+    api.get('/time-clock/report/csv', { params, responseType: 'blob' }),
 };
