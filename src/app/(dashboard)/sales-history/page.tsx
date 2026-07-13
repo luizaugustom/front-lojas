@@ -2,14 +2,15 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, Download, Eye, Filter, Info, Printer, TrendingUp, DollarSign } from 'lucide-react';
+import { Calendar, Download, Eye, Filter, Printer, TrendingUp, DollarSign } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { MetricCard } from '@/components/ui/metric-card';
 import {
   Dialog,
   DialogContent,
@@ -572,71 +573,43 @@ export default function SalesHistoryPage() {
 
       {/* Estatísticas - apenas para empresas */}
       {isCompany && (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-              <CardTitle className="text-sm font-medium">Total de Vendas</CardTitle>
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent className="px-4 py-1 pt-0">
-              <div className="text-xl font-bold">{stats.totalSales}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-              <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-              <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              </div>
-            </CardHeader>
-            <CardContent className="px-4 py-1 pt-0">
-              <div className="text-xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-              <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
-              <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <Calendar className="h-4 w-4 text-blue-600" />
-              </div>
-            </CardHeader>
-            <CardContent className="px-4 py-1 pt-0">
-              <div className="text-xl font-bold">{formatCurrency(stats.averageTicket)}</div>
-            </CardContent>
-          </Card>
-
+          <MetricCard
+            title="Total de Vendas"
+            value={stats.totalSales}
+            icon={TrendingUp}
+            iconClassName="text-primary"
+            iconWrapperClassName="bg-primary/10"
+          />
+          <MetricCard
+            title="Receita Total"
+            value={formatCurrency(stats.totalRevenue)}
+            icon={TrendingUp}
+            iconClassName="text-green-600"
+            iconWrapperClassName="bg-green-500/10"
+          />
+          <MetricCard
+            title="Ticket Médio"
+            value={formatCurrency(stats.averageTicket)}
+            icon={Calendar}
+            iconClassName="text-blue-600"
+            iconWrapperClassName="bg-blue-500/10"
+          />
           {netProfit !== null && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-                <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => setNetProfitModalOpen(true)}
-                    title="Ver cálculo detalhado do lucro líquido"
-                  >
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                    <DollarSign className={`h-4 w-4 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="px-4 py-1 pt-0">
-                <div className={`text-xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(netProfit)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Receita - COGS - Contas - Perdas - Juros</p>
-              </CardContent>
-            </Card>
+            <MetricCard
+              title="Lucro Líquido"
+              value={formatCurrency(netProfit)}
+              subtitle="Receita - COGS - Contas - Perdas - Juros"
+              icon={DollarSign}
+              valueClassName={netProfit >= 0 ? 'text-green-600' : 'text-red-600'}
+              iconClassName={netProfit >= 0 ? 'text-green-600' : 'text-red-600'}
+              iconWrapperClassName={netProfit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10'}
+              infoTooltip="Ver cálculo detalhado do lucro líquido"
+              onInfoClick={() => setNetProfitModalOpen(true)}
+            />
           )}
+        </div>
 
           {/* Modal de detalhes do lucro líquido */}
           <Dialog open={netProfitModalOpen} onOpenChange={setNetProfitModalOpen}>
@@ -681,7 +654,7 @@ export default function SalesHistoryPage() {
               </div>
             </DialogContent>
           </Dialog>
-        </div>
+        </>
       )}
 
       {/* Tabela de Vendas */}
@@ -718,6 +691,7 @@ export default function SalesHistoryPage() {
         }}
         onConfirm={handleConfirmCancel}
         loading={cancelling}
+        hasNfce
       />
     </div>
   );

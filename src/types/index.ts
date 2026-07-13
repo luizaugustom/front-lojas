@@ -13,8 +13,77 @@ export interface User {
   plan?: PlanType;
   dataPeriod?: DataPeriodFilter | null;
   nfeEmissionEnabled?: boolean;
+  /** ATO DIAT 38/2020 — habilita o usuário a emitir NFC-e */
+  nfceEmissionEnabled?: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// ============================================================
+// ATO DIAT 38/2020 — Tipos fiscais NFC-e
+// ============================================================
+
+/** NFC-e autorizada exibida no PDV (Art. 8º — idônea como DANFE). */
+export interface NfceEmitida {
+  id: string;
+  documentNumber: string;
+  serie: string;
+  accessKey: string;
+  protocol: string;
+  authorizationDateTime: string;
+  qrCodeUrl?: string;
+  /** Texto base64/URL do QR Code (Art. 14). */
+  qrCode?: string;
+  pdfUrl?: string;
+  xmlUrl?: string;
+  totalValue: number;
+  contingencia: boolean;
+  /** Indicador de tipo de contingência TTD em uso. */
+  ttdType?: 'TTD_706' | 'TTD_707' | 'TTD_710';
+  pdvCode?: string;
+  /** Mensagem amigável ao consumidor quando em contingência. */
+  contingencyMessage?: string;
+}
+
+/** Status de contingência NFC-e (Art. 4º §1º). */
+export interface ContingencyStatus {
+  active: boolean;
+  ttdType?: 'TTD_706' | 'TTD_707' | 'TTD_710';
+  motivo?: string;
+  dataInicio?: string;
+  dataFim?: string;
+  pendentesCount: number;
+}
+
+/** Configuração fiscal da empresa (CSC, ID Token, etc.). */
+export interface FiscalConfig {
+  cnpj: string;
+  ie?: string;
+  im?: string;
+  cnae?: string;
+  /** 1=Simples Nacional, 2=Simples Excesso, 3=Regime Normal */
+  taxRegime?: number;
+  /** 1=Produção, 2=Homologação */
+  sefazEnvironment?: 1 | 2;
+  nfceSerie?: string;
+  nfeSerie?: string;
+  /** Código de Segurança do Contribuinte (NFC-e). */
+  csc?: string;
+  /** ID do token CSC (até 6 dígitos). */
+  idTokenCsc?: string;
+  hasCertificateBlob?: boolean;
+  hasCertificatePassword?: boolean;
+  nfceEmissionEnabled?: boolean;
+  nfeEmissionEnabled?: boolean;
+  emitOnlyNfe?: boolean;
+  /** Art. 4º §2º — true para varejo de combustíveis (TTD 710 obrigatório). */
+  isFuelRetailer?: boolean;
+  /** Séries por PDV (Art. 13 §único). */
+  pdvSeries?: Record<string, string>;
+  /** Art. 5º — contador de mudanças já usadas. */
+  ttdChangeCount?: number;
+  /** Art. 5º — true se pode mudar TTD. */
+  ttdChangeAllowed?: boolean;
 }
 
 // Plan Types
@@ -81,6 +150,12 @@ export interface Company {
   maxInstallments?: number;
   // Termos de uso aceitos pela empresa
   termsAccepted?: boolean | null;
+  // ATO DIAT 38/2020 — Art. 2º (DTEC) e Art. 4º §1º (TTD)
+  dtecCredentialed?: boolean;
+  dtecCredentialedAt?: string | null;
+  dtecCredentialExpiresAt?: string | null;
+  dtecCredentialProtocol?: string | null;
+  nfcContingencyType?: 'NONE' | 'TTD_706' | 'TTD_707' | 'TTD_710' | null;
 }
 
 export interface CreateCompanyDto {
@@ -339,6 +414,8 @@ export interface Seller {
   commissionRate?: number;
   hasIndividualCash?: boolean;
   nfeEmissionEnabled?: boolean;
+  /** ATO DIAT 38/2020 — habilita o vendedor/PDV a emitir NFC-e */
+  nfceEmissionEnabled?: boolean;
   companyId: string;
   createdAt: string;
   updatedAt: string;
@@ -595,6 +672,8 @@ export interface CreateSellerDto {
   commissionRate?: number;
   hasIndividualCash?: boolean;
   nfeEmissionEnabled?: boolean;
+  /** ATO DIAT 38/2020 */
+  nfceEmissionEnabled?: boolean;
 }
 
 export interface UpdateSellerDto {
@@ -606,6 +685,7 @@ export interface UpdateSellerDto {
   commissionRate?: number;
   hasIndividualCash?: boolean;
   nfeEmissionEnabled?: boolean;
+  nfceEmissionEnabled?: boolean;
   activityId?: string;
 }
 

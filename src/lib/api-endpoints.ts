@@ -4,7 +4,7 @@
  */
 
 import { api } from './apiClient';
-import type { DataPeriodFilter } from '@/types';
+import type { DataPeriodFilter, NfceEmitida } from '@/types';
 
 // ============================================================================
 // AUTH
@@ -301,14 +301,18 @@ export const companyApi = {
    * Como o token FocusNFE é global no Admin, esse endpoint delega para
    * a rota admin. O `_id` é ignorado e mantido por compatibilidade de assinatura.
    */
-  getFocusNfeConfigForAdmin: (_id?: string) => api.get('/admin/focus-nfe-config'),
+  getFocusNfeConfigForAdmin: (_id?: string) => api.get('/admin/nfeio-config'),
 
   /**
-   * PATCH /admin/focus-nfe-config
+   * PATCH /admin/nfeio-config
    * Atualiza o token e ambiente FocusNFE globais.
    */
   updateFocusNfeConfigForAdmin: (_id: string, data: any) =>
-    api.patch('/admin/focus-nfe-config', data),
+    api.patch('/admin/nfeio-config', {
+      ...(data.focusNfeApiKey !== undefined && { nfeioApiKey: data.focusNfeApiKey }),
+      ...(data.focusNfeEnvironment !== undefined && { nfeioEnvironment: data.focusNfeEnvironment }),
+      ...(data.ibptToken !== undefined && { ibptToken: data.ibptToken }),
+    }),
 };
 
 // ============================================================================
@@ -661,6 +665,67 @@ export const fiscalApi = {
    * Body: { clientCpfCnpj, clientName, items: [{ productId, quantity, unitPrice, totalPrice }], totalValue, paymentMethod }
    */
   generateNFe: (data: any) => api.post('/fiscal/nfe', data),
+
+  /**
+   * POST /fiscal/nfce
+   * Roles: COMPANY - Emitir NFC-e dedicada (modelo 65).
+   * Implementação ATO DIAT 38/2020 — Art. 8º: a NFC-e autorizada
+   * retorna dados estruturados (chave, protocolo, QR Code, etc.)
+   * que devem ser exibidos ao consumidor para garantir a idoneidade
+   * do documento em contingência.
+   */
+  emitirNfce: (data: {
+    saleId: string;
+    sellerName: string;
+    clientCpfCnpj?: string;
+    clientName?: string;
+    clientEmail?: string;
+    clientIndIEDest?: 1 | 2 | 9;
+    clientIe?: string;
+    clientAddress?: {
+      zipCode?: string;
+      street?: string;
+      number?: string;
+      district?: string;
+      city?: string;
+      state?: string;
+      complement?: string;
+      phone?: string;
+    };
+    items: Array<{
+      productId: string;
+      productName: string;
+      barcode: string;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+      discount?: number;
+    }>;
+    totalValue: number;
+    valorDesconto?: number;
+    troco?: number;
+    payments: Array<{
+      method: string;
+      amount: number;
+      cardIntegrationType?: string;
+      acquirerCnpj?: string;
+      cardBrand?: string;
+      cardOperationType?: string;
+      installmentCount?: number;
+      installmentNumber?: number;
+      authorizationCode?: string;
+      terminalId?: string;
+    }>;
+    additionalInfo?: string;
+    operationNature?: string;
+    emissionPurpose?: number;
+    referenceAccessKey?: string;
+    pdvCode?: string;
+    establishmentId?: string;
+    indFinal?: 0 | 1;
+    indicadorPresenca?: 1 | 2 | 3 | 4 | 9;
+    intermediador?: { cnpj: string; idCadIntTran: string };
+  }) => api.post<NfceEmitida>('/fiscal/nfce', data),
 
   /**
    * POST /fiscal/nfe-devolucao
@@ -1626,14 +1691,18 @@ export const adminApi = {
    * GET /admin/focus-nfe-config
    * Roles: ADMIN - Obter config FocusNFE global (apiKey mascarada + ambiente + ibptToken)
    */
-  getFocusNfeConfig: () => api.get('/admin/focus-nfe-config'),
+  getFocusNfeConfig: () => api.get('/admin/nfeio-config'),
 
   /**
-   * PATCH /admin/focus-nfe-config
+   * PATCH /admin/nfeio-config
    * Roles: ADMIN - Atualizar token FocusNFE, ambiente e token IBPT
    */
   updateFocusNfeConfig: (data: { focusNfeApiKey?: string; focusNfeEnvironment?: 'sandbox' | 'production'; ibptToken?: string }) =>
-    api.patch('/admin/focus-nfe-config', data),
+    api.patch('/admin/nfeio-config', {
+      ...(data.focusNfeApiKey !== undefined && { nfeioApiKey: data.focusNfeApiKey }),
+      ...(data.focusNfeEnvironment !== undefined && { nfeioEnvironment: data.focusNfeEnvironment }),
+      ...(data.ibptToken !== undefined && { ibptToken: data.ibptToken }),
+    }),
 
   /**
    * PATCH /admin/boleto-cloud-config

@@ -23,6 +23,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { MetricCard } from '@/components/ui/metric-card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -995,83 +996,57 @@ export default function CashClosurePage() {
           <>
             {/* Cards de Estatísticas */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card className="p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Saldo Inicial</p>
-                    <p className="text-xl font-bold mt-1 truncate">
-                      {formatCurrency(currentClosure.openingAmount || 0)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Abertura em {formatDateTime(currentClosure.openingDate)}
-                    </p>
-                  </div>
-                  <div className="h-9 w-9 shrink-0 rounded-full bg-muted flex items-center justify-center">
-                    <Wallet className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-              </Card>
+              <MetricCard
+                title="Saldo Inicial"
+                value={formatCurrency(currentClosure.openingAmount || 0)}
+                subtitle={`Abertura em ${formatDateTime(currentClosure.openingDate)}`}
+                icon={Wallet}
+              />
+              <MetricCard
+                title="Vendas em Dinheiro"
+                value={formatCurrency(stats?.totalCashSales || 0)}
+                subtitle="Para o caixa físico"
+                icon={Wallet}
+                valueClassName="text-green-600"
+                iconClassName="text-green-600"
+                iconWrapperClassName="bg-green-500/10"
+              />
+              <MetricCard
+                title="Saldo Esperado"
+                value={formatCurrency(expectedClosing)}
+                subtitle="Inicial + Vendas - Saques"
+                icon={TrendingUp}
+              />
 
-              <Card className="p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Vendas em Dinheiro</p>
-                    <p className="text-xl font-bold text-green-600 mt-1 truncate">
-                      {formatCurrency(stats?.totalCashSales || 0)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Para o caixa físico
-                    </p>
-                  </div>
-                  <div className="h-9 w-9 shrink-0 rounded-full bg-green-500/10 flex items-center justify-center">
-                    <Wallet className="h-4 w-4 text-green-600" />
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Saldo Esperado</p>
-                    <p className="text-xl font-bold mt-1 truncate">
-                      {formatCurrency(expectedClosing)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Inicial + Vendas - Saques
-                    </p>
-                  </div>
-                  <div className="h-9 w-9 shrink-0 rounded-full bg-muted flex items-center justify-center">
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Diferença</p>
-                    <p className={`text-xl font-bold mt-1 truncate ${
-                      Math.abs(difference) < 0.01 ? 'text-green-600' :
-                      difference > 0 ? 'text-blue-600' : 'text-red-600'
-                    }`}>
-                      {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {Math.abs(difference) < 0.01 ? 'Caixa correto ✓' :
-                       difference > 0 ? 'Sobra' : 'Falta'}
-                    </p>
-                  </div>
-                  <div className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${
-                    Math.abs(difference) < 0.01 ? 'bg-green-500/10' :
-                    difference > 0 ? 'bg-blue-500/10' : 'bg-red-500/10'
-                  }`}>
-                    <DollarSign className={`h-4 w-4 ${
-                      Math.abs(difference) < 0.01 ? 'text-green-600' :
-                      difference > 0 ? 'text-blue-600' : 'text-red-600'
-                    }`} />
-                  </div>
-                </div>
-              </Card>
+              <MetricCard
+                title="Diferença"
+                value={`${difference >= 0 ? '+' : ''}${formatCurrency(difference)}`}
+                subtitle={
+                  Math.abs(difference) < 0.01 ? 'Caixa correto ✓' : difference > 0 ? 'Sobra' : 'Falta'
+                }
+                icon={DollarSign}
+                valueClassName={
+                  Math.abs(difference) < 0.01
+                    ? 'text-green-600'
+                    : difference > 0
+                      ? 'text-blue-600'
+                      : 'text-red-600'
+                }
+                iconClassName={
+                  Math.abs(difference) < 0.01
+                    ? 'text-green-600'
+                    : difference > 0
+                      ? 'text-blue-600'
+                      : 'text-red-600'
+                }
+                iconWrapperClassName={
+                  Math.abs(difference) < 0.01
+                    ? 'bg-green-500/10'
+                    : difference > 0
+                      ? 'bg-blue-500/10'
+                      : 'bg-red-500/10'
+                }
+              />
             </div>
 
             {/* Detalhes por Forma de Pagamento */}

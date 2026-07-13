@@ -123,6 +123,11 @@ export function Sidebar() {
       return item.roles.includes(user.role) && boletoEnabled === true;
     }
 
+    const hiddenMenuItems = new Set(['Ponto Eletrônico', 'Estabelecimentos']);
+    if (hiddenMenuItems.has(item.name)) {
+      return false;
+    }
+
     // O role já foi normalizado na API (company -> empresa)
     return item.roles.includes(user.role);
   });
@@ -164,7 +169,7 @@ export function Sidebar() {
                   className="h-6 w-6"
                 />
               )}
-              {!sidebarCollapsed && <span className="text-lg font-bold dark:text-white">Montshop</span>}
+              {!sidebarCollapsed && <span className="text-lg font-bold dark:text-foreground">Montshop</span>}
             </Link>
             <div className="flex items-center gap-1">
               {/* Toggle collapse (desktop) */}
@@ -239,8 +244,8 @@ export function Sidebar() {
                 </div>
                 {!sidebarCollapsed && (
                   <div className="flex-1 overflow-hidden">
-                    <p className="truncate text-sm font-medium dark:text-white">{user.name || user.email || user.login || 'Usuário'}</p>
-                    <p className="truncate text-xs text-muted-foreground dark:text-gray-300 capitalize">{user.role}</p>
+                    <p className="truncate text-sm font-medium dark:text-foreground">{user.name || user.email || user.login || 'Usuário'}</p>
+                    <p className="truncate text-xs text-muted-foreground dark:text-muted-foreground capitalize">{user.role}</p>
                   </div>
                 )}
               </div>

@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ShoppingCart, Package, Users, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Building2, HelpCircle, Info } from 'lucide-react';
+import { ShoppingCart, Package, Users, DollarSign, AlertTriangle, Building2, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { MetricCard } from '@/components/ui/metric-card';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { handleApiError } from '@/lib/handleApiError';
@@ -20,55 +21,6 @@ import { PageHelpModal } from '@/components/help';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { dashboardHelpTitle, dashboardHelpDescription, dashboardHelpIcon, getDashboardHelpTabs } from '@/components/help/contents/dashboard-help';
 import { logger } from '@/lib/logger';
-
-interface MetricCardProps {
-  title: string;
-  value: string | number;
-  change?: number;
-  icon: React.ElementType;
-  trend?: 'up' | 'down' | 'neutral';
-  infoTooltip?: string;
-  onInfoClick?: () => void;
-}
-
-function MetricCard({ title, value, change, icon: Icon, trend = 'neutral', infoTooltip, onInfoClick }: MetricCardProps) {
-  return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-            {title}
-            {onInfoClick && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onInfoClick(); }}
-                title={infoTooltip ?? 'Ver detalhes'}
-                className="inline-flex shrink-0 rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                aria-label={infoTooltip ?? 'Ver detalhes do cálculo'}
-              >
-                <Info className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </p>
-          <p className="text-xl font-bold mt-1 truncate">{value}</p>
-          {change !== undefined && (
-            <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-              {trend === 'up' && <TrendingUp className="h-3 w-3 text-green-500 shrink-0" />}
-              {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-500 shrink-0" />}
-              <span className={trend === 'up' ? 'text-green-500' : trend === 'down' ? 'text-red-500' : ''}>
-                {change > 0 ? '+' : ''}{change}%
-              </span>
-              <span>vs. mês anterior</span>
-            </p>
-          )}
-        </div>
-        <div className="h-9 w-9 shrink-0 rounded-full bg-muted flex items-center justify-center">
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </div>
-      </div>
-    </Card>
-  );
-}
 
 export default function DashboardPage() {
   const { api, isAuthenticated, user } = useAuth();
@@ -219,54 +171,49 @@ export default function DashboardPage() {
     enabled: isAuthenticated && user?.role === 'gestor' && hasDateFilter,
   });
 
-  // Clientes com dívidas a prazo em atraso (> 30 dias)
+  // Clientes com dívidas a prazo em atraso (> 30 dias) — uma única chamada à API
   const { data: overdueCustomers } = useQuery({
-    queryKey: ['customers-overdue', customersData],
-    enabled: isAuthenticated && !!customersData,
+    queryKey: ['customers-overdue'],
+    enabled: isAuthenticated && user?.role !== 'gestor',
     queryFn: async () => {
-      const list = normalizeList<Customer>(customersData, 'customers');
-      const results: Array<{ customer: Customer; overdueCount: number; overdueTotal: number; oldestDueDate?: string }> = [];
+      const resp = await api.get('/installment/overdue');
+      const installments = normalizeList<any>(resp.data, 'installments');
       const nowTs = Date.now();
       const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
 
-      const batchSize = 10;
-      for (let i = 0; i < list.length; i += batchSize) {
-        const batch = list.slice(i, i + batchSize);
-        const batchResults = await Promise.all(
-          batch.map(async (c) => {
-            try {
-              const resp = await api.get(`/customer/${c.id}/installments`);
-              const installments = normalizeList<any>(resp.data, 'installments');
-              let overdueCount = 0;
-              let overdueTotal = 0;
-              let oldest: string | undefined;
-              installments.forEach((ins: any) => {
-                const due = ins.dueDate ? new Date(ins.dueDate).getTime() : NaN;
-                const isPaid = !!ins.isPaid || !!ins.paidAt;
-                const amount = Number(ins.amount || ins.value || 0);
-                if (!isPaid && !isNaN(due)) {
-                  const overdueMs = nowTs - due;
-                  if (overdueMs > THIRTY_DAYS) {
-                    overdueCount += 1;
-                    overdueTotal += amount;
-                    if (!oldest || new Date(ins.dueDate) < new Date(oldest)) oldest = ins.dueDate;
-                  }
-                }
-              });
-              if (overdueCount > 0) {
-                return { customer: c, overdueCount, overdueTotal, oldestDueDate: oldest };
-              }
-              return null;
-            } catch {
-              return null;
-            }
-          })
-        );
-        batchResults.forEach((r) => r && results.push(r));
-      }
+      const byCustomer = new Map<
+        string,
+        { customer: Customer; overdueCount: number; overdueTotal: number; oldestDueDate?: string }
+      >();
 
-      results.sort((a, b) => b.overdueTotal - a.overdueTotal);
-      return results;
+      installments.forEach((ins: any) => {
+        const due = ins.dueDate ? new Date(ins.dueDate).getTime() : NaN;
+        if (isNaN(due) || nowTs - due <= THIRTY_DAYS) return;
+
+        const customerId = ins.customerId || ins.customer?.id;
+        const customer = ins.customer as Customer | undefined;
+        if (!customerId || !customer?.id) return;
+
+        const amount = Number(ins.remainingAmount ?? ins.amount ?? ins.value ?? 0);
+        const existing = byCustomer.get(customerId);
+        if (!existing) {
+          byCustomer.set(customerId, {
+            customer,
+            overdueCount: 1,
+            overdueTotal: amount,
+            oldestDueDate: ins.dueDate,
+          });
+          return;
+        }
+
+        existing.overdueCount += 1;
+        existing.overdueTotal += amount;
+        if (!existing.oldestDueDate || new Date(ins.dueDate) < new Date(existing.oldestDueDate)) {
+          existing.oldestDueDate = ins.dueDate;
+        }
+      });
+
+      return Array.from(byCustomer.values()).sort((a, b) => b.overdueTotal - a.overdueTotal);
     },
   });
 

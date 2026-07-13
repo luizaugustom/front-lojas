@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Power, PowerOff, AlertTriangle, RefreshCw, Clock } from 'lucide-react';
 import { fiscalApi } from '@/lib/api-endpoints';
 import { TermoCompromissoModal } from './termo-compromisso-modal';
+import { CONTINGENCY_MOTIVOS as CONTINGENCY_REASONS } from './types';
 
 interface ContingencyStatus {
   contingenciaEnabled: boolean;
@@ -188,13 +189,26 @@ export function ContingencyPanel() {
           {!status.contingenciaEnabled && (
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium">Motivo (opcional)</label>
-                <input
-                  className="w-full mt-1 px-3 py-2 border rounded"
-                  placeholder="Indisponibilidade do ambiente Focus NFe"
+                <label className="text-sm font-medium">Motivo (tipificado pelo ATO DIAT 38/2020)</label>
+                <select
+                  className="w-full mt-1 px-3 py-2 border rounded bg-background"
                   value={motivo}
                   onChange={(e) => setMotivo(e.target.value)}
-                />
+                >
+                  <option value="">Selecione um motivo…</option>
+                  {CONTINGENCY_REASONS.map((r) => (
+                    <option key={r.code} value={r.label}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+                {motivo === CONTINGENCY_REASONS[CONTINGENCY_REASONS.length - 1].label && (
+                  <input
+                    className="w-full mt-2 px-3 py-2 border rounded"
+                    placeholder="Descreva o motivo"
+                    onChange={(e) => setMotivo(`${CONTINGENCY_REASONS[CONTINGENCY_REASONS.length - 1].label}: ${e.target.value}`)}
+                  />
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium">Tipo de TTD</label>

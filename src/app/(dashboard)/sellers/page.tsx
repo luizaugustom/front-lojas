@@ -128,21 +128,21 @@ export default function SellersPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-4 bg-card border-border">
+        <Card className="p-3 bg-card border-border">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-primary/10 rounded-lg">
-              <Users className="h-4 w-4 text-primary" />
+            <div className="p-1 bg-primary/10 rounded-lg">
+              <Users className="h-3.5 w-3.5 text-primary" />
             </div>
             <div>
-              <p className="text-lg font-bold text-primary">{totalSellers}</p>
-              <p className="text-xs text-muted-foreground">Total de Vendedores</p>
+              <p className="text-base font-bold text-primary leading-tight">{totalSellers}</p>
+              <p className="text-[11px] text-muted-foreground">Total de Vendedores</p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-4 bg-card border-border">
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-foreground">Performance dos Vendedores (Mês Atual)</h3>
+        <Card className="p-3 bg-card border-border">
+          <div className="space-y-2">
+            <h3 className="text-xs font-medium text-foreground">Performance dos Vendedores (Mês Atual)</h3>
             
             {topSeller && (
               <div className="flex items-center justify-between">

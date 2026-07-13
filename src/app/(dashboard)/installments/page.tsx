@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DollarSign, AlertTriangle, CheckCircle2, Filter, X } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { MetricCard } from '@/components/ui/metric-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import {
@@ -399,45 +400,26 @@ export default function InstallmentsPage() {
 
         {/* Cards de Estatísticas */}
         <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-              <CardTitle className="text-sm font-medium">Total a Receber</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="px-4 py-1 pt-0">
-              <div className="text-xl font-bold">
-                {formatCurrency(stats?.totalReceivable || 0)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {stats?.pendingInstallments || 0} parcelas pendentes
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-              <CardTitle className="text-sm font-medium">Atrasados</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent className="px-4 py-1 pt-0">
-              <div className="text-xl font-bold text-destructive">
-                {formatCurrency(stats?.overdueAmount || 0)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {stats?.overdueInstallments || 0} parcelas vencidas
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 py-1.5 pb-0.5">
-              <CardTitle className="text-sm font-medium">Parcelas em Aberto</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="px-4 py-1 pt-0">
-              <div className="text-xl font-bold">{stats?.pendingInstallments || 0}</div>
-            </CardContent>
-          </Card>
+          <MetricCard
+            title="Total a Receber"
+            value={formatCurrency(stats?.totalReceivable || 0)}
+            subtitle={`${stats?.pendingInstallments || 0} parcelas pendentes`}
+            icon={DollarSign}
+          />
+          <MetricCard
+            title="Atrasados"
+            value={formatCurrency(stats?.overdueAmount || 0)}
+            subtitle={`${stats?.overdueInstallments || 0} parcelas vencidas`}
+            icon={AlertTriangle}
+            valueClassName="text-destructive"
+            iconClassName="text-destructive"
+            iconWrapperClassName="bg-destructive/10"
+          />
+          <MetricCard
+            title="Parcelas em Aberto"
+            value={stats?.pendingInstallments || 0}
+            icon={CheckCircle2}
+          />
         </div>
 
         {/* Filtro de Data */}

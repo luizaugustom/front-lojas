@@ -28,6 +28,7 @@ import { PrintConfirmationDialog } from './print-confirmation-dialog';
 import { CustomerCopyConfirmationDialog } from './customer-copy-confirmation-dialog';
 import { BilletPrintConfirmationDialog } from './billet-print-confirmation-dialog';
 import { StoreCreditVoucherConfirmationDialog } from './store-credit-voucher-confirmation-dialog';
+import { NfceDetailsModal } from './NfceDetailsModal';
 import { InstallmentBilletViewer } from '@/components/installments/installment-billet-viewer';
 import { useAuth } from '@/hooks/useAuth';
 import { printContent as printContentService } from '@/lib/print-service';
@@ -92,6 +93,33 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
   // Boletos PDF
   const [billetsPdf, setBilletsPdf] = useState<string | null>(null);
   const [showBillets, setShowBillets] = useState(false);
+  // ATO DIAT 38/2020 — Art. 13 §único: seleção de série/PDV no PDV
+  const [pdvCode, setPdvCode] = useState<string>('');
+  const [nfceSeries, setNfceSeries] = useState<string>('');
+  const [fiscalConfig, setFiscalConfig] = useState<{
+    csc?: string;
+    idTokenCsc?: string;
+    nfceSerie?: string;
+    pdvSeries?: Record<string, string>;
+  } | null>(null);
+  // ATO DIAT 38/2020 — Art. 8º: NFC-e autorizada visível ao caixa e ao consumidor
+  const [nfceAutorizada, setNfceAutorizada] = useState<{
+    id: string;
+    documentNumber: string;
+    serie: string;
+    accessKey: string;
+    protocol: string;
+    authorizationDateTime: string;
+    qrCodeUrl?: string;
+    qrCode?: string;
+    pdfUrl?: string;
+    xmlUrl?: string;
+    totalValue: number;
+    contingencia: boolean;
+    ttdType?: 'TTD_706' | 'TTD_707' | 'TTD_710';
+    pdvCode?: string;
+  } | null>(null);
+  const [showNfceDetailsModal, setShowNfceDetailsModal] = useState(false);
   const [showBilletPrintConfirmation, setShowBilletPrintConfirmation] = useState(false);
   const [pendingPrintContent, setPendingPrintContent] = useState<{
     content: any;
@@ -367,6 +395,23 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
       const response = await companyApi.getFiscalConfig();
       const config = response.data;
       setEmitOnlyNfe(!!config?.emitOnlyNfe);
+      // ATO DIAT 38/2020 — armazenar CSC, série NFC-e e séries por PDV
+      setFiscalConfig({
+        csc: config?.csc,
+        idTokenCsc: config?.idTokenCsc,
+        nfceSerie: config?.nfceSerie || '1',
+        pdvSeries: config?.pdvSeries,
+      });
+      // Pré-selecionar a primeira série disponível (Art. 13 §único)
+      const pdvSeriesEntries = Object.entries(config?.pdvSeries || {});
+      if (pdvSeriesEntries.length > 0) {
+        const [firstPdv, firstSerie] = pdvSeriesEntries[0];
+        setPdvCode(firstPdv);
+        setNfceSeries(String(firstSerie));
+      } else {
+        setNfceSeries(config?.nfceSerie || '1');
+        setPdvCode('');
+      }
     } catch (error) {
       console.error('Erro ao carregar configuração fiscal:', error);
       setEmitOnlyNfe(false);
@@ -1114,6 +1159,9 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
         clientCpfCnpj: data.clientCpfCnpj ?? '',
         sellerId: selectedSellerId || undefined, // Usar ID EXATAMENTE como está
         ...(forceNonFiscal && { forceNonFiscal: true }),
+        // ATO DIAT 38/2020 — Art. 13 §único + Art. 4º §2º
+        ...(pdvCode && { pdvCode }),
+        ...(nfceSeries && { nfceSerie: nfceSeries }),
         ...(emitOnlyNfe && {
           emitBoleto: emitBoleto,
           boletoDueDate: emitBoleto && boletoDueDate ? boletoDueDate : undefined,
@@ -1188,8 +1236,33 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
       
       logger.log('[Checkout] Venda criada com sucesso:', saleId);
       toast.success('Venda realizada com sucesso!');
-      
+
       setCreatedSaleId(saleId);
+
+      // ATO DIAT 38/2020 — Art. 8º: abrir modal com dados da NFC-e autorizada
+      // quando a venda gerou NFC-e (e não cupom não fiscal).
+      const fiscalDoc = saleData_resp?.fiscalDocument || saleData_resp?.fiscalDocuments?.[0];
+      if (printType !== 'non-fiscal' && fiscalDoc?.accessKey) {
+        setNfceAutorizada({
+          id: fiscalDoc.id,
+          documentNumber: fiscalDoc.documentNumber,
+          serie: fiscalDoc.serieNumber || nfceSeries || '1',
+          accessKey: fiscalDoc.accessKey,
+          protocol: fiscalDoc.protocol || '',
+          authorizationDateTime:
+            fiscalDoc.authorizationDateTime || fiscalDoc.emissionDate || new Date().toISOString(),
+          qrCodeUrl: fiscalDoc.qrCodeUrl,
+          qrCode: fiscalDoc.qrCode,
+          pdfUrl: fiscalDoc.pdfUrl,
+          xmlUrl: fiscalDoc.xmlUrl,
+          totalValue: Number(fiscalDoc.totalValue || saleData_resp?.total || 0),
+          contingencia: !!fiscalDoc.contingencia,
+          ttdType: fiscalDoc.nfcContingencyType || undefined,
+          pdvCode: fiscalDoc.pdvCode || pdvCode || undefined,
+        });
+        // Pequeno delay para o modal de impressão aparecer primeiro
+        setTimeout(() => setShowNfceDetailsModal(true), 250);
+      }
 
       // Resposta em modo NFe: não abrir fluxo de impressão NFC-e; opção de download do boleto
       if (printType === 'nfe') {
@@ -1289,11 +1362,62 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
                     Configuração Fiscal Incompleta
                   </h4>
                   <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                    A empresa não possui configuração fiscal completa para emissão de NFCe. 
-                    Será impresso um <strong>cupom não fiscal</strong> ao invés de uma NFCe válida. 
+                    A empresa não possui configuração fiscal completa para emissão de NFCe.
+                    Será impresso um <strong>cupom não fiscal</strong> ao invés de uma NFCe válida.
                     Configure os dados fiscais nas Configurações para emitir NFCe válida.
                   </p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ATO DIAT 38/2020 — Art. 14: alerta proativo de CSC faltando */}
+          {isCompany && hasValidFiscalConfig !== false && (!fiscalConfig?.csc || !fiscalConfig?.idTokenCsc) && (
+            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">
+                    CSC não configurado — NFC-e pode falhar
+                  </h4>
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    O Código de Segurança do Contribuinte (CSC) e/ou ID do Token CSC não estão
+                    cadastrados. Sem eles, o QR Code da NFC-e não é gerado pela SEFAZ.
+                    Configure em <strong>Configurações → Dados Fiscais</strong> antes de emitir.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ATO DIAT 38/2020 — Art. 13 §único: seleção de série/PDV */}
+          {isCompany && !emitOnlyNfe && fiscalConfig?.pdvSeries && Object.keys(fiscalConfig.pdvSeries).length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="pdvCode">PDV (Caixa)</Label>
+                <Select value={pdvCode} onValueChange={(v) => {
+                  setPdvCode(v);
+                  const serie = fiscalConfig.pdvSeries?.[v];
+                  if (serie) setNfceSeries(String(serie));
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o PDV" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(fiscalConfig.pdvSeries).map((p) => (
+                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="nfceSeries">Série da NFC-e</Label>
+                <Input
+                  id="nfceSeries"
+                  value={nfceSeries}
+                  onChange={(e) => setNfceSeries(e.target.value)}
+                  readOnly
+                />
               </div>
             </div>
           )}
@@ -1860,6 +1984,16 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
         remainingBalance={pendingCreditVoucherData.remainingBalance}
       />
     )}
+
+    {/* ATO DIAT 38/2020 — Art. 8º: Modal da NFC-e autorizada (idônea como DANFE) */}
+    <NfceDetailsModal
+      open={showNfceDetailsModal}
+      onOpenChange={(o) => {
+        setShowNfceDetailsModal(o);
+        if (!o) setNfceAutorizada(null);
+      }}
+      nfce={nfceAutorizada}
+    />
   </>
   );
 }

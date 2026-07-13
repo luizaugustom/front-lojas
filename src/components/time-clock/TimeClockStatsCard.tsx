@@ -16,13 +16,13 @@ export function TimeClockStatsCard({ stats, loading, title = 'Estatísticas do M
   if (loading || !stats) {
     return (
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{title}</CardTitle>
+        <CardHeader className="p-3 pb-1">
+          <CardTitle className="text-sm">{title}</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <CardContent className="p-3 pt-0">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-20 w-full" />
+              <Skeleton key={i} className="h-16 w-full" />
             ))}
           </div>
         </CardContent>
@@ -32,11 +32,11 @@ export function TimeClockStatsCard({ stats, loading, title = 'Estatísticas do M
 
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">{title}</CardTitle>
+      <CardHeader className="p-3 pb-1">
+        <CardTitle className="text-sm">{title}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <CardContent className="p-3 pt-0">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <StatItem
             Icon={Clock}
             label="Horas no mês"
@@ -79,14 +79,14 @@ function StatItem({
   tone: string;
 }) {
   return (
-    <div className="rounded-lg border p-3 bg-card">
-      <div className="flex items-center gap-2">
-        <Icon className={`h-4 w-4 ${tone}`} />
-        <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
+    <div className="rounded-lg border p-2 bg-card">
+      <div className="flex items-center gap-1.5">
+        <Icon className={`h-3.5 w-3.5 ${tone}`} />
+        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
           {label}
         </span>
       </div>
-      <p className="text-lg font-semibold mt-1">{value}</p>
+      <p className="text-base font-semibold mt-0.5 leading-tight">{value}</p>
     </div>
   );
 }

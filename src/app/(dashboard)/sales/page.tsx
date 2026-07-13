@@ -73,6 +73,7 @@ export default function SalesPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  const [cartExpandedOpen, setCartExpandedOpen] = useState(false);
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
   const [pageHelpOpen, setPageHelpOpen] = useState(false);
   const [quantityModalOpen, setQuantityModalOpen] = useState(false);
@@ -338,7 +339,7 @@ export default function SalesPage() {
   };
 
   // Quando qualquer modal está aberto, atalhos da página não devem interferir (apenas o modal responde)
-  const anyModalOpen = checkoutOpen || budgetOpen || openingDialogOpen || helpDialogOpen || pageHelpOpen || scannerOpen || mobileCartOpen || quantityModalOpen;
+  const anyModalOpen = checkoutOpen || budgetOpen || openingDialogOpen || helpDialogOpen || pageHelpOpen || scannerOpen || mobileCartOpen || quantityModalOpen || cartExpandedOpen;
 
   const handleRequestQuantity = (product: Product) => {
     setProductForQuantity(product);
@@ -524,6 +525,7 @@ export default function SalesPage() {
           keyboardShortcutsEnabled={!anyModalOpen}
           onCheckout={handleCheckout}
           onBudget={handleBudget}
+          onExpandedChange={setCartExpandedOpen}
         />
       </div>
 
@@ -640,6 +642,7 @@ export default function SalesPage() {
             <div className="px-3 pb-4 pt-3">
               <div className="max-h-[70vh] overflow-y-auto pr-1">
                 <Cart
+                  showExpandButton={false}
                   keyboardFocusArea={mobileCartOpen ? 'cart' : keyboardFocusArea}
                   keyboardShortcutsEnabled={!anyModalOpen}
                   onCheckout={handleCheckout}

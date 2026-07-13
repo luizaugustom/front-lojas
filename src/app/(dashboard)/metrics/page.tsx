@@ -8,11 +8,11 @@ import {
   Package,
   Users,
   DollarSign,
-  TrendingUp,
-  TrendingDown,
   BarChart3,
+  TrendingUp,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { MetricCard } from '@/components/ui/metric-card';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { formatCurrency } from '@/lib/utils';
@@ -57,40 +57,6 @@ function getPeriodDateRange(period: PeriodKey): { startDate: string; endDate: st
     startDate: start.toISOString(),
     endDate: end.toISOString(),
   };
-}
-
-interface MetricCardProps {
-  title: string;
-  value: string | number;
-  change?: number;
-  icon: React.ElementType;
-  trend?: 'up' | 'down' | 'neutral';
-}
-
-function MetricCard({ title, value, change, icon: Icon, trend = 'neutral' }: MetricCardProps) {
-  return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-xl font-bold mt-1 truncate">{value}</p>
-          {change !== undefined && (
-            <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-              {trend === 'up' && <TrendingUp className="h-3 w-3 text-green-500 shrink-0" />}
-              {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-500 shrink-0" />}
-              <span className={trend === 'up' ? 'text-green-500' : trend === 'down' ? 'text-red-500' : ''}>
-                {change > 0 ? '+' : ''}{change}%
-              </span>
-              <span>vs. mês anterior</span>
-            </p>
-          )}
-        </div>
-        <div className="h-9 w-9 shrink-0 rounded-full bg-muted flex items-center justify-center">
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </div>
-      </div>
-    </Card>
-  );
 }
 
 export default function MetricsPage() {

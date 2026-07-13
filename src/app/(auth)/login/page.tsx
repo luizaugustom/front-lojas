@@ -134,6 +134,7 @@ export default function LoginPage() {
               <Input
                 id="login"
                 type="text"
+                autoComplete="username"
                 placeholder="seu@email.com"
                 className="h-8 sm:h-9 text-xs sm:text-sm"
                 {...register('login')}
@@ -171,6 +172,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   className="h-8 sm:h-9 text-xs sm:text-sm"
                   {...register('password')}

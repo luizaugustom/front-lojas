@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Minus, Plus, Trash2, ShoppingCart, FileText } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingCart, FileText, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ProductImage } from '@/components/products/product-image';
 import { useCartStore } from '@/store/cart-store';
 import { formatCurrency, parseDiscount } from '@/lib/utils-clean';
+import { cn } from '@/lib/utils';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface CartProps {
@@ -16,10 +18,90 @@ interface CartProps {
   keyboardShortcutsEnabled?: boolean;
   onCheckout: () => void;
   onBudget?: () => void;
+  showExpandButton?: boolean;
+  onExpandedChange?: (open: boolean) => void;
+  compactFooter?: boolean;
+  className?: string;
 }
 
-export function Cart({ keyboardFocusArea = 'products', keyboardShortcutsEnabled = true, onCheckout, onBudget }: CartProps) {
+function formatQuantityDisplay(quantity: number): string {
+  return quantity % 1 === 0 ? String(quantity) : quantity.toFixed(3).replace(/\.?0+$/, '');
+}
+
+interface CartItemQuantityProps {
+  productId: string;
+  quantity: number;
+  onUpdate: (productId: string, quantity: number) => void;
+}
+
+function CartItemQuantity({ productId, quantity, onUpdate }: CartItemQuantityProps) {
+  const [inputValue, setInputValue] = useState(formatQuantityDisplay(quantity));
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setInputValue(formatQuantityDisplay(quantity));
+    }
+  }, [quantity, isEditing]);
+
+  const commitValue = () => {
+    setIsEditing(false);
+    const normalized = inputValue.trim().replace(',', '.');
+    if (normalized === '' || normalized === '0') {
+      onUpdate(productId, 0);
+      return;
+    }
+    const parsed = parseFloat(normalized);
+    if (isNaN(parsed) || parsed <= 0) {
+      setInputValue(formatQuantityDisplay(quantity));
+      return;
+    }
+    const rounded = Math.round(parsed * 1000) / 1000;
+    onUpdate(productId, rounded);
+    setInputValue(formatQuantityDisplay(rounded));
+  };
+
+  return (
+    <Input
+      type="text"
+      inputMode="decimal"
+      value={inputValue}
+      onChange={(e) => {
+        setIsEditing(true);
+        setInputValue(e.target.value);
+      }}
+      onFocus={(e) => {
+        setIsEditing(true);
+        e.target.select();
+      }}
+      onBlur={commitValue}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.currentTarget.blur();
+        } else if (e.key === 'Escape') {
+          setInputValue(formatQuantityDisplay(quantity));
+          setIsEditing(false);
+          e.currentTarget.blur();
+        }
+      }}
+      className="no-spinner h-6 sm:h-6 w-9 min-w-9 text-center text-[10px] px-0.5 py-0"
+      aria-label="Quantidade"
+    />
+  );
+}
+
+export function Cart({
+  keyboardFocusArea = 'products',
+  keyboardShortcutsEnabled = true,
+  onCheckout,
+  onBudget,
+  showExpandButton = true,
+  onExpandedChange,
+  compactFooter = false,
+  className,
+}: CartProps) {
   const { items, discount, updateQuantity, removeItem, setDiscount, getSubtotal, getTotal, clearCart } = useCartStore();
+  const [expandedOpen, setExpandedOpen] = useState(false);
   const [discountInput, setDiscountInput] = useState('');
   const [isPercentageDiscount, setIsPercentageDiscount] = useState(false);
   const [percentageValue, setPercentageValue] = useState<number | null>(null);
@@ -29,6 +111,20 @@ export function Cart({ keyboardFocusArea = 'products', keyboardShortcutsEnabled 
 
   const subtotal = getSubtotal();
   const total = getTotal();
+
+  useEffect(() => {
+    onExpandedChange?.(expandedOpen);
+  }, [expandedOpen, onExpandedChange]);
+
+  const handleCheckoutClick = () => {
+    onCheckout();
+    setExpandedOpen(false);
+  };
+
+  const handleBudgetClick = () => {
+    onBudget?.();
+    setExpandedOpen(false);
+  };
 
   // Recalcular desconto percentual quando o subtotal mudar
   useEffect(() => {
@@ -154,14 +250,23 @@ export function Cart({ keyboardFocusArea = 'products', keyboardShortcutsEnabled 
   }, [selectedItemIndex, items.length]);
 
   return (
-    <Card className="flex flex-col h-full">
-      <CardHeader className="border-b py-0">
-        <CardTitle className="flex items-center gap-1.5 !text-[11.4px] sm:!text-[11.4px] lg:!text-[11.4px]">
-          <ShoppingCart className="h-[26.6px] w-[26.6px]" aria-hidden="true" />
-          Carrinho ({items.length})
-        </CardTitle>
-      </CardHeader>
-
+    <>
+    <Card className={cn('flex flex-col h-full', className)}>
+      {showExpandButton && (
+        <div className="flex justify-end px-2 pt-1.5 pb-0">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            onClick={() => setExpandedOpen(true)}
+            aria-label="Expandir carrinho"
+            title="Expandir carrinho"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
       <CardContent className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4 pb-0">
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
@@ -196,16 +301,20 @@ export function Cart({ keyboardFocusArea = 'products', keyboardShortcutsEnabled 
                   <Button
                     size="icon"
                     variant="outline"
-                    className="h-7 w-7"
+                    className="h-6 w-6"
                     onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
                   >
                     <Minus className="h-3 w-3" />
                   </Button>
-                  <span className="w-12 text-center text-sm">{item.quantity % 1 === 0 ? item.quantity : item.quantity.toFixed(3).replace(/\.?0+$/, '')}</span>
+                  <CartItemQuantity
+                    productId={item.product.id}
+                    quantity={item.quantity}
+                    onUpdate={updateQuantity}
+                  />
                   <Button
                     size="icon"
                     variant="outline"
-                    className="h-7 w-7"
+                    className="h-6 w-6"
                     onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
                   >
                     <Plus className="h-3 w-3" />
@@ -227,10 +336,10 @@ export function Cart({ keyboardFocusArea = 'products', keyboardShortcutsEnabled 
       </CardContent>
 
       {/* Seção fixa na parte inferior */}
-      <div className="border-t bg-background flex-shrink-0">
+      <div className={cn('border-t bg-background flex-shrink-0', compactFooter && 'text-[10px]')}>
         {/* Totais e desconto */}
-        <div className="p-1.5 space-y-1.5">
-          <div className="space-y-0.5 text-xs">
+        <div className={cn('p-1.5 space-y-1.5', compactFooter && 'p-1 space-y-1')}>
+          <div className={cn('space-y-0.5 text-xs', compactFooter && 'space-y-0 text-[10px]')}>
             <div className="flex justify-between">
               <span>Subtotal:</span>
               <span>{formatCurrency(subtotal)}</span>
@@ -241,14 +350,14 @@ export function Cart({ keyboardFocusArea = 'products', keyboardShortcutsEnabled 
                 <span>-{formatCurrency(discount)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm font-bold border-t pt-0.5">
+            <div className={cn('flex justify-between text-sm font-bold border-t pt-0.5', compactFooter && 'text-xs pt-0')}>
               <span>Total:</span>
-              <span className="text-base">{formatCurrency(total)}</span>
+              <span className={cn(compactFooter ? 'text-sm' : 'text-base')}>{formatCurrency(total)}</span>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="discount" className="text-xs">Desconto</Label>
+          <div className={cn('space-y-1', compactFooter && 'space-y-0.5')}>
+            <Label htmlFor="discount" className={cn('text-xs', compactFooter && 'text-[10px]')}>Desconto</Label>
             <Input
               ref={discountInputRef}
               id="discount"
@@ -293,34 +402,63 @@ export function Cart({ keyboardFocusArea = 'products', keyboardShortcutsEnabled 
                 }
               }}
               placeholder="0.00 ou 5%"
-              className="no-spinner h-5 text-xs px-2 py-1"
+              className={cn(
+                'no-spinner h-5 text-xs px-2 py-1',
+                compactFooter && 'h-5 sm:h-5 text-[10px] px-1.5 py-0'
+              )}
             />
           </div>
         </div>
 
         {/* Botões fixos na parte inferior */}
-        <div className="p-2 pt-0 space-y-1.5">
+        <div className={cn('p-2 pt-0 space-y-1.5', compactFooter && 'p-1.5 pt-0 space-y-1')}>
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={clearCart} disabled={items.length === 0}>
+            <Button
+              variant="outline"
+              className={cn('flex-1', compactFooter && 'h-7 text-xs px-2')}
+              onClick={clearCart}
+              disabled={items.length === 0}
+            >
               Limpar
             </Button>
-            <Button className="flex-1" onClick={onCheckout} disabled={items.length === 0}>
+            <Button
+              className={cn('flex-1', compactFooter && 'h-7 text-xs px-2')}
+              onClick={handleCheckoutClick}
+              disabled={items.length === 0}
+            >
               Finalizar
             </Button>
           </div>
           {onBudget && (
             <Button 
               variant="ghost" 
-              className="w-full text-primary text-sm" 
-              onClick={onBudget} 
+              className={cn('w-full text-primary text-sm', compactFooter && 'h-7 text-xs')}
+              onClick={handleBudgetClick} 
               disabled={items.length === 0}
             >
-              <FileText className="mr-2 h-4 w-4" />
+              <FileText className={cn('mr-2 h-4 w-4', compactFooter && 'mr-1.5 h-3 w-3')} />
               Criar Orçamento
             </Button>
           )}
         </div>
       </div>
     </Card>
+
+    {showExpandButton && (
+      <Dialog open={expandedOpen} onOpenChange={setExpandedOpen}>
+        <DialogContent className="flex h-[min(90vh,800px)] w-[min(95vw,640px)] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+          <Cart
+            showExpandButton={false}
+            compactFooter
+            keyboardFocusArea="cart"
+            keyboardShortcutsEnabled={keyboardShortcutsEnabled && expandedOpen}
+            onCheckout={handleCheckoutClick}
+            onBudget={onBudget ? handleBudgetClick : undefined}
+            className="h-full border-0 shadow-none rounded-none"
+          />
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   );
 }

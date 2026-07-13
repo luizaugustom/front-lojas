@@ -135,6 +135,7 @@ export default function SettingsPage() {
     nfceSerie: '1',
     nfeSerie: '1',
     sefazEnvironment: 'homologacao' as 'homologacao' | 'producao',
+    focusNfeEnvironment: 'sandbox' as 'sandbox' | 'production',
     csc: '',
     idTokenCsc: '000001',
     aliquotaCbsDefault: '0.9',
@@ -706,6 +707,7 @@ export default function SettingsPage() {
         nfceSerie: config.nfceSerie || '1',
         nfeSerie: config.nfeSerie || '1',
         sefazEnvironment: (config.sefazEnvironment || 'homologacao') as 'homologacao' | 'producao',
+        focusNfeEnvironment: (config.focusNfeEnvironment || 'sandbox') as 'sandbox' | 'production',
         csc: config.csc || '',
         idTokenCsc: config.idTokenCsc || '000001',
         aliquotaCbsDefault: config.aliquotaCbsDefault?.toString() || '0.9',
@@ -2163,6 +2165,34 @@ export default function SettingsPage() {
                       </Select>
                       <p className="text-xs text-muted-foreground">
                         Atual: {fiscalConfig?.sefazEnvironment === 'producao' ? 'Produção' : 'Homologação'}
+                      </p>
+                    </div>
+
+                    {/* ATO DIAT 38/2020 — Art. 7º: ambiente FocusNFE (G25) */}
+                    <div className="space-y-2">
+                      <Label htmlFor="focusNfeEnvironment">Ambiente FocusNFE</Label>
+                      <Select
+                        value={fiscalDataForm.focusNfeEnvironment}
+                        onValueChange={(value) =>
+                          setFiscalDataForm({
+                            ...fiscalDataForm,
+                            focusNfeEnvironment: value as 'sandbox' | 'production',
+                          })
+                        }
+                      >
+                        <SelectTrigger id="focusNfeEnvironment">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sandbox">Homologação (testes)</SelectItem>
+                          <SelectItem value="production">Produção</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Define em qual ambiente da FocusNFE suas NF-e/NFC-e serão emitidas.{' '}
+                        {fiscalConfig?.hasFocusNfeApiKey
+                          ? 'Token FocusNFE configurado.'
+                          : 'Token FocusNFE ainda não configurado (configure em /admin/focus-nfe-config).'}
                       </p>
                     </div>
 

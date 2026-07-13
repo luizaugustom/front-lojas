@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Plus, AlertTriangle, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { MetricCard } from '@/components/ui/metric-card';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { ProductLossDialog } from '@/components/product-losses/product-loss-dialog';
@@ -110,33 +111,9 @@ export default function ProductLossesPage() {
 
       {/* Resumo */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total de Perdas</p>
-              <p className="text-2xl font-bold">{summary.totalLosses}</p>
-            </div>
-            <AlertTriangle className="h-8 w-8 text-orange-500" />
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Quantidade Perdida</p>
-              <p className="text-2xl font-bold">{summary.totalQuantity}</p>
-            </div>
-            <AlertTriangle className="h-8 w-8 text-red-500" />
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Custo Total</p>
-              <p className="text-2xl font-bold">{formatCurrency(summary.totalCost)}</p>
-            </div>
-            <AlertTriangle className="h-8 w-8 text-red-600" />
-          </div>
-        </Card>
+        <MetricCard title="Total de Perdas" value={summary.totalLosses} icon={AlertTriangle} iconClassName="text-orange-500" iconWrapperClassName="bg-orange-500/10" />
+        <MetricCard title="Quantidade Perdida" value={summary.totalQuantity} icon={AlertTriangle} iconClassName="text-red-500" iconWrapperClassName="bg-red-500/10" />
+        <MetricCard title="Custo Total" value={formatCurrency(summary.totalCost)} icon={AlertTriangle} iconClassName="text-red-600" iconWrapperClassName="bg-red-600/10" />
       </div>
 
       {/* Filtros */}

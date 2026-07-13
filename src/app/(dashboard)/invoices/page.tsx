@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Download, RefreshCw, Search, PlusCircle, Trash2, Plus, Package, XCircle, CheckCircle2, AlertCircle, Info, HelpCircle, FileX, FileEdit, WifiOff, Wifi, Settings as SettingsIcon } from 'lucide-react';
+import { FileText, Download, RefreshCw, Search, PlusCircle, Trash2, Plus, Package, XCircle, CheckCircle2, AlertCircle, Info, HelpCircle, FileX, FileEdit, WifiOff, Wifi, Settings as SettingsIcon, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -28,16 +28,30 @@ import { PaginationControls } from '@/components/ui/pagination-controls';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
 import { isValidCPF, isValidCNPJ, isValidCPFOrCNPJ } from '@/lib/validations';
 import { InvoiceHelpModal } from '@/components/invoices/invoice-help-modal';
+import { NfceDetailsModal } from '@/components/sales/NfceDetailsModal';
+import type { NfceEmitida } from '@/types';
 
 interface FiscalDoc {
   id: string;
-  documentType: 'NFE' | 'NFSE' | string;
+  documentType: 'NFE' | 'NFSE' | 'NFCe' | string;
+  documentNumber?: string;
   accessKey?: string;
+  serie?: string;
+  serieNumber?: string;
+  protocol?: string;
   status?: string;
   total?: number;
   cbsValue?: number | null;
   ibsValue?: number | null;
   createdAt?: string;
+  authorizationDateTime?: string;
+  contingencia?: boolean;
+  ttdType?: string;
+  pdvCode?: string;
+  pdfUrl?: string;
+  xmlUrl?: string;
+  qrCodeUrl?: string;
+  qrCode?: string;
 }
 
 interface NFeItem {
@@ -64,7 +78,7 @@ export default function InvoicesPage() {
   const { api, user } = useAuth();
   const [search, setSearch] = useState('');
   const [emitOpen, setEmitOpen] = useState(false);
-  const [emitType, setEmitType] = useState<'nfe' | null>(null);
+  const [emitType, setEmitType] = useState<'nfe' | 'nfce' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   
   // Opção de vincular a uma venda existente OU preencher dados manualmente
@@ -119,6 +133,7 @@ export default function InvoicesPage() {
   
   // Estados para cancelamento
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [nfceDetailsDoc, setNfceDetailsDoc] = useState<FiscalDoc | null>(null);
   const [documentToCancel, setDocumentToCancel] = useState<FiscalDoc | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
@@ -321,7 +336,7 @@ export default function InvoicesPage() {
     });
   };
 
-  const openEmitDialog = (type: 'nfe') => {
+  const openEmitDialog = (type: 'nfe' | 'nfce') => {
     setEmitType(type);
     // Reset todos os campos
     setEmissionMode('sale');
@@ -601,6 +616,11 @@ export default function InvoicesPage() {
               <PlusCircle className="mr-2 h-4 w-4" /> Emitir NF-e
             </Button>
           )}
+          {(user?.role === 'empresa' || (user?.role === 'vendedor' && user?.nfceEmissionEnabled)) && (
+            <Button onClick={() => openEmitDialog('nfce')}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Emitir NFC-e
+            </Button>
+          )}
           <Button variant="outline" onClick={() => refetch()} disabled={isLoading} className="text-foreground">
             <RefreshCw className="mr-2 h-4 w-4" /> Atualizar
           </Button>
@@ -777,6 +797,16 @@ export default function InvoicesPage() {
                   <td className="px-4 py-2 text-foreground">{doc.createdAt ? formatDateTime(doc.createdAt) : '-'}</td>
                   <td className="px-4 py-2 text-right">
                     <div className="flex justify-end gap-2 flex-wrap">
+                      {doc.documentType === 'NFCe' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setNfceDetailsDoc(doc)}
+                          title="Ver detalhes da NFC-e"
+                        >
+                          <Eye className="mr-1 h-3 w-3" /> Detalhes
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
@@ -884,7 +914,7 @@ export default function InvoicesPage() {
       <Dialog open={emitOpen} onOpenChange={setEmitOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Emitir NF-e</DialogTitle>
+            <DialogTitle>{emitType === 'nfce' ? 'Emitir NFC-e' : 'Emitir NF-e'}</DialogTitle>
             <DialogDescription>
               Escolha vincular a uma venda existente ou preencher os dados manualmente
             </DialogDescription>
@@ -1732,6 +1762,33 @@ export default function InvoicesPage() {
 
       {/* Help Modal */}
       <InvoiceHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+
+      {/* ATO DIAT 38/2020 — Art. 8º: Modal de detalhes da NFC-e autorizada */}
+      <NfceDetailsModal
+        open={!!nfceDetailsDoc}
+        onOpenChange={(o) => !o && setNfceDetailsDoc(null)}
+        nfce={
+          nfceDetailsDoc
+            ? ({
+                id: nfceDetailsDoc.id,
+                documentNumber: nfceDetailsDoc.documentNumber,
+                serie: nfceDetailsDoc.serie || nfceDetailsDoc.serieNumber,
+                accessKey: nfceDetailsDoc.accessKey || '',
+                protocol: nfceDetailsDoc.protocol,
+                authorizationDateTime:
+                  nfceDetailsDoc.authorizationDateTime || nfceDetailsDoc.createdAt,
+                totalValue: nfceDetailsDoc.total || 0,
+                contingencia: nfceDetailsDoc.contingencia,
+                ttdType: nfceDetailsDoc.ttdType,
+                pdvCode: nfceDetailsDoc.pdvCode,
+                pdfUrl: nfceDetailsDoc.pdfUrl,
+                xmlUrl: nfceDetailsDoc.xmlUrl,
+                qrCodeUrl: nfceDetailsDoc.qrCodeUrl,
+                qrCode: nfceDetailsDoc.qrCode,
+              } as NfceEmitida)
+            : null
+        }
+      />
     </div>
   );
 }

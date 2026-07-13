@@ -139,6 +139,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           plan={user.plan}
         />
       )}
+
     </div>
   );
 }
