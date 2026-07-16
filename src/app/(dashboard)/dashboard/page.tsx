@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ShoppingCart, Package, Users, DollarSign, AlertTriangle, Building2, HelpCircle } from 'lucide-react';
+import { ShoppingCart, Package, Users, DollarSign, AlertTriangle, Building2, HelpCircle, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MetricCard } from '@/components/ui/metric-card';
