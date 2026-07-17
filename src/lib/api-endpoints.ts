@@ -838,6 +838,15 @@ export const fiscalApi = {
     }),
 
   /**
+   * POST /fiscal/:id/send-email
+   * Roles: ADMIN, COMPANY, SELLER - Enviar DANFE/XML por e-mail
+   */
+  sendEmail: (
+    id: string,
+    data: { email: string; format?: 'pdf' | 'xml' | 'both'; recipientName?: string },
+  ) => api.post(`/fiscal/${id}/send-email`, data),
+
+  /**
    * POST /fiscal/:id/cancel
    * Roles: COMPANY - Cancelar documento
    * Body: { reason } (mín. 15 caracteres - exigência SEFAZ)

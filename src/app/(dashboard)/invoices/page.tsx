@@ -29,6 +29,7 @@ import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
 import { isValidCPF, isValidCNPJ, isValidCPFOrCNPJ } from '@/lib/validations';
 import { InvoiceHelpModal } from '@/components/invoices/invoice-help-modal';
 import { NfceDetailsModal } from '@/components/sales/NfceDetailsModal';
+import { NfeSuccessModal, type NfeEmitidaResumo } from '@/components/fiscal/nfe-success-modal';
 import type { NfceEmitida } from '@/types';
 
 interface FiscalDoc {
@@ -147,6 +148,10 @@ export default function InvoicesPage() {
 
   // Estado para modal de ajuda
   const [helpOpen, setHelpOpen] = useState(false);
+
+  // Pós-emissão NF-e (download / e-mail)
+  const [nfeSuccessOpen, setNfeSuccessOpen] = useState(false);
+  const [nfeSuccessDoc, setNfeSuccessDoc] = useState<NfeEmitidaResumo | null>(null);
 
   // Inutilizar numeração
   const [inutilizarOpen, setInutilizarOpen] = useState(false);
@@ -576,9 +581,19 @@ export default function InvoicesPage() {
         if (boletoAmount !== '' && typeof boletoAmount === 'number') payload.boletoAmount = boletoAmount;
       }
       
-      await api.post('/fiscal/nfe', payload);
+      const { data: emitted } = await api.post('/fiscal/nfe', payload);
       toast.success('NF-e emitida com sucesso');
       setEmitOpen(false);
+      setNfeSuccessDoc({
+        id: emitted.id,
+        documentNumber: emitted.documentNumber,
+        accessKey: emitted.accessKey,
+        status: emitted.status,
+        pdfUrl: emitted.pdfUrl,
+        recipientEmail: recipientEmail?.trim() || null,
+        recipientName: recipientName?.trim() || null,
+      });
+      setNfeSuccessOpen(true);
       refetch();
     } catch (error: any) {
       const { message } = handleApiError(error, { showToast: false });
@@ -1762,6 +1777,15 @@ export default function InvoicesPage() {
 
       {/* Help Modal */}
       <InvoiceHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+
+      <NfeSuccessModal
+        open={nfeSuccessOpen}
+        onOpenChange={(open) => {
+          setNfeSuccessOpen(open);
+          if (!open) setNfeSuccessDoc(null);
+        }}
+        nfe={nfeSuccessDoc}
+      />
 
       {/* ATO DIAT 38/2020 — Art. 8º: Modal de detalhes da NFC-e autorizada */}
       <NfceDetailsModal
