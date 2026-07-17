@@ -75,7 +75,12 @@ export function NfeSuccessModal({ open, onOpenChange, nfe }: NfeSuccessModalProp
       downloadFile(blob, `NFe_${numberLabel}.${format}`);
       toast.success(format === 'pdf' ? 'DANFE baixado' : 'XML baixado');
     } catch (error) {
-      if (format === 'pdf' && nfe.pdfUrl) {
+      if (
+        format === 'pdf' &&
+        nfe.pdfUrl &&
+        !/focusnfe\.com\.br/i.test(nfe.pdfUrl) &&
+        !nfe.pdfUrl.startsWith('/arquivos')
+      ) {
         window.open(nfe.pdfUrl, '_blank', 'noopener,noreferrer');
         return;
       }

@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { handleApiError } from '@/lib/handleApiError';
-import { formatCurrency, formatDateTime, downloadFile } from '@/lib/utils';
+import { formatCurrency, formatDateTime, downloadFile, getBlobErrorMessage } from '@/lib/utils';
 import { fiscalApi, customerApi } from '@/lib/api-endpoints';
 import { ContingencyPanel } from '@/components/fiscal/contingency-panel';
 import { DtecStatusCard } from '@/components/fiscal/dtec-status-card';
@@ -856,10 +856,13 @@ export default function InvoicesPage() {
                           try {
                             const response = await api.get(`/fiscal/${doc.id}/download`, { params: { format: 'pdf' }, responseType: 'blob' });
                             const blob = response.data as Blob;
+                            if (blob.type?.includes('application/json')) {
+                              throw { response: { data: blob } };
+                            }
                             downloadFile(blob, `documento-${doc.id}.pdf`);
                           } catch (e) {
                             console.error(e);
-                            toast.error('Não foi possível baixar o PDF');
+                            toast.error(await getBlobErrorMessage(e, 'Não foi possível baixar o PDF'));
                           }
                         }}
                       >
@@ -872,10 +875,13 @@ export default function InvoicesPage() {
                           try {
                             const response = await api.get(`/fiscal/${doc.id}/download`, { params: { format: 'xml' }, responseType: 'blob' });
                             const blob = response.data as Blob;
+                            if (blob.type?.includes('application/json')) {
+                              throw { response: { data: blob } };
+                            }
                             downloadFile(blob, `documento-${doc.id}.xml`);
                           } catch (e) {
                             console.error(e);
-                            toast.error('Não foi possível baixar o XML');
+                            toast.error(await getBlobErrorMessage(e, 'Não foi possível baixar o XML'));
                           }
                         }}
                       >
