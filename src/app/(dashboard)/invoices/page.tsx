@@ -64,6 +64,26 @@ interface NFeItem {
   ncm: string;
   cfop: string;
   unitOfMeasure: string;
+  // Campos fiscais híbridos por item (opcional; IBPT segue automático no backend)
+  icmsOrigem?: string;
+  icmsSituacaoTributaria?: string;
+  icmsAliquota?: number | '';
+  icmsBaseCalculo?: number | '';
+  icmsValor?: number | '';
+  pisSituacaoTributaria?: string;
+  pisAliquota?: number | '';
+  pisBaseCalculo?: number | '';
+  pisValor?: number | '';
+  cofinsSituacaoTributaria?: string;
+  cofinsAliquota?: number | '';
+  cofinsBaseCalculo?: number | '';
+  cofinsValor?: number | '';
+  ipiSituacaoTributaria?: string;
+  ipiAliquota?: number | '';
+  ipiValor?: number | '';
+  cest?: string;
+  codigoBeneficioFiscal?: string;
+  barcode?: string;
 }
 
 interface Product {
@@ -94,7 +114,10 @@ export default function InvoicesPage() {
   const [recipientName, setRecipientName] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
-  
+  // IE do destinatário — indicador 1=contribuinte, 2=isento, 9=não contribuinte
+  const [recipientStateRegistration, setRecipientStateRegistration] = useState('');
+  const [recipientStateRegistrationIndicator, setRecipientStateRegistrationIndicator] = useState<'1' | '2' | '9'>('9');
+
   // Endereço do destinatário
   const [recipientZipCode, setRecipientZipCode] = useState('');
   const [recipientStreet, setRecipientStreet] = useState('');
@@ -103,6 +126,13 @@ export default function InvoicesPage() {
   const [recipientDistrict, setRecipientDistrict] = useState('');
   const [recipientCity, setRecipientCity] = useState('');
   const [recipientState, setRecipientState] = useState('');
+
+  // Bloco de frete / despesas acessórias — quando vazio, NF-e sai sem frete (modalidade 9).
+  const [freightModality, setFreightModality] = useState<0 | 1 | 2 | 3 | 4 | 9>(9);
+  const [freightValue, setFreightValue] = useState<number | ''>('');
+  const [freightInsurance, setFreightInsurance] = useState<number | ''>('');
+  const [freightOtherExpenses, setFreightOtherExpenses] = useState<number | ''>('');
+  const [freightDiscount, setFreightDiscount] = useState<number | ''>('');
   
   // Itens da nota
   const [items, setItems] = useState<NFeItem[]>([{
@@ -501,16 +531,40 @@ export default function InvoicesPage() {
       if (emissionMode === 'sale') {
         // Emissão vinculada a uma venda
         payload.saleId = saleId.trim();
+        // Overrides opcionais do destinatário (IE, endereço, contato) e frete:
+        // venda é a fonte dos dados comerciais; modal pode complementar o fiscal.
+        const documentCleanedSale = recipientDocument.replace(/\D/g, '');
+        if (documentCleanedSale || recipientName.trim() || recipientStateRegistration.trim()) {
+          payload.recipient = {
+            document: documentCleanedSale || undefined,
+            name: recipientName.trim() || undefined,
+            email: recipientEmail?.trim() || undefined,
+            phone: recipientPhone?.replace(/\D/g, '') || undefined,
+            stateRegistration: recipientStateRegistration.trim() || undefined,
+            stateRegistrationIndicator: recipientStateRegistrationIndicator,
+            address: {
+              zipCode: recipientZipCode?.replace(/\D/g, '') || undefined,
+              street: recipientStreet?.trim() || undefined,
+              number: recipientNumber?.trim() || undefined,
+              complement: recipientComplement?.trim() || undefined,
+              district: recipientDistrict?.trim() || undefined,
+              city: recipientCity?.trim() || undefined,
+              state: recipientState?.trim().toUpperCase() || undefined,
+            },
+          };
+        }
       } else {
         // Emissão manual com dados completos
         // Limpar formatação do documento (CPF/CNPJ)
         const documentCleaned = recipientDocument.replace(/\D/g, '');
-        
+
         payload.recipient = {
           document: documentCleaned,
           name: recipientName.trim(),
           email: recipientEmail?.trim() || undefined,
           phone: recipientPhone?.replace(/\D/g, '') || undefined,
+          stateRegistration: recipientStateRegistration.trim() || undefined,
+          stateRegistrationIndicator: recipientStateRegistrationIndicator,
           address: {
             zipCode: recipientZipCode?.replace(/\D/g, '') || undefined,
             street: recipientStreet?.trim() || undefined,
@@ -521,12 +575,14 @@ export default function InvoicesPage() {
             state: recipientState?.trim().toUpperCase() || undefined,
           }
         };
-        
+
         payload.items = items.map(item => {
           // Limpar formatação de NCM e CFOP
           const ncmCleaned = item.ncm?.replace(/\D/g, '') || '';
           const cfopCleaned = item.cfop?.replace(/\D/g, '') || '';
-          
+          const toNumberOrUndefined = (v: unknown) =>
+            typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+
           return {
             description: item.description.trim(),
             quantity: item.quantity ?? 0,
@@ -534,9 +590,33 @@ export default function InvoicesPage() {
             ncm: ncmCleaned || undefined,
             cfop: cfopCleaned,
             unitOfMeasure: item.unitOfMeasure.trim(),
+            barcode: item.barcode || undefined,
+            // ICMS
+            icmsOrigem: item.icmsOrigem || undefined,
+            icmsSituacaoTributaria: item.icmsSituacaoTributaria || undefined,
+            icmsAliquota: toNumberOrUndefined(item.icmsAliquota),
+            icmsBaseCalculo: toNumberOrUndefined(item.icmsBaseCalculo),
+            icmsValor: toNumberOrUndefined(item.icmsValor),
+            // PIS
+            pisSituacaoTributaria: item.pisSituacaoTributaria || undefined,
+            pisAliquota: toNumberOrUndefined(item.pisAliquota),
+            pisBaseCalculo: toNumberOrUndefined(item.pisBaseCalculo),
+            pisValor: toNumberOrUndefined(item.pisValor),
+            // COFINS
+            cofinsSituacaoTributaria: item.cofinsSituacaoTributaria || undefined,
+            cofinsAliquota: toNumberOrUndefined(item.cofinsAliquota),
+            cofinsBaseCalculo: toNumberOrUndefined(item.cofinsBaseCalculo),
+            cofinsValor: toNumberOrUndefined(item.cofinsValor),
+            // IPI
+            ipiSituacaoTributaria: item.ipiSituacaoTributaria || undefined,
+            ipiAliquota: toNumberOrUndefined(item.ipiAliquota),
+            ipiValor: toNumberOrUndefined(item.ipiValor),
+            // Outros
+            cest: item.cest?.trim() || undefined,
+            codigoBeneficioFiscal: item.codigoBeneficioFiscal?.trim() || undefined,
           };
         });
-        
+
         payload.payment = {
           method: paymentMethod,
         };
@@ -580,6 +660,24 @@ export default function InvoicesPage() {
         if (additionalInfo.trim()) {
           payload.additionalInfo = additionalInfo.trim();
         }
+      }
+
+      // Bloco de frete — enviado em ambos os modos (venda e manual).
+      // Quando vazio, backend assume modalidade 9 (sem frete).
+      const freightValueNum = typeof freightValue === 'number' ? freightValue : 0;
+      const hasAnyFreightValue =
+        freightValueNum > 0 ||
+        (typeof freightInsurance === 'number' && freightInsurance > 0) ||
+        (typeof freightOtherExpenses === 'number' && freightOtherExpenses > 0) ||
+        (typeof freightDiscount === 'number' && freightDiscount > 0);
+      if (hasAnyFreightValue || freightModality !== 9) {
+        payload.freight = {
+          modality: freightModality,
+          value: freightValueNum,
+          insurance: typeof freightInsurance === 'number' ? freightInsurance : 0,
+          otherExpenses: typeof freightOtherExpenses === 'number' ? freightOtherExpenses : 0,
+          discount: typeof freightDiscount === 'number' ? freightDiscount : 0,
+        };
       }
 
       if (emitBoleto && boletoCustomerId) {
@@ -1011,16 +1109,96 @@ export default function InvoicesPage() {
             <TabsContent value="sale" className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="saleId">ID da Venda *</Label>
-                <Input 
-                  id="saleId" 
-                  placeholder="Ex.: 123" 
-                  value={saleId} 
-                  onChange={(e) => setSaleId(e.target.value)} 
+                <Input
+                  id="saleId"
+                  placeholder="Ex.: 123"
+                  value={saleId}
+                  onChange={(e) => setSaleId(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Informe o ID de uma venda existente para emitir a NF-e com os dados dela
+                  Informe o ID de uma venda existente para emitir a NF-e com os dados dela.
+                  Os campos abaixo complementam o destinatário e o frete; quantidade, preço e
+                  itens sempre vêm da venda.
                 </p>
               </div>
+
+              <Card className="p-4">
+                <h3 className="font-semibold mb-4">Complementos do Destinatário</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Situação IE</Label>
+                    <Select
+                      value={recipientStateRegistrationIndicator}
+                      onValueChange={(v) =>
+                        setRecipientStateRegistrationIndicator(v as '1' | '2' | '9')
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="9">Não contribuinte</SelectItem>
+                        <SelectItem value="1">Contribuinte ICMS</SelectItem>
+                        <SelectItem value="2">Contribuinte Isento</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {recipientStateRegistrationIndicator !== '9' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="recipientStateRegistrationSale">Inscrição Estadual</Label>
+                      <Input
+                        id="recipientStateRegistrationSale"
+                        placeholder={
+                          recipientStateRegistrationIndicator === '2' ? 'ISENTO' : '000.000.000.000'
+                        }
+                        value={recipientStateRegistration}
+                        onChange={(e) => setRecipientStateRegistration(e.target.value.toUpperCase())}
+                      />
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              <Card className="p-4">
+                <h3 className="font-semibold mb-4">Frete da NF-e</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Modalidade</Label>
+                    <Select
+                      value={String(freightModality)}
+                      onValueChange={(v) =>
+                        setFreightModality(Number(v) as 0 | 1 | 2 | 3 | 4 | 9)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="9">9 — Sem frete</SelectItem>
+                        <SelectItem value="0">0 — Por conta do emitente</SelectItem>
+                        <SelectItem value="1">1 — Por conta do destinatário</SelectItem>
+                        <SelectItem value="2">2 — Por conta de terceiros</SelectItem>
+                        <SelectItem value="3">3 — Próprio / remetente</SelectItem>
+                        <SelectItem value="4">4 — Próprio / destinatário</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="freightValueSale">Valor do Frete (R$)</Label>
+                    <Input
+                      id="freightValueSale"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      disabled={freightModality === 9}
+                      value={freightValue}
+                      onChange={(e) =>
+                        setFreightValue(e.target.value === '' ? '' : Number(e.target.value))
+                      }
+                    />
+                  </div>
+                </div>
+              </Card>
             </TabsContent>
 
             <TabsContent value="manual" className="space-y-6">
@@ -1164,6 +1342,140 @@ export default function InvoicesPage() {
                       value={recipientCity}
                       onChange={(e) => setRecipientCity(e.target.value)}
                     />
+                  </div>
+
+                  {/* Inscrição Estadual do destinatário */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Situação IE</Label>
+                      <Select
+                        value={recipientStateRegistrationIndicator}
+                        onValueChange={(v) =>
+                          setRecipientStateRegistrationIndicator(v as '1' | '2' | '9')
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="9">Não contribuinte</SelectItem>
+                          <SelectItem value="1">Contribuinte ICMS</SelectItem>
+                          <SelectItem value="2">Contribuinte Isento</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {recipientStateRegistrationIndicator !== '9' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="recipientStateRegistration">
+                          Inscrição Estadual
+                        </Label>
+                        <Input
+                          id="recipientStateRegistration"
+                          placeholder={
+                            recipientStateRegistrationIndicator === '2'
+                              ? 'ISENTO'
+                              : '000.000.000.000'
+                          }
+                          value={recipientStateRegistration}
+                          onChange={(e) =>
+                            setRecipientStateRegistration(e.target.value.toUpperCase())
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+
+              {/* Bloco de Frete / Despesas Acessórias */}
+              <Card className="p-4">
+                <h3 className="font-semibold mb-4">Frete e Despesas Acessórias</h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Modalidade do Frete</Label>
+                      <Select
+                        value={String(freightModality)}
+                        onValueChange={(v) =>
+                          setFreightModality(Number(v) as 0 | 1 | 2 | 3 | 4 | 9)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="9">9 — Sem frete</SelectItem>
+                          <SelectItem value="0">0 — Por conta do emitente</SelectItem>
+                          <SelectItem value="1">1 — Por conta do destinatário</SelectItem>
+                          <SelectItem value="2">2 — Por conta de terceiros</SelectItem>
+                          <SelectItem value="3">3 — Próprio / remetente</SelectItem>
+                          <SelectItem value="4">4 — Próprio / destinatário</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="freightValue">Valor do Frete (R$)</Label>
+                      <Input
+                        id="freightValue"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        disabled={freightModality === 9}
+                        value={freightValue}
+                        onChange={(e) =>
+                          setFreightValue(e.target.value === '' ? '' : Number(e.target.value))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="freightInsurance">Seguro (R$)</Label>
+                      <Input
+                        id="freightInsurance"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        disabled={freightModality === 9}
+                        value={freightInsurance}
+                        onChange={(e) =>
+                          setFreightInsurance(
+                            e.target.value === '' ? '' : Number(e.target.value),
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="freightOtherExpenses">Outras Despesas (R$)</Label>
+                      <Input
+                        id="freightOtherExpenses"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        disabled={freightModality === 9}
+                        value={freightOtherExpenses}
+                        onChange={(e) =>
+                          setFreightOtherExpenses(
+                            e.target.value === '' ? '' : Number(e.target.value),
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="freightDiscount">Desconto (R$)</Label>
+                      <Input
+                        id="freightDiscount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={freightDiscount}
+                        onChange={(e) =>
+                          setFreightDiscount(
+                            e.target.value === '' ? '' : Number(e.target.value),
+                          )
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
               </Card>
