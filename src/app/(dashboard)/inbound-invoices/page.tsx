@@ -30,6 +30,7 @@ import { PageHelpModal } from '@/components/help';
 import { OptimizedImage } from '@/components/ui/optimized-image';
 import { inboundInvoicesHelpTitle, inboundInvoicesHelpDescription, inboundInvoicesHelpIcon, getInboundInvoicesHelpTabs } from '@/components/help/contents/inbound-invoices-help';
 import { BarcodeScanner } from '@/components/sales/barcode-scanner';
+import { extractNfeAccessKey } from '@/lib/nfe-access-key';
 
 interface InboundDoc {
   id: string;
@@ -1033,8 +1034,10 @@ export default function InboundInvoicesPage() {
                     value={accessKey}
                     disabled={sefazInboundXmlLoading}
                     onChange={(e) => {
+                      const extracted = extractNfeAccessKey(e.target.value);
                       const digits = e.target.value.replace(/\D/g, '');
-                      const value = digits.length > 44 ? digits.slice(-44) : digits;
+                      // Enquanto digita (menos de 44), mantém os dígitos parciais; ao completar/colar/escanear, normaliza.
+                      const value = extracted ?? (digits.length < 44 ? digits : digits.slice(0, 44));
                       setAccessKey(value);
                       if (sefazFetchStatus === 'error' || sefazFetchStatus === 'success') {
                         setSefazFetchStatus('idle');
@@ -1964,10 +1967,10 @@ export default function InboundInvoicesPage() {
         onClose={() => setBarcodeScannerOpen(false)}
         onScanned={(code) => {
           setBarcodeScannerOpen(false);
-          const digits = code.replace(/\D/g, '');
-          if (digits.length === 44) {
-            setAccessKey(digits);
-            void runSefazInboundFetchAndParse(digits);
+          const key44 = extractNfeAccessKey(code);
+          if (key44) {
+            setAccessKey(key44);
+            void runSefazInboundFetchAndParse(key44);
           } else {
             toast.error('Código escaneado não é uma chave de acesso válida (44 dígitos)');
           }
