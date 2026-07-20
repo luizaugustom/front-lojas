@@ -86,7 +86,6 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
   const [emitOnlyNfe, setEmitOnlyNfe] = useState(false);
   const [emitBoleto, setEmitBoleto] = useState(false);
   const [boletoDueDate, setBoletoDueDate] = useState('');
-  const [forceNonFiscal, setForceNonFiscal] = useState(false);
   // Cache do conteúdo de impressão para reimpressão
   const [cachedPrintContent, setCachedPrintContent] = useState<{ content: string | { storeCopy: string; customerCopy: string; isInstallmentSale: boolean }; type: string } | null>(null);
   const [customerCopyContent, setCustomerCopyContent] = useState<string | null>(null);
@@ -660,12 +659,9 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
       {
         key: 'F7',
         handler: () => {
-          // Finalizar sem emissão fiscal
+          // Finalizar com NFC-e mock (sem SEFAZ)
           if (!showInstallmentModal && !showCreditCardInstallmentModal && !loading && paymentDetails.length > 0) {
-            setForceNonFiscal(true);
-            const formData = { clientName: watch('clientName'), clientCpfCnpj: watch('clientCpfCnpj') };
-            handleSubmit(onSubmit)(formData as any).catch(() => {});
-            setForceNonFiscal(false);
+            handleSubmit((data) => onSubmit(data, { forceMockNfce: true }))().catch(() => {});
           }
         },
         context: ['checkout'],
@@ -953,7 +949,10 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
     onClose();
   };
 
-  const onSubmit = async (data: { clientName?: string; clientCpfCnpj?: string }) => {
+  const onSubmit = async (
+    data: { clientName?: string; clientCpfCnpj?: string },
+    options?: { forceMockNfce?: boolean },
+  ) => {
     logger.log('[Checkout] Iniciando finalização de venda...');
     
     // Validar IDs dos produtos NO CARRINHO
@@ -1158,7 +1157,7 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
         clientName: data.clientName ?? '',
         clientCpfCnpj: data.clientCpfCnpj ?? '',
         sellerId: selectedSellerId || undefined, // Usar ID EXATAMENTE como está
-        ...(forceNonFiscal && { forceNonFiscal: true }),
+        ...(options?.forceMockNfce && { forceMockNfce: true }),
         // ATO DIAT 38/2020 — Art. 13 §único + Art. 4º §2º
         ...(pdvCode && { pdvCode }),
         ...(nfceSeries && { nfceSerie: nfceSeries }),
@@ -1239,10 +1238,18 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
 
       setCreatedSaleId(saleId);
 
+      if (saleData_resp?.warning) {
+        toast(saleData_resp.warning, { icon: '⚠️', duration: 5000 });
+      }
+
       // ATO DIAT 38/2020 — Art. 8º: abrir modal com dados da NFC-e autorizada
-      // quando a venda gerou NFC-e (e não cupom não fiscal).
+      // quando a venda gerou NFC-e (e não cupom não fiscal / MOCK).
       const fiscalDoc = saleData_resp?.fiscalDocument || saleData_resp?.fiscalDocuments?.[0];
-      if (printType !== 'non-fiscal' && fiscalDoc?.accessKey) {
+      const isMockNfce =
+        fiscalDoc?.status === 'MOCK' ||
+        fiscalDoc?.isMock === true ||
+        options?.forceMockNfce === true;
+      if (printType !== 'non-fiscal' && fiscalDoc?.accessKey && !isMockNfce) {
         setNfceAutorizada({
           id: fiscalDoc.id,
           documentNumber: fiscalDoc.documentNumber,
@@ -1266,9 +1273,6 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
 
       // Resposta em modo NFe: não abrir fluxo de impressão NFC-e; opção de download do boleto
       if (printType === 'nfe') {
-        if (saleData_resp?.warning) {
-          toast(saleData_resp.warning, { icon: '⚠️', duration: 5000 });
-        }
         if (boletoPdfBase64) {
           setBilletsPdf(boletoPdfBase64);
           setShowBilletPrintConfirmation(true);
@@ -1896,15 +1900,12 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
               type="button"
               variant="outline"
               onClick={() => {
-                setForceNonFiscal(true);
-                const formData = { clientName: watch('clientName'), clientCpfCnpj: watch('clientCpfCnpj') };
-                handleSubmit(onSubmit)(formData as any).catch(() => {});
-                setForceNonFiscal(false);
+                handleSubmit((data) => onSubmit(data, { forceMockNfce: true }))().catch(() => {});
               }}
               disabled={loading || paymentDetails.length === 0}
-              title="Finalizar sem emitir NFC-e (F7)"
+              title="Finalizar com NFC-e mock, sem envio à SEFAZ (F7)"
             >
-              {loading ? 'Processando...' : 'Sem Nota (F7)'}
+              {loading ? 'Processando...' : 'NFC-e Mock (F7)'}
             </Button>
             <Button type="submit" disabled={loading || paymentDetails.length === 0}>
               {loading ? 'Processando...' : 'Confirmar Venda'}

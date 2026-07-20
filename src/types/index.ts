@@ -313,6 +313,10 @@ export interface CreateSaleDto {
   boletoDueDate?: string;
   /** ID do cliente cadastrado para o boleto. Obrigatório se emitBoleto = true. */
   boletoCustomerId?: string;
+  /** Se true, gera NFC-e mock sem enviar à SEFAZ */
+  forceMockNfce?: boolean;
+  /** Se true, força cupom não fiscal */
+  forceNonFiscal?: boolean;
 }
 
 // Exchange Types
