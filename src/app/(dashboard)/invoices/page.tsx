@@ -114,9 +114,8 @@ export default function InvoicesPage() {
   const [recipientName, setRecipientName] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
-  // IE do destinatário — indicador 1=contribuinte, 2=isento, 9=não contribuinte
+  // IE do destinatário — vazio = não contribuinte; "ISENTO" = isento; demais valores = contribuinte.
   const [recipientStateRegistration, setRecipientStateRegistration] = useState('');
-  const [recipientStateRegistrationIndicator, setRecipientStateRegistrationIndicator] = useState<'1' | '2' | '9'>('9');
 
   // Endereço do destinatário
   const [recipientZipCode, setRecipientZipCode] = useState('');
@@ -541,7 +540,6 @@ export default function InvoicesPage() {
             email: recipientEmail?.trim() || undefined,
             phone: recipientPhone?.replace(/\D/g, '') || undefined,
             stateRegistration: recipientStateRegistration.trim() || undefined,
-            stateRegistrationIndicator: recipientStateRegistrationIndicator,
             address: {
               zipCode: recipientZipCode?.replace(/\D/g, '') || undefined,
               street: recipientStreet?.trim() || undefined,
@@ -564,7 +562,6 @@ export default function InvoicesPage() {
           email: recipientEmail?.trim() || undefined,
           phone: recipientPhone?.replace(/\D/g, '') || undefined,
           stateRegistration: recipientStateRegistration.trim() || undefined,
-          stateRegistrationIndicator: recipientStateRegistrationIndicator,
           address: {
             zipCode: recipientZipCode?.replace(/\D/g, '') || undefined,
             street: recipientStreet?.trim() || undefined,
@@ -1126,36 +1123,14 @@ export default function InvoicesPage() {
                 <h3 className="font-semibold mb-4">Complementos do Destinatário</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Situação IE</Label>
-                    <Select
-                      value={recipientStateRegistrationIndicator}
-                      onValueChange={(v) =>
-                        setRecipientStateRegistrationIndicator(v as '1' | '2' | '9')
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="9">Não contribuinte</SelectItem>
-                        <SelectItem value="1">Contribuinte ICMS</SelectItem>
-                        <SelectItem value="2">Contribuinte Isento</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="recipientStateRegistrationSale">Inscrição Estadual</Label>
+                    <Input
+                      id="recipientStateRegistrationSale"
+                      placeholder="000.000.000.000 ou ISENTO"
+                      value={recipientStateRegistration}
+                      onChange={(e) => setRecipientStateRegistration(e.target.value.toUpperCase())}
+                    />
                   </div>
-                  {recipientStateRegistrationIndicator !== '9' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="recipientStateRegistrationSale">Inscrição Estadual</Label>
-                      <Input
-                        id="recipientStateRegistrationSale"
-                        placeholder={
-                          recipientStateRegistrationIndicator === '2' ? 'ISENTO' : '000.000.000.000'
-                        }
-                        value={recipientStateRegistration}
-                        onChange={(e) => setRecipientStateRegistration(e.target.value.toUpperCase())}
-                      />
-                    </div>
-                  )}
                 </div>
               </Card>
 
@@ -1347,42 +1322,18 @@ export default function InvoicesPage() {
                   {/* Inscrição Estadual do destinatário */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Situação IE</Label>
-                      <Select
-                        value={recipientStateRegistrationIndicator}
-                        onValueChange={(v) =>
-                          setRecipientStateRegistrationIndicator(v as '1' | '2' | '9')
+                      <Label htmlFor="recipientStateRegistration">
+                        Inscrição Estadual
+                      </Label>
+                      <Input
+                        id="recipientStateRegistration"
+                        placeholder="000.000.000.000 ou ISENTO"
+                        value={recipientStateRegistration}
+                        onChange={(e) =>
+                          setRecipientStateRegistration(e.target.value.toUpperCase())
                         }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="9">Não contribuinte</SelectItem>
-                          <SelectItem value="1">Contribuinte ICMS</SelectItem>
-                          <SelectItem value="2">Contribuinte Isento</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      />
                     </div>
-                    {recipientStateRegistrationIndicator !== '9' && (
-                      <div className="space-y-2">
-                        <Label htmlFor="recipientStateRegistration">
-                          Inscrição Estadual
-                        </Label>
-                        <Input
-                          id="recipientStateRegistration"
-                          placeholder={
-                            recipientStateRegistrationIndicator === '2'
-                              ? 'ISENTO'
-                              : '000.000.000.000'
-                          }
-                          value={recipientStateRegistration}
-                          onChange={(e) =>
-                            setRecipientStateRegistration(e.target.value.toUpperCase())
-                          }
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
               </Card>
