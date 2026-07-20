@@ -1036,7 +1036,7 @@ export default function InboundInvoicesPage() {
                     value={accessKey}
                     disabled={sefazInboundXmlLoading}
                     onChange={(e) => {
-                      const preferredUf = ufSiglaToIbge(company?.state);
+                      const preferredUf = ufSiglaToIbge(company?.address?.state);
                       const extracted = extractNfeAccessKey(e.target.value, {
                         preferredUfCode: preferredUf,
                       });
@@ -1985,7 +1985,7 @@ export default function InboundInvoicesPage() {
         onClose={() => setBarcodeScannerOpen(false)}
         onScanned={(code) => {
           setBarcodeScannerOpen(false);
-          const preferredUf = ufSiglaToIbge(company?.state);
+          const preferredUf = ufSiglaToIbge(company?.address?.state);
           const key44 = extractNfeAccessKey(code, { preferredUfCode: preferredUf });
           const candidates = expandNfeAccessKeyCandidates(code);
           if (key44) {
