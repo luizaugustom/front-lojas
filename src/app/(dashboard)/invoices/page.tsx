@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Download, RefreshCw, Search, PlusCircle, Trash2, Plus, Package, XCircle, CheckCircle2, AlertCircle, Info, HelpCircle, FileX, FileEdit, WifiOff, Wifi, Settings as SettingsIcon, Eye } from 'lucide-react';
+import { FileText, Download, RefreshCw, Search, PlusCircle, Trash2, Plus, Package, XCircle, CheckCircle2, AlertCircle, Info, HelpCircle, FileX, FileEdit, WifiOff, Wifi, Settings as SettingsIcon, Eye, Link2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -53,6 +53,8 @@ interface FiscalDoc {
   xmlUrl?: string;
   qrCodeUrl?: string;
   qrCode?: string;
+  focusRef?: string | null;
+  hasFocusArtifacts?: boolean;
 }
 
 interface NFeItem {
@@ -152,6 +154,12 @@ export default function InvoicesPage() {
   // Pós-emissão NF-e (download / e-mail)
   const [nfeSuccessOpen, setNfeSuccessOpen] = useState(false);
   const [nfeSuccessDoc, setNfeSuccessDoc] = useState<NfeEmitidaResumo | null>(null);
+
+  // Vincular referência Focus em notas sem chave/focusRef
+  const [linkFocusOpen, setLinkFocusOpen] = useState(false);
+  const [documentToLinkFocus, setDocumentToLinkFocus] = useState<FiscalDoc | null>(null);
+  const [linkFocusRefValue, setLinkFocusRefValue] = useState('');
+  const [linkFocusSubmitting, setLinkFocusSubmitting] = useState(false);
 
   // Inutilizar numeração
   const [inutilizarOpen, setInutilizarOpen] = useState(false);
@@ -907,6 +915,20 @@ export default function InvoicesPage() {
                       >
                         <Download className="mr-2 h-4 w-4" /> XML
                       </Button>
+                      {!doc.accessKey && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setDocumentToLinkFocus(doc);
+                            setLinkFocusRefValue(doc.focusRef || '');
+                            setLinkFocusOpen(true);
+                          }}
+                          title="Informar a ref da nota no painel FocusNFE para recuperar XML/DANFE"
+                        >
+                          <Link2 className="mr-2 h-4 w-4" /> Vincular Focus
+                        </Button>
+                      )}
                       {doc.documentType === 'NFe' && (doc.status === 'Autorizada' || doc.status === 'Autorizado') && doc.accessKey && (
                         <Button
                           size="sm"
@@ -1575,6 +1597,83 @@ export default function InvoicesPage() {
       </Dialog>
 
       {/* Modal de Cancelamento */}
+      <Dialog
+        open={linkFocusOpen}
+        onOpenChange={(open) => {
+          setLinkFocusOpen(open);
+          if (!open) {
+            setDocumentToLinkFocus(null);
+            setLinkFocusRefValue('');
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Vincular referência FocusNFE</DialogTitle>
+            <DialogDescription>
+              Esta nota não tem chave/focusRef salvos. No painel da FocusNFE, abra a NF-e
+              correspondente e copie o campo <strong>ref</strong> (referência). Com isso
+              recuperamos XML e DANFE.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              Documento: {documentToLinkFocus?.id}
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="link-focus-ref">Referência Focus (ref)</Label>
+              <Input
+                id="link-focus-ref"
+                value={linkFocusRefValue}
+                onChange={(e) => setLinkFocusRefValue(e.target.value.trim())}
+                placeholder="Ex: nfe_a1b2c3d4e5f6..."
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={linkFocusSubmitting}
+              onClick={() => setLinkFocusOpen(false)}
+            >
+              Fechar
+            </Button>
+            <Button
+              disabled={linkFocusSubmitting || linkFocusRefValue.length < 3 || !documentToLinkFocus}
+              onClick={async () => {
+                if (!documentToLinkFocus) return;
+                setLinkFocusSubmitting(true);
+                try {
+                  await fiscalApi.linkFocusRef(documentToLinkFocus.id, linkFocusRefValue);
+                  toast.success('Referência vinculada. XML/DANFE disponíveis para download.');
+                  setLinkFocusOpen(false);
+                  setDocumentToLinkFocus(null);
+                  setLinkFocusRefValue('');
+                  await refetch();
+                } catch (error) {
+                  handleApiError(error);
+                } finally {
+                  setLinkFocusSubmitting(false);
+                }
+              }}
+            >
+              {linkFocusSubmitting ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Vinculando...
+                </>
+              ) : (
+                <>
+                  <Link2 className="mr-2 h-4 w-4" />
+                  Vincular e sincronizar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <DialogContent>
           <DialogHeader>

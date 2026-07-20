@@ -838,6 +838,13 @@ export const fiscalApi = {
     }),
 
   /**
+   * POST /fiscal/:id/link-focus-ref
+   * Vincula a ref FocusNFE e sincroniza XML/DANFE
+   */
+  linkFocusRef: (id: string, focusRef: string) =>
+    api.post(`/fiscal/${id}/link-focus-ref`, { focusRef }),
+
+  /**
    * POST /fiscal/:id/send-email
    * Roles: ADMIN, COMPANY, SELLER - Enviar DANFE/XML por e-mail
    */
