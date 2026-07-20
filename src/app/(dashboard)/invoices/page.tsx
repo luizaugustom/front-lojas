@@ -839,8 +839,16 @@ export default function InvoicesPage() {
                             setCheckingStatus(null);
                           }
                         }}
-                        disabled={checkingStatus === doc.id || !doc.accessKey}
-                        title="Consultar status na SEFAZ"
+                        disabled={
+                          checkingStatus === doc.id ||
+                          (!doc.accessKey &&
+                            !String(doc.status || '').toLowerCase().includes('processando'))
+                        }
+                        title={
+                          !doc.accessKey
+                            ? 'Consulta Focus (pode completar chave/XML/DANFE)'
+                            : 'Consultar status na SEFAZ'
+                        }
                       >
                         {checkingStatus === doc.id ? (
                           <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
@@ -852,6 +860,12 @@ export default function InvoicesPage() {
                       <Button
                         size="sm"
                         variant="outline"
+                        disabled={!doc.accessKey}
+                        title={
+                          !doc.accessKey
+                            ? 'Indisponível: nota sem chave de acesso Focus — emita novamente'
+                            : 'Baixar DANFE (PDF)'
+                        }
                         onClick={async () => {
                           try {
                             const response = await api.get(`/fiscal/${doc.id}/download`, { params: { format: 'pdf' }, responseType: 'blob' });
@@ -871,6 +885,12 @@ export default function InvoicesPage() {
                       <Button
                         size="sm"
                         variant="outline"
+                        disabled={!doc.accessKey}
+                        title={
+                          !doc.accessKey
+                            ? 'Indisponível: nota sem chave de acesso Focus — emita novamente'
+                            : 'Baixar XML'
+                        }
                         onClick={async () => {
                           try {
                             const response = await api.get(`/fiscal/${doc.id}/download`, { params: { format: 'xml' }, responseType: 'blob' });
