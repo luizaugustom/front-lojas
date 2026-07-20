@@ -1,11 +1,31 @@
 /**
- * Extrai a chave de acesso NF-e/NFC-e (44 dígitos) a partir de texto digitado,
- * código de barras (Code 128) ou QR Code / URL de consulta.
+ * Extrai / normaliza chave de acesso NF-e/NFC-e (44 dígitos).
  *
- * Leitores USB costumam prefixar AIM (ex.: "]C1"), e o QR da DANFE devolve URL
- * com chNFe / p= — ambos deixam de ter exatamente 44 dígitos após strip simples.
+ * Aceita:
+ * - 44 dígitos (chave completa)
+ * - 43 dígitos (sem DV) → calcula e acrescenta o DV
+ * - 42 dígitos (sem UF do emitente; comum em alguns DANFE/leitores)
+ *   → completa quando o DV fecha em uma única UF (ou na UF preferida)
+ * - QR/URL (chNFe=, p=) e prefixos de leitor (AIM ]C1)
+ *
+ * Se 42 dígitos forem ambíguos (várias UFs válidas), devolve null aqui;
+ * o backend pode expandir e tentar cada candidata na SEFAZ.
  */
-export function extractNfeAccessKey(raw: string): string | null {
+
+const UF_IBGE_CODES = [
+  '11', '12', '13', '14', '15', '16', '17', '21', '22', '23', '24', '25', '26', '27', '28',
+  '29', '31', '32', '33', '35', '41', '42', '43', '50', '51', '52', '53',
+] as const;
+
+export type ExtractNfeAccessKeyOptions = {
+  /** Código IBGE da UF (2 dígitos) para priorizar ao completar chave de 42 dígitos */
+  preferredUfCode?: string | null;
+};
+
+export function extractNfeAccessKey(
+  raw: string,
+  options: ExtractNfeAccessKeyOptions = {},
+): string | null {
   if (!raw?.trim()) return null;
 
   const trimmed = raw.trim();
@@ -17,21 +37,124 @@ export function extractNfeAccessKey(raw: string): string | null {
   if (fromQuery?.[1]) return fromQuery[1];
 
   const digits = trimmed.replace(/\D/g, '');
-  if (digits.length === 44) return digits;
+  return normalizeNfeAccessKeyDigits(digits, options);
+}
+
+/** Normaliza sequência só com dígitos para chave de 44 posições (quando possível sem ambiguidade). */
+export function normalizeNfeAccessKeyDigits(
+  digits: string,
+  options: ExtractNfeAccessKeyOptions = {},
+): string | null {
+  if (!digits) return null;
+
+  if (digits.length === 44) {
+    return digits;
+  }
 
   if (digits.length > 44) {
     for (let i = 0; i <= digits.length - 44; i++) {
       const candidate = digits.slice(i, i + 44);
       if (isNfeModel(candidate)) return candidate;
     }
-    // Prefixo de leitor ou dígitos extras sem modelo reconhecível: mesmos 44 finais do input.
     return digits.slice(-44);
+  }
+
+  if (digits.length === 43) {
+    const model = digits.slice(20, 22);
+    if (model === '55' || model === '65') {
+      return `${digits}${calcNfeAccessKeyDv(digits)}`;
+    }
+  }
+
+  if (digits.length === 42 && isMissingUfPattern(digits)) {
+    const matches = listAccessKeysMissingUf(digits);
+    if (matches.length === 0) return null;
+
+    const preferred = options.preferredUfCode?.replace(/\D/g, '').slice(0, 2);
+    if (preferred) {
+      const preferredMatch = matches.find((m) => m.startsWith(preferred));
+      if (preferredMatch) return preferredMatch;
+    }
+
+    if (matches.length === 1) return matches[0];
+    // Ambíguo: deixa o backend tentar as candidatas na SEFAZ
+    return null;
   }
 
   return null;
 }
 
+/**
+ * Expande 42/43/44 dígitos em uma ou mais chaves de 44 para consulta na SEFAZ.
+ */
+export function expandNfeAccessKeyCandidates(raw: string): string[] {
+  const digits = (raw || '').replace(/\D/g, '');
+  if (digits.length === 44) return [digits];
+
+  if (digits.length === 43) {
+    const model = digits.slice(20, 22);
+    if (model === '55' || model === '65') {
+      return [`${digits}${calcNfeAccessKeyDv(digits)}`];
+    }
+    return [];
+  }
+
+  if (digits.length === 42 && isMissingUfPattern(digits)) {
+    return listAccessKeysMissingUf(digits);
+  }
+
+  // tenta normalização (URL, AIM, etc.)
+  const normalized = extractNfeAccessKey(raw);
+  return normalized ? [normalized] : [];
+}
+
+/** Chave sem os 2 dígitos da UF do emitente: modelo fica nas posições 18-19. */
+function isMissingUfPattern(digits42: string): boolean {
+  const model = digits42.slice(18, 20);
+  return model === '55' || model === '65';
+}
+
+export function listAccessKeysMissingUf(digits42: string): string[] {
+  const matches: string[] = [];
+  for (const uf of UF_IBGE_CODES) {
+    const body43 = `${uf}${digits42.slice(0, 41)}`;
+    const expectedDv = calcNfeAccessKeyDv(body43);
+    const actualDv = digits42.slice(41, 42);
+    if (String(expectedDv) === actualDv) {
+      matches.push(`${uf}${digits42}`);
+    }
+  }
+  return matches;
+}
+
+/** DV módulo 11 da chave NF-e (manual SEFAZ: resto 0 ou 1 → DV 0). */
+export function calcNfeAccessKeyDv(body43: string): number {
+  let sum = 0;
+  let weight = 2;
+  for (let i = body43.length - 1; i >= 0; i--) {
+    sum += Number(body43[i]) * weight;
+    weight = weight === 9 ? 2 : weight + 1;
+  }
+  const resto = sum % 11;
+  if (resto === 0 || resto === 1) return 0;
+  return 11 - resto;
+}
+
 function isNfeModel(key44: string): boolean {
   const model = key44.slice(20, 22);
   return model === '55' || model === '65';
+}
+
+/** Mapa sigla UF → código IBGE (para preferir UF da empresa ao completar 42 dígitos). */
+export const UF_SIGLA_TO_IBGE: Record<string, string> = {
+  AC: '12', AL: '27', AM: '13', AP: '16', BA: '29', CE: '23', DF: '53', ES: '32',
+  GO: '52', MA: '21', MG: '31', MS: '50', MT: '51', PA: '15', PB: '25', PE: '26',
+  PI: '22', PR: '41', RJ: '33', RN: '24', RO: '11', RR: '14', RS: '43', SC: '42',
+  SE: '28', SP: '35', TO: '17',
+};
+
+export function ufSiglaToIbge(state?: string | null): string | null {
+  if (!state) return null;
+  const sigla = state.trim().toUpperCase();
+  return UF_SIGLA_TO_IBGE[sigla] ?? null;
 }

@@ -30,7 +30,7 @@ import { PageHelpModal } from '@/components/help';
 import { OptimizedImage } from '@/components/ui/optimized-image';
 import { inboundInvoicesHelpTitle, inboundInvoicesHelpDescription, inboundInvoicesHelpIcon, getInboundInvoicesHelpTabs } from '@/components/help/contents/inbound-invoices-help';
 import { BarcodeScanner } from '@/components/sales/barcode-scanner';
-import { extractNfeAccessKey } from '@/lib/nfe-access-key';
+import { extractNfeAccessKey, expandNfeAccessKeyCandidates, ufSiglaToIbge } from '@/lib/nfe-access-key';
 
 interface InboundDoc {
   id: string;
@@ -271,7 +271,9 @@ export default function InboundInvoicesPage() {
       lastSefazAutoFetchedKeyRef.current = null;
       return;
     }
-    if (accessKey.length !== 44) {
+    const digits = accessKey.replace(/\D/g, '');
+    const canFetch = expandNfeAccessKeyCandidates(digits).length > 0;
+    if (!canFetch) {
       lastSefazAutoFetchedKeyRef.current = null;
       return;
     }
@@ -284,7 +286,7 @@ export default function InboundInvoicesPage() {
     inboundSefazFetchTimerRef.current = setTimeout(() => {
       inboundSefazFetchTimerRef.current = null;
       if (!addOpen || editingDoc) return;
-      if (scheduledKey.length !== 44) return;
+      if (expandNfeAccessKeyCandidates(scheduledKey).length === 0) return;
       if (scheduledKey === lastSefazAutoFetchedKeyRef.current) return;
       void runSefazInboundFetchAndParse(scheduledKey);
     }, 450);
@@ -1030,14 +1032,19 @@ export default function InboundInvoicesPage() {
                 <div className="relative flex-1">
                   <Input
                     id="accessKey"
-                    placeholder="44 dígitos ou leia o código de barras da DANFE"
+                    placeholder="42–44 dígitos ou leia o código de barras da DANFE"
                     value={accessKey}
                     disabled={sefazInboundXmlLoading}
                     onChange={(e) => {
-                      const extracted = extractNfeAccessKey(e.target.value);
+                      const preferredUf = ufSiglaToIbge(company?.state);
+                      const extracted = extractNfeAccessKey(e.target.value, {
+                        preferredUfCode: preferredUf,
+                      });
                       const digits = e.target.value.replace(/\D/g, '');
-                      // Enquanto digita (menos de 44), mantém os dígitos parciais; ao completar/colar/escanear, normaliza.
-                      const value = extracted ?? (digits.length < 44 ? digits : digits.slice(0, 44));
+                      // 42 (sem UF) fica no campo para a API expandir; 43/44 são normalizados quando possível.
+                      const value =
+                        extracted ??
+                        (digits.length <= 44 ? digits : digits.slice(0, 44));
                       setAccessKey(value);
                       if (sefazFetchStatus === 'error' || sefazFetchStatus === 'success') {
                         setSefazFetchStatus('idle');
@@ -1047,7 +1054,7 @@ export default function InboundInvoicesPage() {
                     onKeyDown={(e) => {
                       if (e.key !== 'Enter') return;
                       if (editingDoc || !addOpen) return;
-                      if (accessKey.length !== 44) return;
+                      if (expandNfeAccessKeyCandidates(accessKey).length === 0) return;
                       e.preventDefault();
                       if (inboundSefazFetchTimerRef.current) {
                         clearTimeout(inboundSefazFetchTimerRef.current);
@@ -1076,7 +1083,7 @@ export default function InboundInvoicesPage() {
                       type="button"
                       className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
                       onClick={() => {
-                        if (accessKey.length === 44) {
+                        if (expandNfeAccessKeyCandidates(accessKey).length > 0) {
                           setSefazFetchStatus('idle');
                           setSefazFetchError(null);
                           void runSefazInboundFetchAndParse(accessKey, true);
@@ -1123,7 +1130,7 @@ export default function InboundInvoicesPage() {
                   </span>
                 ) : (
                   <>
-                    {accessKey.length}/44 dígitos — ao completar 44, a busca na Distribuição DF-e ocorre automaticamente; Enter aciona de imediato.
+                    {accessKey.replace(/\D/g, '').length}/44 dígitos — aceita 42 (sem UF) ou 44; a busca na SEFAZ ocorre automaticamente; Enter aciona de imediato.
                   </>
                 )}
               </p>
@@ -1240,13 +1247,13 @@ export default function InboundInvoicesPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      if (accessKey.length === 44) {
+                      if (expandNfeAccessKeyCandidates(accessKey).length > 0) {
                         setSefazFetchStatus('idle');
                         setSefazFetchError(null);
                         void runSefazInboundFetchAndParse(accessKey, true);
                       }
                     }}
-                    disabled={accessKey.length !== 44}
+                    disabled={expandNfeAccessKeyCandidates(accessKey).length === 0}
                     className="border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30"
                   >
                     <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1458,9 +1465,16 @@ export default function InboundInvoicesPage() {
             <Button variant="outline" onClick={() => setAddOpen(false)} disabled={uploading}>Cancelar</Button>
             <Button
               onClick={async () => {
-                if (accessKey && accessKey.length !== 44) {
-                  toast.error('Chave de acesso deve ter 44 dígitos');
-                  return;
+                if (accessKey) {
+                  const candidates = expandNfeAccessKeyCandidates(accessKey);
+                  if (candidates.length === 0) {
+                    toast.error('Chave de acesso inválida. Use 42 (sem UF), 43 (sem DV) ou 44 dígitos.');
+                    return;
+                  }
+                  if (accessKey.replace(/\D/g, '').length !== 44 && candidates.length > 1) {
+                    toast.error('Chave com 42 dígitos ambígua. Busque na SEFAZ antes de salvar, ou informe os 44 dígitos.');
+                    return;
+                  }
                 }
                 if (!supplierName.trim()) {
                   toast.error('Nome do fornecedor é obrigatório');
@@ -1500,7 +1514,11 @@ export default function InboundInvoicesPage() {
                   const formData = new FormData();
                   formData.append('supplierName', supplierName);
                   formData.append('totalValue', totalValueNumber.toString());
-                  formData.append('accessKey', accessKey || '');
+                  formData.append('accessKey', (() => {
+                    if (!accessKey) return '';
+                    const candidates = expandNfeAccessKeyCandidates(accessKey);
+                    return candidates.length === 1 ? candidates[0] : accessKey;
+                  })());
                   if (manualAttachment) {
                     formData.append('file', manualAttachment);
                   } else if (!editingDoc && xmlStringForSubmit && parsedData) {
@@ -1635,7 +1653,7 @@ export default function InboundInvoicesPage() {
                 uploading ||
                 !supplierName.trim() ||
                 !totalValue.trim() ||
-                (accessKey.length > 0 && accessKey.length !== 44)
+                (accessKey.length > 0 && expandNfeAccessKeyCandidates(accessKey).length === 0)
               }
             >
               {uploading ? (
@@ -1967,12 +1985,18 @@ export default function InboundInvoicesPage() {
         onClose={() => setBarcodeScannerOpen(false)}
         onScanned={(code) => {
           setBarcodeScannerOpen(false);
-          const key44 = extractNfeAccessKey(code);
+          const preferredUf = ufSiglaToIbge(company?.state);
+          const key44 = extractNfeAccessKey(code, { preferredUfCode: preferredUf });
+          const candidates = expandNfeAccessKeyCandidates(code);
           if (key44) {
             setAccessKey(key44);
             void runSefazInboundFetchAndParse(key44);
+          } else if (candidates.length > 0) {
+            const digits = code.replace(/\D/g, '');
+            setAccessKey(digits.length === 42 || digits.length === 43 ? digits : candidates[0]);
+            void runSefazInboundFetchAndParse(digits.length === 42 || digits.length === 43 ? digits : candidates[0]);
           } else {
-            toast.error('Código escaneado não é uma chave de acesso válida (44 dígitos)');
+            toast.error('Código escaneado não é uma chave de acesso válida (42–44 dígitos)');
           }
         }}
       />
