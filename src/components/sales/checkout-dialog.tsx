@@ -557,8 +557,7 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
         handler: () => {
           // Só confirmar se não estiver em modais secundários e formulário válido
           if (!showInstallmentModal && !showCreditCardInstallmentModal && !loading && paymentDetails.length > 0) {
-            const formData = { clientName: watch('clientName'), clientCpfCnpj: watch('clientCpfCnpj') };
-            handleSubmit(onSubmit)(formData as any).catch(() => {});
+            handleSubmit((data) => onSubmit(data))().catch(() => {});
           }
         },
         context: ['checkout'],
@@ -1355,7 +1354,7 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
           <DialogDescription>Complete as informações da venda</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit((data) => onSubmit(data))} className="space-y-4">
           {/* Aviso sobre configuração fiscal */}
           {isCompany && hasValidFiscalConfig === false && (
             <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4">
