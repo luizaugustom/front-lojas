@@ -2,7 +2,6 @@ import {
   calcNfeAccessKeyDv,
   expandNfeAccessKeyCandidates,
   extractNfeAccessKey,
-  listAccessKeysMissingUf,
   normalizeNfeAccessKeyDigits,
 } from './nfe-access-key';
 
@@ -73,27 +72,18 @@ describe('extractNfeAccessKey', () => {
     expect(extractNfeAccessKey(`9${KEY_55}123`)).toBe(KEY_55);
   });
 
-  it('com 42 dígitos ambíguos sem UF preferida não inventa a chave', () => {
+  it('não acrescenta UF a uma leitura com 42 dígitos', () => {
     const withoutUf = KEY_55.slice(2);
-    expect(listAccessKeysMissingUf(withoutUf).length).toBeGreaterThan(1);
     expect(extractNfeAccessKey(withoutUf)).toBeNull();
   });
 
-  it('prioriza UF preferida ao completar 42 dígitos ambíguos', () => {
+  it('não expande leitura com 42 dígitos', () => {
     const withoutUf = KEY_55.slice(2);
-    expect(listAccessKeysMissingUf(withoutUf).length).toBeGreaterThan(1);
-    expect(extractNfeAccessKey(withoutUf, { preferredUfCode: '35' })).toBe(KEY_55);
+    expect(expandNfeAccessKeyCandidates(withoutUf)).toEqual([]);
   });
 
-  it('expande 42 dígitos ambíguos em candidatas para a SEFAZ', () => {
-    const withoutUf = KEY_55.slice(2);
-    const candidates = expandNfeAccessKeyCandidates(withoutUf);
-    expect(candidates).toContain(KEY_55);
-    expect(candidates.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('completa chave de 43 dígitos (sem DV)', () => {
+  it('não acrescenta DV a uma leitura com 43 dígitos', () => {
     const withoutDv = KEY_55.slice(0, 43);
-    expect(normalizeNfeAccessKeyDigits(withoutDv)).toBe(KEY_55);
+    expect(normalizeNfeAccessKeyDigits(withoutDv)).toBeNull();
   });
 });

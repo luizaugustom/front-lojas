@@ -30,7 +30,7 @@ import { PageHelpModal } from '@/components/help';
 import { OptimizedImage } from '@/components/ui/optimized-image';
 import { inboundInvoicesHelpTitle, inboundInvoicesHelpDescription, inboundInvoicesHelpIcon, getInboundInvoicesHelpTabs } from '@/components/help/contents/inbound-invoices-help';
 import { BarcodeScanner } from '@/components/sales/barcode-scanner';
-import { extractNfeAccessKey, expandNfeAccessKeyCandidates, ufSiglaToIbge } from '@/lib/nfe-access-key';
+import { extractNfeAccessKey, expandNfeAccessKeyCandidates } from '@/lib/nfe-access-key';
 
 interface InboundDoc {
   id: string;
@@ -1032,16 +1032,12 @@ export default function InboundInvoicesPage() {
                 <div className="relative flex-1">
                   <Input
                     id="accessKey"
-                    placeholder="42–44 dígitos ou leia o código de barras da DANFE"
+                    placeholder="44 dígitos ou leia o código de barras da DANFE"
                     value={accessKey}
                     disabled={sefazInboundXmlLoading}
                     onChange={(e) => {
-                      const preferredUf = ufSiglaToIbge(company?.address?.state);
-                      const extracted = extractNfeAccessKey(e.target.value, {
-                        preferredUfCode: preferredUf,
-                      });
+                      const extracted = extractNfeAccessKey(e.target.value);
                       const digits = e.target.value.replace(/\D/g, '');
-                      // 42 (sem UF) fica no campo para a API expandir; 43/44 são normalizados quando possível.
                       const value =
                         extracted ??
                         (digits.length <= 44 ? digits : digits.slice(0, 44));
@@ -1130,7 +1126,7 @@ export default function InboundInvoicesPage() {
                   </span>
                 ) : (
                   <>
-                    {accessKey.replace(/\D/g, '').length}/44 dígitos — aceita 42 (sem UF) ou 44; a busca na SEFAZ ocorre automaticamente; Enter aciona de imediato.
+                    {accessKey.replace(/\D/g, '').length}/44 dígitos — a busca usa exatamente a chave lida e ocorre automaticamente; Enter aciona de imediato.
                   </>
                 )}
               </p>
@@ -1468,11 +1464,7 @@ export default function InboundInvoicesPage() {
                 if (accessKey) {
                   const candidates = expandNfeAccessKeyCandidates(accessKey);
                   if (candidates.length === 0) {
-                    toast.error('Chave de acesso inválida. Use 42 (sem UF), 43 (sem DV) ou 44 dígitos.');
-                    return;
-                  }
-                  if (accessKey.replace(/\D/g, '').length !== 44 && candidates.length > 1) {
-                    toast.error('Chave com 42 dígitos ambígua. Busque na SEFAZ antes de salvar, ou informe os 44 dígitos.');
+                    toast.error('Chave de acesso inválida. Leia ou informe os 44 dígitos completos.');
                     return;
                   }
                 }
@@ -1514,11 +1506,7 @@ export default function InboundInvoicesPage() {
                   const formData = new FormData();
                   formData.append('supplierName', supplierName);
                   formData.append('totalValue', totalValueNumber.toString());
-                  formData.append('accessKey', (() => {
-                    if (!accessKey) return '';
-                    const candidates = expandNfeAccessKeyCandidates(accessKey);
-                    return candidates.length === 1 ? candidates[0] : accessKey;
-                  })());
+                  formData.append('accessKey', accessKey);
                   if (manualAttachment) {
                     formData.append('file', manualAttachment);
                   } else if (!editingDoc && xmlStringForSubmit && parsedData) {
@@ -1985,18 +1973,12 @@ export default function InboundInvoicesPage() {
         onClose={() => setBarcodeScannerOpen(false)}
         onScanned={(code) => {
           setBarcodeScannerOpen(false);
-          const preferredUf = ufSiglaToIbge(company?.address?.state);
-          const key44 = extractNfeAccessKey(code, { preferredUfCode: preferredUf });
-          const candidates = expandNfeAccessKeyCandidates(code);
+          const key44 = extractNfeAccessKey(code);
           if (key44) {
             setAccessKey(key44);
             void runSefazInboundFetchAndParse(key44);
-          } else if (candidates.length > 0) {
-            const digits = code.replace(/\D/g, '');
-            setAccessKey(digits.length === 42 || digits.length === 43 ? digits : candidates[0]);
-            void runSefazInboundFetchAndParse(digits.length === 42 || digits.length === 43 ? digits : candidates[0]);
           } else {
-            toast.error('Código escaneado não é uma chave de acesso válida (42–44 dígitos)');
+            toast.error('Código escaneado não contém uma chave completa de 44 dígitos');
           }
         }}
       />
