@@ -1011,25 +1011,10 @@ export default function InvoicesPage() {
                 />
                 <p className="text-xs text-muted-foreground">
                   Informe o ID de uma venda existente para emitir a NF-e com os dados dela.
-                  Os campos abaixo complementam o destinatário e o frete; quantidade, preço e
-                  itens sempre vêm da venda.
+                  Os campos abaixo complementam o frete; quantidade, preço e itens sempre vêm da
+                  venda.
                 </p>
               </div>
-
-              <Card className="p-4">
-                <h3 className="font-semibold mb-4">Complementos do Destinatário</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="recipientStateRegistrationSale">Inscrição Estadual</Label>
-                    <Input
-                      id="recipientStateRegistrationSale"
-                      placeholder="000.000.000.000 ou ISENTO"
-                      value={recipientStateRegistration}
-                      onChange={(e) => setRecipientStateRegistration(e.target.value.toUpperCase())}
-                    />
-                  </div>
-                </div>
-              </Card>
 
               <Card className="p-4">
                 <h3 className="font-semibold mb-4">Frete da NF-e</h3>
