@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Download, RefreshCw, Search, PlusCircle, Trash2, Plus, Package, XCircle, CheckCircle2, AlertCircle, Info, HelpCircle, FileX, FileEdit, WifiOff, Wifi, Settings as SettingsIcon, Eye, Link2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { FileText, Download, RefreshCw, Search, PlusCircle, Trash2, Plus, Package, XCircle, CheckCircle2, AlertCircle, Info, HelpCircle, FileX, FileEdit, Eye, Link2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -18,12 +18,6 @@ import { Switch } from '@/components/ui/switch';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDateTime, downloadFile, getBlobErrorMessage } from '@/lib/utils';
 import { fiscalApi, customerApi } from '@/lib/api-endpoints';
-import { ContingencyPanel } from '@/components/fiscal/contingency-panel';
-import { DtecStatusCard } from '@/components/fiscal/dtec-status-card';
-import { TtdConfigPanel } from '@/components/fiscal/ttd-config-panel';
-import { BlocoXPanel } from '@/components/fiscal/bloco-x-panel';
-import { ContingencyQueue } from '@/components/fiscal/contingency-queue';
-import { Badge } from '@/components/ui/badge';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
 import { isValidCPF, isValidCNPJ, isValidCPFOrCNPJ } from '@/lib/validations';
@@ -205,17 +199,6 @@ export default function InvoicesPage() {
   const [correcaoText, setCorrecaoText] = useState('');
   const [cartaSubmitting, setCartaSubmitting] = useState(false);
 
-  // Contingência NFC-e
-  const [contingenciaLoading, setContingenciaLoading] = useState(false);
-  const [contingencyPanelOpen, setContingencyPanelOpen] = useState(false);
-  const { data: contingenciaData } = useQuery({
-    queryKey: ['fiscal-contingencia-status'],
-    queryFn: async () => (await fiscalApi.getContingenciaStatus()).data,
-    enabled: !!user?.companyId && user?.role === 'empresa',
-  });
-  const contingenciaEnabled = contingenciaData?.contingenciaEnabled ?? false;
-
-  const queryClient = useQueryClient();
   const { queryParams, queryKeyPart } = useDateRange();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['fiscal-outbound', queryKeyPart, search, page, pageSize],
@@ -749,92 +732,6 @@ export default function InvoicesPage() {
           )}
         </div>
       </div>
-
-      {/* Status contingência NFC-e */}
-      {user?.role === 'empresa' && (
-        <Card className={`p-3 ${contingenciaEnabled ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30' : 'border-muted'}`}>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              {contingenciaEnabled ? (
-                <>
-                  <WifiOff className="h-5 w-5 text-amber-600" />
-                  <span className="text-sm font-medium text-amber-800 dark:text-amber-200">Modo contingência NFC-e ativo</span>
-                  {contingenciaData?.ttdType && contingenciaData.ttdType !== 'NONE' && (
-                    <Badge variant="outline" className="ml-2 text-xs">
-                      {contingenciaData.ttdType}
-                    </Badge>
-                  )}
-                  {contingenciaData?.contingenciaMotivo && (
-                    <span className="text-xs text-amber-700 dark:text-amber-300">— {contingenciaData.contingenciaMotivo}</span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Wifi className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Conexão normal com SEFAZ</span>
-                </>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setContingencyPanelOpen(true)}
-                title="Configuração completa (TTD, DTEC, Termo, etc.)"
-              >
-                <SettingsIcon className="mr-1 h-4 w-4" />
-                Configurar (ATO DIAT 38/2020)
-              </Button>
-              {contingenciaEnabled ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={contingenciaLoading}
-                  onClick={async () => {
-                    try {
-                      setContingenciaLoading(true);
-                      await fiscalApi.desativarContingencia();
-                      toast.success('Contingência desativada.');
-                      await queryClient.invalidateQueries({ queryKey: ['fiscal-contingencia-status'] });
-                    } catch (e: any) {
-                      toast.error(e?.response?.data?.message || 'Erro ao desativar contingência');
-                    } finally {
-                      setContingenciaLoading(false);
-                    }
-                  }}
-                >
-                  Desativar contingência
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={contingenciaLoading}
-                  onClick={async () => {
-                    try {
-                      setContingenciaLoading(true);
-                      await fiscalApi.ativarContingencia({ motivo: 'Indisponibilidade do ambiente de autorização' });
-                      toast.success('Modo contingência ativado.');
-                      await queryClient.invalidateQueries({ queryKey: ['fiscal-contingencia-status'] });
-                    } catch (e: any) {
-                      toast.error(e?.response?.data?.message || 'Erro ao ativar contingência');
-                    } finally {
-                      setContingenciaLoading(false);
-                    }
-                  }}
-                >
-                  Ativar contingência
-                </Button>
-              )}
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Fila de sincronização quando contingência está ativa */}
-      {user?.role === 'empresa' && contingenciaEnabled && (
-        <ContingencyQueue />
-      )}
 
       <Card className="p-4">
         <InputWithIcon
@@ -2142,24 +2039,6 @@ export default function InvoicesPage() {
               {cartaSubmitting ? 'Enviando...' : 'Enviar CC-e'}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Painel ATO DIAT 38/2020 */}
-      <Dialog open={contingencyPanelOpen} onOpenChange={setContingencyPanelOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>NFC-e Contingência — ATO DIAT 38/2020</DialogTitle>
-            <DialogDescription>
-              Configuração completa de contingência: DTEC, TTD, Termo de Compromisso e sincronização.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <DtecStatusCard />
-            <TtdConfigPanel />
-            <BlocoXPanel />
-            <ContingencyPanel />
-          </div>
         </DialogContent>
       </Dialog>
 
