@@ -134,7 +134,6 @@ export default function SettingsPage() {
     municipioIbge: '',
     nfceSerie: '1',
     nfeSerie: '1',
-    sefazEnvironment: 'homologacao' as 'homologacao' | 'producao',
     focusNfeEnvironment: 'sandbox' as 'sandbox' | 'production',
     csc: '',
     idTokenCsc: '000001',
@@ -706,7 +705,6 @@ export default function SettingsPage() {
         municipioIbge: config.municipioIbge || '',
         nfceSerie: config.nfceSerie || '1',
         nfeSerie: config.nfeSerie || '1',
-        sefazEnvironment: (config.sefazEnvironment || 'homologacao') as 'homologacao' | 'producao',
         focusNfeEnvironment: (config.focusNfeEnvironment || 'sandbox') as 'sandbox' | 'production',
         csc: config.csc || '',
         idTokenCsc: config.idTokenCsc || '000001',
@@ -2144,30 +2142,6 @@ export default function SettingsPage() {
                       </p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="sefazEnvironmentEmpresa">Ambiente SEFAZ</Label>
-                      <Select
-                        value={fiscalDataForm.sefazEnvironment}
-                        onValueChange={(value) =>
-                          setFiscalDataForm({
-                            ...fiscalDataForm,
-                            sefazEnvironment: value as 'homologacao' | 'producao',
-                          })
-                        }
-                      >
-                        <SelectTrigger id="sefazEnvironmentEmpresa">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="homologacao">Homologação (testes)</SelectItem>
-                          <SelectItem value="producao">Produção</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Atual: {fiscalConfig?.sefazEnvironment === 'producao' ? 'Produção' : 'Homologação'}
-                      </p>
-                    </div>
-
                     {/* ATO DIAT 38/2020 — Art. 7º: ambiente FocusNFE (G25) */}
                     <div className="space-y-2">
                       <Label htmlFor="focusNfeEnvironment">Ambiente FocusNFE</Label>
@@ -2342,7 +2316,6 @@ export default function SettingsPage() {
                       <li>• Regime Tributário</li>
                       <li>• Inscrição Estadual</li>
                       <li>• Código IBGE do Município</li>
-                      <li>• Ambiente SEFAZ (homologação ou produção)</li>
                     </ul>
                   </div>
                 </>
