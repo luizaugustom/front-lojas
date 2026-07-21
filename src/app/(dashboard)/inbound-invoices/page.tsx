@@ -1040,7 +1040,7 @@ export default function InboundInvoicesPage() {
                       const digits = e.target.value.replace(/\D/g, '');
                       const value =
                         extracted ??
-                        (digits.length <= 44 ? digits : digits.slice(0, 44));
+                        digits.slice(0, 128);
                       setAccessKey(value);
                       if (sefazFetchStatus === 'error' || sefazFetchStatus === 'success') {
                         setSefazFetchStatus('idle');

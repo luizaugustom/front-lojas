@@ -38,6 +38,7 @@ const KEY_55 = buildValidKey({
   tpEmis: '1',
   cNF: '00000001',
 });
+const INVALID_READER_PREFIX = '23422607008426020001550040002413571704147317';
 
 describe('extractNfeAccessKey', () => {
   it('retorna null para entrada vazia ou curta demais', () => {
@@ -70,6 +71,15 @@ describe('extractNfeAccessKey', () => {
 
   it('quando há dígitos extras, prefere a janela com modelo 55/65', () => {
     expect(extractNfeAccessKey(`9${KEY_55}123`)).toBe(KEY_55);
+  });
+
+  it('ignora janela inválida antes da chave completa enviada pelo leitor', () => {
+    expect(extractNfeAccessKey(`${INVALID_READER_PREFIX}${KEY_55}`)).toBe(KEY_55);
+  });
+
+  it('não aceita uma sequência de 44 dígitos com período inválido', () => {
+    expect(extractNfeAccessKey(INVALID_READER_PREFIX)).toBeNull();
+    expect(expandNfeAccessKeyCandidates(INVALID_READER_PREFIX)).toEqual([]);
   });
 
   it('não acrescenta UF a uma leitura com 42 dígitos', () => {
