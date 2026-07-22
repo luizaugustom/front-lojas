@@ -4,12 +4,10 @@
  * Aceita:
  * - 44 dígitos (chave completa)
  * - 43 dígitos (sem DV) → calcula e acrescenta o DV
- * - 42 dígitos (sem UF do emitente; comum em alguns DANFE/leitores)
- *   → completa quando o DV fecha em uma única UF (ou na UF preferida)
+ * - 42 dígitos sem UF do emitente (comum em alguns DANFE/leitores)
+ * - 42 dígitos com UF mas sem 2 dígitos do CNPJ (leitores que “comem” 2 dígitos
+ *   antes do modelo 55/65) → testa inserções 00–99 e filtra pelo DV
  * - QR/URL (chNFe=, p=) e prefixos de leitor (AIM ]C1)
- *
- * Se 42 dígitos forem ambíguos (várias UFs válidas), devolve null em extract;
- * expandNfeAccessKeyCandidates devolve todas as candidatas para a API tentar na SEFAZ.
  */
 
 const UF_IBGE_CODES = [
@@ -67,8 +65,8 @@ export function normalizeNfeAccessKeyDigits(
     }
   }
 
-  if (digits.length === 42 && isMissingUfPattern(digits)) {
-    const matches = listAccessKeysMissingUf(digits);
+  if (digits.length === 42) {
+    const matches = expandNfeAccessKeyCandidates(digits);
     if (matches.length === 0) return null;
 
     const preferred = options.preferredUfCode?.replace(/\D/g, '').slice(0, 2);
@@ -78,7 +76,6 @@ export function normalizeNfeAccessKeyDigits(
     }
 
     if (matches.length === 1) return matches[0];
-    // Ambíguo: deixa o backend tentar as candidatas na SEFAZ
     return null;
   }
 
@@ -103,12 +100,32 @@ export function expandNfeAccessKeyCandidates(raw: string): string[] {
     return [];
   }
 
-  if (digits.length === 42 && isMissingUfPattern(digits)) {
-    return listAccessKeysMissingUf(digits);
+  if (digits.length === 42) {
+    if (hasUfAndShiftedModel(digits)) {
+      return listAccessKeysMissingCnpjTail(digits);
+    }
+    if (isMissingUfPattern(digits)) {
+      return listAccessKeysMissingUf(digits);
+    }
+    return [];
   }
 
   const normalized = extractNfeAccessKey(raw);
   return normalized ? [normalized] : [];
+}
+
+/** UF + AAMM válidos no início e modelo 55/65 na posição 18 → faltam 2 dígitos do CNPJ. */
+function hasUfAndShiftedModel(digits42: string): boolean {
+  const uf = digits42.slice(0, 2);
+  if (!(UF_IBGE_CODES as readonly string[]).includes(uf)) return false;
+
+  const year = Number(digits42.slice(2, 4));
+  const month = Number(digits42.slice(4, 6));
+  const currentYear = new Date().getFullYear() % 100;
+  if (year < 6 || year > currentYear || month < 1 || month > 12) return false;
+
+  const model = digits42.slice(18, 20);
+  return model === '55' || model === '65';
 }
 
 /** Chave sem os 2 dígitos da UF do emitente: modelo fica nas posições 18-19. */
@@ -125,6 +142,22 @@ export function listAccessKeysMissingUf(digits42: string): string[] {
     const actualDv = digits42.slice(41, 42);
     if (String(expectedDv) !== actualDv) continue;
     const key44 = `${uf}${digits42}`;
+    if (isValidNfeAccessKey(key44)) matches.push(key44);
+  }
+  return matches;
+}
+
+/**
+ * Lê 42 dígitos com UF, mas sem 2 dígitos do CNPJ (antes do modelo).
+ * Insere 00–99 na posição 18 e mantém só chaves com DV válido.
+ */
+export function listAccessKeysMissingCnpjTail(digits42: string): string[] {
+  const before = digits42.slice(0, 18);
+  const after = digits42.slice(18);
+  const matches: string[] = [];
+  for (let i = 0; i < 100; i++) {
+    const mid = String(i).padStart(2, '0');
+    const key44 = `${before}${mid}${after}`;
     if (isValidNfeAccessKey(key44)) matches.push(key44);
   }
   return matches;

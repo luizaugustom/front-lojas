@@ -87,13 +87,22 @@ describe('extractNfeAccessKey', () => {
     expect(withoutUf).toHaveLength(42);
     const candidates = expandNfeAccessKeyCandidates(withoutUf);
     expect(candidates).toContain(KEY_55);
-    // Ambíguo (várias UFs): extract devolve null; preferredUf resolve
     if (candidates.length > 1) {
       expect(extractNfeAccessKey(withoutUf)).toBeNull();
       expect(extractNfeAccessKey(withoutUf, { preferredUfCode: '35' })).toBe(KEY_55);
     } else {
       expect(extractNfeAccessKey(withoutUf)).toBe(KEY_55);
     }
+  });
+
+  it('recupera chave quando o leitor omite 2 dígitos do CNPJ (42 com UF)', () => {
+    // Chave real DEPECIL (SC) com "96" do CNPJ ausente — padrão visto no leitor
+    const full = '42260700842602000196550040002413571704147317';
+    const scan = '422607008426020001550040002413571704147317';
+    expect(scan).toHaveLength(42);
+    const candidates = expandNfeAccessKeyCandidates(scan);
+    expect(candidates).toContain(full);
+    expect(candidates.length).toBeGreaterThan(0);
   });
 
   it('prioriza UF preferida quando 42 dígitos fecham em mais de uma UF', () => {

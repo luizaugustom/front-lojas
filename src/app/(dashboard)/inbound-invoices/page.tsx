@@ -1016,7 +1016,7 @@ export default function InboundInvoicesPage() {
                       setAccessKey(key);
                       if (expandNfeAccessKeyCandidates(key).length === 0) {
                         toast.error(
-                          'Chave inválida para busca. Informe 44 dígitos ou leia o código de barras (42 sem UF) e pressione Enter.',
+                          'Chave inválida para busca. Informe 44 dígitos ou leia o código de barras (42) e pressione Enter.',
                         );
                         return;
                       }
@@ -1064,7 +1064,7 @@ export default function InboundInvoicesPage() {
                   onClick={() => {
                     if (expandNfeAccessKeyCandidates(accessKey).length === 0) {
                       toast.error(
-                        'Chave inválida para busca. Informe 44 dígitos ou leia o código de barras (42 sem UF).',
+                        'Chave inválida para busca. Informe 44 dígitos ou leia o código de barras (42).',
                       );
                       return;
                     }
