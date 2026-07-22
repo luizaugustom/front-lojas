@@ -28,8 +28,6 @@ import { formatCurrency } from '@/lib/utils';
 import { DollarSign, CreditCard, Banknote, Smartphone } from 'lucide-react';
 import { PaymentReceiptConfirmDialog } from './payment-receipt-confirm-dialog';
 import { PaymentReceipt } from './payment-receipt';
-import { InstallmentBilletViewer } from './installment-billet-viewer';
-import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 
 interface PaymentDialogProps {
   open: boolean;
@@ -68,9 +66,6 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
   const [showReceiptConfirm, setShowReceiptConfirm] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [paymentData, setPaymentData] = useState<any>(null);
-  const [newBilletPdf, setNewBilletPdf] = useState<string | null>(null);
-  const [showNewBillet, setShowNewBillet] = useState(false);
-  const [showNewBilletConfirm, setShowNewBilletConfirm] = useState(false);
 
   const {
     register,
@@ -104,9 +99,6 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
       setShowReceiptConfirm(false);
       setShowReceipt(false);
       setPaymentData(null);
-      setNewBilletPdf(null);
-      setShowNewBillet(false);
-      setShowNewBilletConfirm(false);
     }
     
     return () => {
@@ -128,19 +120,11 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
         sellerName: user?.name,
       });
 
-      // Verificar se há novo boleto (pagamento parcial)
-      if (response.data?.newBilletPdf) {
-        setNewBilletPdf(response.data.newBilletPdf);
-        toast.success('Pagamento registrado! Novo boleto gerado para o valor restante.');
-        if (open) {
-          setShowNewBilletConfirm(true);
-        }
-      } else {
-        toast.success(response.data.message || 'Pagamento registrado com sucesso!');
-        // Mostra o diálogo de confirmação de impressão apenas se não houver novo boleto
-        if (open) {
-          setShowReceiptConfirm(true);
-        }
+      // Mensagem padrão: parcela atualizada. O boleto existente na Unimake permanece —
+      // a empresa baixa o PDF atualizado em /boletos (sem reimpressão local).
+      toast.success(response.data?.message || 'Pagamento registrado com sucesso!');
+      if (open) {
+        setShowReceiptConfirm(true);
       }
     },
     onError: (error: any) => {
@@ -176,20 +160,6 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
     setShowReceipt(true);
   };
 
-  const handleConfirmNewBillet = () => {
-    setShowNewBilletConfirm(false);
-    setShowNewBillet(true);
-  };
-
-  const handleSkipNewBillet = () => {
-    setShowNewBilletConfirm(false);
-    setShowNewBillet(false);
-    setNewBilletPdf(null);
-    if (open) {
-      setShowReceiptConfirm(true);
-    }
-  };
-
   const handleSkipReceipt = () => {
     setShowReceiptConfirm(false);
     reset();
@@ -199,20 +169,7 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
   const handlePrintComplete = () => {
     setShowReceipt(false);
     reset();
-    setNewBilletPdf(null);
-    setShowNewBillet(false);
     onClose();
-  };
-
-  const handleNewBilletClose = () => {
-    setShowNewBillet(false);
-    setNewBilletPdf(null);
-    // Após fechar o boleto, mostrar confirmação de comprovante se necessário
-    if (paymentData) {
-      setShowReceiptConfirm(true);
-    } else {
-      handlePrintComplete();
-    }
   };
 
   const remainingAmount = installment?.remainingAmount || 0;
@@ -396,16 +353,6 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
         onCancel={handleSkipReceipt}
       />
 
-      <ConfirmationModal
-        open={showNewBilletConfirm}
-        onClose={handleSkipNewBillet}
-        onConfirm={handleConfirmNewBillet}
-        title="Boleto do restante"
-        description="Deseja visualizar ou imprimir o boleto referente ao valor restante da dívida?"
-        confirmText="Visualizar boleto"
-        cancelText="Não agora"
-      />
-
       {/* Comprovante de pagamento para impressão */}
       {showReceipt && paymentData && (
         <PaymentReceipt
@@ -418,16 +365,6 @@ export function PaymentDialog({ open, onClose, installment }: PaymentDialogProps
           }}
           companyInfo={companyInfo ?? undefined}
           onPrintComplete={handlePrintComplete}
-        />
-      )}
-
-      {/* Visualizador de novo boleto (pagamento parcial) */}
-      {newBilletPdf && installment && (
-        <InstallmentBilletViewer
-          open={showNewBillet}
-          onClose={handleNewBilletClose}
-          saleId={installment.saleId}
-          billetsPdfBase64={newBilletPdf}
         />
       )}
     </Dialog>

@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { handleApiError } from '@/lib/handleApiError';
-import { saleApi, sellerApi, companyApi, customerApi } from '@/lib/api-endpoints';
+import { saleApi, sellerApi, companyApi, customerApi, billetApi } from '@/lib/api-endpoints';
 import { saleSchema } from '@/lib/validations';
 import { formatCurrency, calculateChange, calculateMultiplePaymentChange, handleNumberInputChange, isValidId, validateUUID } from '@/lib/utils-clean';
 import { useCartStore } from '@/store/cart-store';
@@ -26,10 +26,8 @@ import { InstallmentSaleModal } from './installment-sale-modal';
 import { CreditCardInstallmentModal } from './credit-card-installment-modal';
 import { PrintConfirmationDialog } from './print-confirmation-dialog';
 import { CustomerCopyConfirmationDialog } from './customer-copy-confirmation-dialog';
-import { BilletPrintConfirmationDialog } from './billet-print-confirmation-dialog';
 import { StoreCreditVoucherConfirmationDialog } from './store-credit-voucher-confirmation-dialog';
 import { NfceDetailsModal } from './NfceDetailsModal';
-import { InstallmentBilletViewer } from '@/components/installments/installment-billet-viewer';
 import { useAuth } from '@/hooks/useAuth';
 import { printContent as printContentService } from '@/lib/print-service';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
@@ -89,9 +87,8 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
   // Cache do conteúdo de impressão para reimpressão
   const [cachedPrintContent, setCachedPrintContent] = useState<{ content: string | { storeCopy: string; customerCopy: string; isInstallmentSale: boolean }; type: string } | null>(null);
   const [customerCopyContent, setCustomerCopyContent] = useState<string | null>(null);
-  // Boletos PDF
-  const [billetsPdf, setBilletsPdf] = useState<string | null>(null);
-  const [showBillets, setShowBillets] = useState(false);
+  // Boletos criados na venda (Unimake) — referência, sem carnê PDF local.
+  const [createdBoletos, setCreatedBoletos] = useState<Array<{ id: string; externalId?: string; dueDate?: string; digitableLine?: string; amount: number; installmentId?: string }>>([]);
   // ATO DIAT 38/2020 — Art. 13 §único: seleção de série/PDV no PDV
   const [pdvCode, setPdvCode] = useState<string>('');
   const [nfceSeries, setNfceSeries] = useState<string>('');
@@ -119,7 +116,6 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
     pdvCode?: string;
   } | null>(null);
   const [showNfceDetailsModal, setShowNfceDetailsModal] = useState(false);
-  const [showBilletPrintConfirmation, setShowBilletPrintConfirmation] = useState(false);
   const [pendingPrintContent, setPendingPrintContent] = useState<{
     content: any;
     type: string;
@@ -234,9 +230,8 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
       setStoreCreditCustomerId(null);
       setUseStoreCredit(false);
       setStoreCreditAmount(0);
-      // Resetar boletos
-      setBilletsPdf(null);
-      setShowBillets(false);
+      // Resetar boletos criados (Unimake)
+      setCreatedBoletos([]);
       // Resetar opções NFe/boleto
       setEmitBoleto(false);
       setBoletoDueDate('');
@@ -566,7 +561,7 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
       {
         key: 'Escape',
         handler: () => {
-          if (!showInstallmentModal && !showCreditCardInstallmentModal && !showPrintConfirmation && !showCustomerCopyConfirmation && !showBilletPrintConfirmation && !showStoreCreditVoucherConfirmation) {
+          if (!showInstallmentModal && !showCreditCardInstallmentModal && !showPrintConfirmation && !showCustomerCopyConfirmation && !showStoreCreditVoucherConfirmation) {
             onClose();
           }
         },
@@ -666,7 +661,7 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
         context: ['checkout'],
       },
     ],
-    enabled: open && !showPrintConfirmation && !showCustomerCopyConfirmation && !showBilletPrintConfirmation && !showStoreCreditVoucherConfirmation,
+    enabled: open && !showPrintConfirmation && !showCustomerCopyConfirmation && !showStoreCreditVoucherConfirmation,
     context: 'checkout',
     ignoreInputs: true, // Quando focado em input (valor, etc.), dígitos devem ir para o campo; atalhos 1-5 só fora de inputs
   });
@@ -833,38 +828,9 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
     handlePrintComplete();
   };
 
-  const handleBilletPrintConfirm = () => {
-    setShowBilletPrintConfirmation(false);
-    setShowBillets(true);
-  };
-
-  const handleBilletPrintCancel = () => {
-    setShowBilletPrintConfirmation(false);
-    // Se houver printContent pendente, mostrar modal de confirmação de NFCe/cupom
-    if (pendingPrintContent) {
-      setCachedPrintContent(pendingPrintContent);
-      setShowPrintConfirmation(true);
-      setPendingPrintContent(null);
-    } else {
-      handlePrintComplete();
-    }
-  };
-
-  const handleBilletsClose = () => {
-    setShowBillets(false);
-    // Se houver printContent pendente, mostrar modal de confirmação de NFCe/cupom
-    if (pendingPrintContent) {
-      setCachedPrintContent(pendingPrintContent);
-      setShowPrintConfirmation(true);
-      setPendingPrintContent(null);
-    } else {
-      handlePrintComplete();
-    }
-  };
-
   const handleStoreCreditVoucherConfirm = async () => {
     if (!pendingCreditVoucherData) return;
-    
+
     setPrinting(true);
     try {
       const voucherData = await api.printRemainingBalanceVoucher({
@@ -897,11 +863,9 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
       setPrinting(false);
       setShowStoreCreditVoucherConfirmation(false);
       setPendingCreditVoucherData(null);
-      
+
       // Após imprimir comprovante de crédito, verificar se há conteúdo de impressão pendente
-      if (billetsPdf) {
-        setShowBilletPrintConfirmation(true);
-      } else if (pendingPrintContent) {
+      if (pendingPrintContent) {
         setCachedPrintContent(pendingPrintContent);
         setShowPrintConfirmation(true);
         setPendingPrintContent(null);
@@ -914,11 +878,9 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
   const handleStoreCreditVoucherCancel = () => {
     setShowStoreCreditVoucherConfirmation(false);
     setPendingCreditVoucherData(null);
-    
+
     // Após fechar modal de crédito, verificar se há conteúdo de impressão pendente
-    if (billetsPdf) {
-      setShowBilletPrintConfirmation(true);
-    } else if (pendingPrintContent) {
+    if (pendingPrintContent) {
       setCachedPrintContent(pendingPrintContent);
       setShowPrintConfirmation(true);
       setPendingPrintContent(null);
@@ -939,7 +901,6 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
     setSelectedCustomerId('');
     setShowPrintConfirmation(false);
     setShowCustomerCopyConfirmation(false);
-    setShowBilletPrintConfirmation(false);
     setShowStoreCreditVoucherConfirmation(false);
     setCreatedSaleId(null);
     setCustomerCopyContent(null);
@@ -1223,9 +1184,11 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
       const saleId = saleData_resp?.id;
       const printContent = saleData_resp?.printContent;
       const printType = saleData_resp?.printType || 'nfce';
-      const billetsPdfBase64 = saleData_resp?.billetsPdf;
-      const boletoPdfBase64 = saleData_resp?.boletoPdf;
-      
+
+      // Boletos criados na venda (Unimake) — list de objetos { id, externalId, dueDate, digitableLine, amount, installmentId }.
+      // O backend monta essa lista para cada parcela (sale.service.ts). A empresa baixa os PDFs individuais em /boletos.
+      const boletosResp = Array.isArray(saleData_resp?.boletos) ? saleData_resp.boletos : [];
+
       if (!saleId) {
         console.error('[Checkout] Venda criada mas ID não foi retornado:', response);
         toast.error('Venda criada, mas não foi possível obter o ID da venda');
@@ -1270,35 +1233,31 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
         setTimeout(() => setShowNfceDetailsModal(true), 250);
       }
 
-      // Resposta em modo NFe: não abrir fluxo de impressão NFC-e; opção de download do boleto
+      // Resposta em modo NFe: não abrir fluxo de impressão NFC-e.
+      // Boletos criados são listados via `createdBoletos` (sem carnê PDF local).
       if (printType === 'nfe') {
-        if (boletoPdfBase64) {
-          setBilletsPdf(boletoPdfBase64);
-          setShowBilletPrintConfirmation(true);
-        } else {
-          handlePrintComplete();
+        if (boletosResp.length > 0) {
+          setCreatedBoletos(boletosResp);
+          toast.success(`${boletosResp.length} boleto(s) emitido(s) na Unimake. Verifique em /boletos.`);
         }
+        handlePrintComplete();
         return;
       }
 
       // Se houver saldo restante de crédito, mostrar modal de confirmação PRIMEIRO
       if (creditUsed > 0 && remainingCreditBalance > 0.01 && storeCreditCustomerId) {
-        // Armazenar dados de impressão para depois do modal de crédito
-        if (billetsPdfBase64) {
-          setBilletsPdf(billetsPdfBase64);
-          if (printContent) {
-            setPendingPrintContent({
-              content: printContent,
-              type: printType,
-            });
-          }
-        } else if (printContent) {
+        // Armazenar boletos (Unimake) para exibir depois do modal de crédito
+        if (boletosResp.length > 0) {
+          setCreatedBoletos(boletosResp);
+        }
+        // Armazenar printContent pendente, se houver
+        if (printContent) {
           setPendingPrintContent({
             content: printContent,
             type: printType,
           });
         }
-        
+
         // Mostrar modal de crédito primeiro
         setPendingCreditVoucherData({
           creditUsed,
@@ -1310,29 +1269,19 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
       }
 
       // Se não houver crédito restante, seguir fluxo normal
-      // Se houver boletos PDF, mostrar modal de confirmação primeiro
-      if (billetsPdfBase64) {
-        setBilletsPdf(billetsPdfBase64);
-        
-        // Se também houver printContent, armazenar para depois dos boletos
-        if (printContent) {
-          setPendingPrintContent({
-            content: printContent,
-            type: printType,
-          });
-        }
-        
-        // Mostrar modal de confirmação de boletos
-        setShowBilletPrintConfirmation(true);
-      } else if (printContent) {
-        // Se não houver boletos mas houver printContent, mostrar modal de confirmação de NFCe/cupom
+      if (boletosResp.length > 0) {
+        // Boletos criados na Unimake — sem carnê PDF local; exibir toast com CTA.
+        setCreatedBoletos(boletosResp);
+        toast.success(`${boletosResp.length} boleto(s) emitido(s) na Unimake. Baixe em /boletos.`);
+      }
+      if (printContent) {
         setCachedPrintContent({
           content: printContent,
           type: printType,
         });
         setShowPrintConfirmation(true);
-      } else {
-        // Sem conteúdo de impressão - apenas finalizar
+      } else if (boletosResp.length === 0) {
+        // Sem conteúdo de impressão e sem boletos - apenas finalizar
         handlePrintComplete();
       }
     } catch (error) {
@@ -1939,14 +1888,6 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
         )}
       </DialogContent>
     </Dialog>
-    
-    {/* Dialog de Confirmação de Impressão de Boletos */}
-    <BilletPrintConfirmationDialog
-      open={showBilletPrintConfirmation}
-      onConfirm={handleBilletPrintConfirm}
-      onCancel={handleBilletPrintCancel}
-      loading={loading}
-    />
 
     {/* Dialog de Confirmação de Impressão */}
     <PrintConfirmationDialog
@@ -1962,16 +1903,6 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
       onCancel={handleCustomerCopyCancel}
       loading={printing}
     />
-
-    {/* Visualizador de Boletos */}
-    {createdSaleId && (
-      <InstallmentBilletViewer
-        open={showBillets}
-        onClose={handleBilletsClose}
-        saleId={createdSaleId}
-        billetsPdfBase64={billetsPdf || undefined}
-      />
-    )}
 
     {/* Dialog de Confirmação de Comprovante de Crédito */}
     {pendingCreditVoucherData && (

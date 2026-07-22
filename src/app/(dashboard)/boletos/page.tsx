@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Banknote,
@@ -11,8 +11,6 @@ import {
   Clock,
   AlertCircle,
   MessageCircle,
-  Upload,
-  FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -53,10 +51,6 @@ export default function BoletosPage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [sendingWhatsAppId, setSendingWhatsAppId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [cnabFile, setCnabFile] = useState<File | null>(null);
-  const [cnabUploading, setCnabUploading] = useState(false);
-  const [cnabResult, setCnabResult] = useState<{ markedAsPaid: number; message: string } | null>(null);
-  const cnabInputRef = useRef<HTMLInputElement>(null);
 
   const limit = 20;
   const params = {
@@ -81,7 +75,12 @@ export default function BoletosPage() {
     queryKey: ['my-company'],
     queryFn: async () => {
       const res = await companyApi.myCompany();
-      return res.data as { boletoAllowed?: boolean; boletoEnabled?: boolean };
+      return res.data as {
+        boletoAllowed?: boolean;
+        boletoEnabled?: boolean;
+        unimakeConfigured?: boolean;
+        unimakeSandbox?: boolean;
+      };
     },
     enabled: !!user?.companyId && (user?.role === 'empresa' || user?.role === 'vendedor'),
   });
@@ -101,6 +100,7 @@ export default function BoletosPage() {
   const totalPages = data?.totalPages ?? 0;
   const boletoAllowed = companyData?.boletoAllowed === true;
   const boletoEnabled = boletoAllowed && companyData?.boletoEnabled === true;
+  const unimakeConfigured = companyData?.unimakeConfigured === true;
 
   const handleDownloadPdf = async (id: string) => {
     setDownloadingId(id);
@@ -132,37 +132,6 @@ export default function BoletosPage() {
     } finally {
       setMarkingPaidId(null);
     }
-  };
-
-  const handleCnabSubmit = async () => {
-    if (!cnabFile) {
-      toast.error('Selecione o arquivo CNAB de retorno');
-      return;
-    }
-    setCnabUploading(true);
-    setCnabResult(null);
-    try {
-      const res = await billetApi.processCnabReturn(cnabFile);
-      const data = res.data as { processed?: boolean; markedAsPaid?: number; titlesInFile?: number; message?: string };
-      setCnabResult({
-        markedAsPaid: data.markedAsPaid ?? 0,
-        message: data.message ?? (data.markedAsPaid ? `${data.markedAsPaid} boleto(s) marcado(s) como pago(s).` : 'Arquivo processado.'),
-      });
-      toast.success(data.message ?? 'Arquivo processado');
-      queryClient.invalidateQueries({ queryKey: ['boletos'] });
-      setCnabFile(null);
-      if (cnabInputRef.current) cnabInputRef.current.value = '';
-    } catch (err: any) {
-      handleApiError(err);
-    } finally {
-      setCnabUploading(false);
-    }
-  };
-
-  const handleCnabFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    setCnabFile(file ?? null);
-    setCnabResult(null);
   };
 
   const handleSendWhatsApp = async (id: string) => {
@@ -220,7 +189,9 @@ export default function BoletosPage() {
             <Banknote className="h-7 w-7" />
             Boletos
           </h1>
-          <p className="text-muted-foreground">Gerencie todos os boletos emitidos pela sua empresa.</p>
+          <p className="text-muted-foreground">
+            Gerencie todos os boletos emitidos pela sua empresa (Unimake e-Boleto).
+          </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -254,6 +225,23 @@ export default function BoletosPage() {
                   Configurações &gt; Boletos
                 </Link>
                 .
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {boletoEnabled && !unimakeConfigured && (
+        <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800">
+          <CardContent className="pt-6 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-amber-800 dark:text-amber-200">
+                Boleto Unimake não configurado
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                Sua empresa ainda não possui credenciais Unimake cadastradas. Solicite ao administrador
+                que configure o appId e appKey em Configurações Admin &gt; Boletos.
               </p>
             </div>
           </CardContent>
@@ -318,66 +306,6 @@ export default function BoletosPage() {
           </div>
         </CardContent>
       </Card>
-
-      {boletoEnabled && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <FileText className="h-5 w-5" />
-              Conciliação CNAB (Boleto Cloud)
-            </CardTitle>
-            <CardDescription>
-              Envie o arquivo de retorno CNAB (.ret ou .txt) baixado do Internet Banking. Os boletos com ocorrência de pagamento serão marcados como pagos automaticamente.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <input
-              ref={cnabInputRef}
-              type="file"
-              accept=".ret,.txt,application/octet-stream,text/plain"
-              onChange={handleCnabFileChange}
-              className="hidden"
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => cnabInputRef.current?.click()}
-                disabled={cnabUploading}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                {cnabFile ? cnabFile.name : 'Selecionar arquivo'}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleCnabSubmit}
-                disabled={!cnabFile || cnabUploading}
-              >
-                {cnabUploading ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Processando...
-                  </>
-                ) : (
-                  'Enviar e processar'
-                )}
-              </Button>
-            </div>
-            {cnabResult && (
-              <p className="text-sm text-muted-foreground">
-                {cnabResult.message}
-                {cnabResult.markedAsPaid > 0 && (
-                  <span className="ml-1 text-green-600 dark:text-green-400 font-medium">
-                    ({cnabResult.markedAsPaid} marcado(s) como pago(s))
-                  </span>
-                )}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader className="pb-4">

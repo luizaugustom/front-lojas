@@ -26,6 +26,7 @@ import { toast } from 'react-hot-toast';
 import { handleApiError } from '@/lib/handleApiError';
 import { useQuery } from '@tanstack/react-query';
 import { companyApi, adminApi, cardAcquirerRateApi, managerApi } from '@/lib/api-endpoints';
+import type { UnimakeCompanyOverviewRow, UnimakeCompanyConfig } from '@/lib/api-endpoints';
 import { getImageUrl } from '@/lib/image-utils';
 import { useUIStore } from '@/store/ui-store';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
@@ -150,14 +151,19 @@ export default function SettingsPage() {
     ibptToken: '',
   });
 
-  // Estado das configurações globais Boleto Cloud (apenas para admin)
-  const [adminBoletoCloudConfig, setAdminBoletoCloudConfig] = useState<any>(null);
-  const [loadingAdminBoletoCloud, setLoadingAdminBoletoCloud] = useState(false);
-  const [savingAdminBoletoCloud, setSavingAdminBoletoCloud] = useState(false);
-  const [adminBoletoCloudForm, setAdminBoletoCloudForm] = useState({
-    boletoCloudApiKey: '',
-    boletoCloudSandbox: 'false' as 'true' | 'false',
+  // Estado das configurações de Unimake por empresa (apenas para admin)
+  const [unimakeOverview, setUnimakeOverview] = useState<UnimakeCompanyOverviewRow[]>([]);
+  const [loadingUnimakeOverview, setLoadingUnimakeOverview] = useState(false);
+  const [unimakeDialogOpen, setUnimakeDialogOpen] = useState(false);
+  const [unimakeDialogCompany, setUnimakeDialogCompany] = useState<UnimakeCompanyOverviewRow | null>(null);
+  const [unimakeDialogConfig, setUnimakeDialogConfig] = useState<UnimakeCompanyConfig | null>(null);
+  const [unimakeForm, setUnimakeForm] = useState({
+    appId: '',
+    appKey: '',
+    configurationId: '',
+    sandbox: true,
   });
+  const [savingUnimake, setSavingUnimake] = useState(false);
 
   // Estado das configurações de parcelamento
   const [installmentConfig, setInstallmentConfig] = useState<{
@@ -169,14 +175,9 @@ export default function SettingsPage() {
   });
   const [savingInstallmentConfig, setSavingInstallmentConfig] = useState(false);
 
-  // Estado das configurações de boleto
-  const [boletoConfig, setBoletoConfig] = useState({
-    boletoEnabled: false,
-    useBankBoletoForInstallments: false,
-    bankBoletoProvider: '' as string,
-    bankBoletoConfigForm: {} as Record<string, string>,
-  });
-  const [savingBoletoConfig, setSavingBoletoConfig] = useState(false);
+  // Estado das configurações de boleto (empresa) — apenas flag + indicador Unimake
+  const [boletoEnabledForm, setBoletoEnabledForm] = useState(false);
+  const [savingBoletoFlag, setSavingBoletoFlag] = useState(false);
 
   // Estado das taxas de cartão
   interface CardAcquirerRate {
@@ -285,34 +286,79 @@ export default function SettingsPage() {
     }
   };
 
-  const loadAdminBoletoCloudConfig = useCallback(async () => {
+  const loadUnimakeOverview = useCallback(async () => {
     try {
-      setLoadingAdminBoletoCloud(true);
-      const response = await adminApi.getBoletoCloudConfig();
-      setAdminBoletoCloudConfig(response.data);
-      setAdminBoletoCloudForm({
-        boletoCloudApiKey: response.data?.boletoCloudApiKey || '',
-        boletoCloudSandbox: (response.data?.boletoCloudSandbox || 'false') as 'true' | 'false',
-      });
+      setLoadingUnimakeOverview(true);
+      const response = await adminApi.listCompaniesForUnimake();
+      setUnimakeOverview(response.data ?? []);
     } catch (error) {
-      console.error('Erro ao carregar configuração Boleto Cloud:', error);
-      setAdminBoletoCloudConfig(null);
+      console.error('Erro ao carregar lista de empresas Unimake:', error);
+      setUnimakeOverview([]);
     } finally {
-      setLoadingAdminBoletoCloud(false);
+      setLoadingUnimakeOverview(false);
     }
   }, []);
 
-  const handleSaveAdminBoletoCloudConfig = async () => {
+  const openUnimakeDialog = async (company: UnimakeCompanyOverviewRow) => {
+    setUnimakeDialogCompany(company);
+    setUnimakeForm({
+      appId: '',
+      appKey: '',
+      configurationId: '',
+      sandbox: company.unimakeSandbox,
+    });
+    setUnimakeDialogOpen(true);
     try {
-      setSavingAdminBoletoCloud(true);
-      await adminApi.updateBoletoCloudConfig(adminBoletoCloudForm);
-      toast.success('Configuração global do Boleto Cloud salva com sucesso!');
-      await loadAdminBoletoCloudConfig();
+      const response = await adminApi.getCompanyUnimake(company.id);
+      const cfg = response.data;
+      setUnimakeDialogConfig(cfg);
+      setUnimakeForm({
+        appId: cfg?.appId ?? '',
+        appKey: '', // nunca refletir appKey do servidor — usuário digita novamente se quiser alterar
+        configurationId: cfg?.configurationId ?? '',
+        sandbox: cfg?.sandbox ?? true,
+      });
+    } catch (error) {
+      setUnimakeDialogConfig(null);
+    }
+  };
+
+  const closeUnimakeDialog = () => {
+    setUnimakeDialogOpen(false);
+    setUnimakeDialogCompany(null);
+    setUnimakeDialogConfig(null);
+    setUnimakeForm({ appId: '', appKey: '', configurationId: '', sandbox: true });
+  };
+
+  const handleSaveUnimakeConfig = async () => {
+    if (!unimakeDialogCompany) return;
+    if (!unimakeForm.appId.trim()) {
+      toast.error('Informe o App ID');
+      return;
+    }
+    if (!unimakeForm.configurationId.trim()) {
+      toast.error('Informe o Configuration ID');
+      return;
+    }
+    setSavingUnimake(true);
+    try {
+      const payload: { appId?: string; appKey?: string; configurationId?: string; sandbox?: boolean } = {
+        appId: unimakeForm.appId.trim(),
+        configurationId: unimakeForm.configurationId.trim(),
+        sandbox: unimakeForm.sandbox,
+      };
+      if (unimakeForm.appKey.trim()) {
+        payload.appKey = unimakeForm.appKey.trim();
+      }
+      await adminApi.updateCompanyUnimake(unimakeDialogCompany.id, payload);
+      toast.success(`Unimake configurado para ${unimakeDialogCompany.name}.`);
+      await loadUnimakeOverview();
+      closeUnimakeDialog();
     } catch (error: any) {
-      console.error('Erro ao salvar configuração Boleto Cloud:', error);
+      console.error('Erro ao salvar configuração Unimake:', error);
       handleApiError(error);
     } finally {
-      setSavingAdminBoletoCloud(false);
+      setSavingUnimake(false);
     }
   };
 
@@ -926,42 +972,24 @@ export default function SettingsPage() {
         installmentInterestRates: defaultRates,
         maxInstallments: data?.maxInstallments ?? 12,
       });
-      // Sincronizar configuração de boleto (API não retorna bankBoletoConfig; apenas flags)
-      setBoletoConfig((prev) => ({
-        ...prev,
-        boletoEnabled: !!data?.boletoEnabled,
-        useBankBoletoForInstallments: !!data?.useBankBoletoForInstallments,
-        bankBoletoProvider: data?.bankBoletoProvider || '',
-      }));
+      // Sincronizar flag de boleto ativo. Tokens Unimake são gerenciados pelo admin.
+      setBoletoEnabledForm(!!data?.boletoEnabled);
     } catch (error) {
       console.error('Erro ao carregar configurações de parcelamento:', error);
     }
   }, [authApi]);
 
-  const handleSaveBoletoConfig = async () => {
+  // Empresa: salva APENAS o flag `boletoEnabled`. Tokens Unimake são gerenciados pelo admin.
+  const handleSaveBoletoFlag = async () => {
     try {
-      setSavingBoletoConfig(true);
-      const payload: Record<string, unknown> = {
-        boletoEnabled: boletoConfig.boletoEnabled,
-        useBankBoletoForInstallments: boletoConfig.useBankBoletoForInstallments,
-        bankBoletoProvider: boletoConfig.bankBoletoProvider || undefined,
-      };
-      const form = boletoConfig.bankBoletoConfigForm;
-      if (Object.keys(form).length > 0) {
-        const cleaned: Record<string, string> = {};
-        for (const [k, v] of Object.entries(form)) {
-          if (v != null && String(v).trim() !== '') cleaned[k] = String(v).trim();
-        }
-        if (Object.keys(cleaned).length > 0) payload.bankBoletoConfig = cleaned;
-      }
-      await companyApi.updateMyCompany(payload);
-      toast.success('Configurações de boleto salvas!');
+      setSavingBoletoFlag(true);
+      await companyApi.updateMyCompany({ boletoEnabled: boletoEnabledForm });
+      toast.success(boletoEnabledForm ? 'Boletos ativados.' : 'Boletos desativados.');
       await loadCompanyData();
-      await loadInstallmentConfig();
     } catch (error: any) {
       handleApiError(error);
     } finally {
-      setSavingBoletoConfig(false);
+      setSavingBoletoFlag(false);
     }
   };
 
@@ -1038,7 +1066,7 @@ export default function SettingsPage() {
         loadCardRates();
       } else if (user.role === 'admin') {
         loadAdminIbptGlobalConfig();
-        loadAdminBoletoCloudConfig();
+        loadUnimakeOverview();
       }
     }
   }, [
@@ -1052,7 +1080,7 @@ export default function SettingsPage() {
     loadInstallmentConfig,
     loadCardRates,
     loadAdminIbptGlobalConfig,
-    loadAdminBoletoCloudConfig,
+    loadUnimakeOverview,
   ]);
 
   // Carregar preferências na montagem
@@ -1348,79 +1376,183 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* Configuração Global Boleto Cloud - Apenas para Admin */}
+        {/* Configuração Unimake por empresa — Apenas Admin */}
         {user?.role === 'admin' && (
-          <Card className="scroll-mt-24" id="admin-boleto-cloud">
+          <Card className="scroll-mt-24" id="admin-boletos">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Configuração Boleto Cloud
+                Boletos — Unimake (e-Boleto)
               </CardTitle>
               <CardDescription>
-                API Key global do Boleto Cloud. Cada empresa configura apenas o token da sua conta bancária nas suas próprias configurações.
+                Configure por empresa as credenciais Unimake (appId/appKey). Os tokens ficam
+                armazenados criptografados e nunca são expostos à empresa ou ao frontend.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {loadingAdminBoletoCloud ? (
+            <CardContent className="space-y-4">
+              <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800 p-4">
+                <p className="text-sm text-amber-900 dark:text-amber-200 font-medium">
+                  O certificado A1 deve estar previamente cadastrado na ficha da empresa.
+                  Caso contrário, a emissão de boletos falhará.
+                </p>
+              </div>
+              {loadingUnimakeOverview ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-2 text-sm text-muted-foreground">Carregando configuração...</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Carregando empresas...</p>
                 </div>
               ) : (
-                <>
-                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <p className="text-sm text-blue-900 dark:text-blue-100 font-semibold mb-1">
-                      Sobre a Configuração Global
-                    </p>
-                    <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
-                      <li>• Esta API Key será usada por todas as empresas ao emitir boletos via Boleto Cloud</li>
-                      <li>• Cada empresa configura apenas o token da sua conta bancária (painel Boleto Cloud)</li>
-                      <li>• Uma única conta Boleto Cloud pode ter várias contas bancárias (uma por empresa)</li>
-                    </ul>
-                  </div>
-                  <div className="grid gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="admin-boletoCloudApiKey">API Key Boleto Cloud *</Label>
-                      <Input
-                        id="admin-boletoCloudApiKey"
-                        type="password"
-                        value={adminBoletoCloudForm.boletoCloudApiKey}
-                        onChange={(e) => setAdminBoletoCloudForm({ ...adminBoletoCloudForm, boletoCloudApiKey: e.target.value })}
-                        placeholder="Digite a API Key do Boleto Cloud"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Obtenha em: painel Boleto Cloud → Dados do usuário → Gerar token da API
-                      </p>
-                      {adminBoletoCloudConfig?.hasBoletoCloudApiKey && (
-                        <p className="text-xs text-green-600 dark:text-green-400">API Key global configurada</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-medium">Empresa</th>
+                        <th className="text-left p-3 font-medium">CNPJ</th>
+                        <th className="text-center p-3 font-medium">Unimake configurado</th>
+                        <th className="text-center p-3 font-medium">Sandbox</th>
+                        <th className="text-center p-3 font-medium">Certificado A1</th>
+                        <th className="text-right p-3 font-medium">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unimakeOverview.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                            Nenhuma empresa cadastrada.
+                          </td>
+                        </tr>
+                      ) : (
+                        unimakeOverview.map((row) => (
+                          <tr key={row.id} className="border-b hover:bg-muted/30">
+                            <td className="p-3 font-medium">{row.name}</td>
+                            <td className="p-3 text-muted-foreground">{row.cnpj || '—'}</td>
+                            <td className="p-3 text-center">
+                              {row.unimakeConfigured ? (
+                                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                  Sim
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                                  Não
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-center">
+                              {row.unimakeSandbox ? 'Sandbox' : 'Produção'}
+                            </td>
+                            <td className="p-3 text-center">
+                              {row.hasCertificateA1 ? (
+                                <span className="text-green-600 dark:text-green-400">Sim</span>
+                              ) : (
+                                <span className="text-amber-700 dark:text-amber-400">Não</span>
+                              )}
+                            </td>
+                            <td className="p-3 text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openUnimakeDialog(row)}
+                              >
+                                Configurar
+                              </Button>
+                            </td>
+                          </tr>
+                        ))
                       )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Ambiente Sandbox</Label>
-                      <Select
-                        value={adminBoletoCloudForm.boletoCloudSandbox}
-                        onValueChange={(value) => setAdminBoletoCloudForm({ ...adminBoletoCloudForm, boletoCloudSandbox: value as 'true' | 'false' })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="false">Produção</SelectItem>
-                          <SelectItem value="true">Sandbox (testes)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button
-                      onClick={handleSaveAdminBoletoCloudConfig}
-                      disabled={savingAdminBoletoCloud}
-                      className="w-full"
-                    >
-                      {savingAdminBoletoCloud ? 'Salvando...' : 'Salvar Configuração Boleto Cloud'}
-                    </Button>
-                  </div>
-                </>
+                    </tbody>
+                  </table>
+                </div>
               )}
             </CardContent>
+
+            {/* Dialog de configuração Unimake por empresa */}
+            <Dialog
+              open={unimakeDialogOpen}
+              onOpenChange={(open) => (open ? setUnimakeDialogOpen(true) : closeUnimakeDialog())}
+            >
+              <DialogContent className="sm:max-w-[480px]">
+                <DialogHeader>
+                  <DialogTitle>
+                    Configurar Unimake — {unimakeDialogCompany?.name}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Informe as credenciais da conta Unimake desta empresa. A appKey é
+                    criptografada antes de ser persistida e nunca é exposta novamente.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="unimake-appId">App ID</Label>
+                    <Input
+                      id="unimake-appId"
+                      value={unimakeForm.appId}
+                      onChange={(e) =>
+                        setUnimakeForm((f) => ({ ...f, appId: e.target.value }))
+                      }
+                      placeholder="App ID Unimake (painel do cliente)"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="unimake-configurationId">Configuration ID</Label>
+                    <Input
+                      id="unimake-configurationId"
+                      value={unimakeForm.configurationId}
+                      onChange={(e) =>
+                        setUnimakeForm((f) => ({ ...f, configurationId: e.target.value }))
+                      }
+                      placeholder="ID da configuração Unimake (por empresa/ambiente)"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Obrigatório como query string em todas as chamadas ao provedor.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="unimake-appKey">App Key (não será exibida novamente)</Label>
+                    <Input
+                      id="unimake-appKey"
+                      type="password"
+                      value={unimakeForm.appKey}
+                      onChange={(e) =>
+                        setUnimakeForm((f) => ({ ...f, appKey: e.target.value }))
+                      }
+                      placeholder="••••••••"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Deixe em branco para manter a appKey já configurada.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Ambiente Sandbox</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Use produção somente após validar todos os fluxos em sandbox.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={unimakeForm.sandbox}
+                      onCheckedChange={(checked) =>
+                        setUnimakeForm((f) => ({ ...f, sandbox: checked }))
+                      }
+                    />
+                  </div>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800 p-3">
+                    <p className="text-xs text-amber-800 dark:text-amber-200">
+                      {unimakeDialogCompany?.hasCertificateA1
+                        ? 'Certificado A1 já cadastrado para esta empresa — pronto para emitir.'
+                        : 'Atenção: esta empresa ainda não possui Certificado A1 cadastrado. A emissão de boletos falhará até que seja cadastrado na ficha da empresa.'}
+                    </p>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={closeUnimakeDialog} disabled={savingUnimake}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSaveUnimakeConfig} disabled={savingUnimake}>
+                    {savingUnimake ? 'Salvando...' : 'Salvar'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </Card>
         )}
 
@@ -2749,10 +2881,11 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Banknote className="h-5 w-5" />
-                Configurações de Boletos
+                Boletos
               </CardTitle>
               <CardDescription>
-                Ative o módulo de boletos e opcionalmente use boletos bancários reais nas vendas a prazo. Se desativado, as vendas a prazo usam boletos locais (PDF gerado no sistema).
+                Ative o módulo de boletos. Os boletos são emitidos via Unimake e-Boleto,
+                com credenciais gerenciadas exclusivamente pelo administrador.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -2771,131 +2904,40 @@ export default function SettingsPage() {
                     <p className="text-sm text-muted-foreground">Habilita a página de gestão de boletos e a opção de emitir boleto junto à nota fiscal.</p>
                   </div>
                   <Switch
-                    checked={boletoConfig.boletoEnabled}
-                    onCheckedChange={(checked) => setBoletoConfig((c) => ({ ...c, boletoEnabled: checked }))}
+                    checked={boletoEnabledForm}
+                    onCheckedChange={setBoletoEnabledForm}
                     disabled={companyData?.boletoAllowed === false}
                   />
                 </div>
-                {boletoConfig.boletoEnabled && (
-                  <>
-                    <div className="flex items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <Label className="text-base">Usar boletos bancários reais nas vendas a prazo</Label>
-                        <p className="text-sm text-muted-foreground">Se ativado, as parcelas das vendas a prazo geram boletos no banco. Se desativado, continua usando boletos locais (PDF).</p>
-                      </div>
-                      <Switch
-                        checked={boletoConfig.useBankBoletoForInstallments}
-                        onCheckedChange={(checked) => setBoletoConfig((c) => ({ ...c, useBankBoletoForInstallments: checked }))}
-                      />
+
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Boleto Unimake configurado</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Tokens (appId/appKey) são gerenciados exclusivamente pelo administrador.
+                      </p>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Provedor de boleto bancário</Label>
-                      <Select
-                        value={boletoConfig.bankBoletoProvider || 'none'}
-                        onValueChange={(v) => setBoletoConfig((c) => ({ ...c, bankBoletoProvider: v === 'none' ? '' : v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o banco ou agregador" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Selecione...</SelectItem>
-                          <SelectItem value="BB">Banco do Brasil</SelectItem>
-                          <SelectItem value="BRADESCO">Bradesco</SelectItem>
-                          <SelectItem value="ITAU">Itaú</SelectItem>
-                          <SelectItem value="CAIXA">Caixa</SelectItem>
-                          <SelectItem value="INTER">Inter</SelectItem>
-                          <SelectItem value="SANTANDER">Santander</SelectItem>
-                          <SelectItem value="SICOOB">Sicoob</SelectItem>
-                          <SelectItem value="SICREDI">Sicredi</SelectItem>
-                          <SelectItem value="C6">C6 Bank</SelectItem>
-                          <SelectItem value="BOLETO_CLOUD">Boleto Cloud</SelectItem>
-                          <SelectItem value="ASAAS">Asaas</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
-                      <Label className="text-sm font-medium">Configuração da API do banco (opcional)</Label>
-                      {boletoConfig.bankBoletoProvider === 'BOLETO_CLOUD' && (
-                        <p className="text-xs text-muted-foreground">A API Key é configurada pelo administrador. Preencha apenas o token da sua conta bancária abaixo.</p>
-                      )}
-                      {boletoConfig.bankBoletoProvider !== 'BOLETO_CLOUD' && (
-                        <p className="text-xs text-muted-foreground">Preencha conforme a documentação do seu banco. Os dados são armazenados de forma segura e não são exibidos ao carregar a página.</p>
-                      )}
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {boletoConfig.bankBoletoProvider !== 'BOLETO_CLOUD' && (
-                          <>
-                            <div className="space-y-1">
-                              <Label htmlFor="boleto-clientId" className="text-xs">Client ID / API Key</Label>
-                                  <Input
-                                    id="boleto-clientId"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    value={boletoConfig.bankBoletoConfigForm.clientId ?? ''}
-                                    onChange={(e) => setBoletoConfig((c) => ({ ...c, bankBoletoConfigForm: { ...c.bankBoletoConfigForm, clientId: e.target.value } }))}
-                                  />
-                            </div>
-                            <div className="space-y-1">
-                              <Label htmlFor="boleto-clientSecret" className="text-xs">Client Secret / Secret Key</Label>
-                                  <Input
-                                    id="boleto-clientSecret"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    value={boletoConfig.bankBoletoConfigForm.clientSecret ?? ''}
-                                    onChange={(e) => setBoletoConfig((c) => ({ ...c, bankBoletoConfigForm: { ...c.bankBoletoConfigForm, clientSecret: e.target.value } }))}
-                                  />
-                            </div>
-                            <div className="space-y-1">
-                              <Label htmlFor="boleto-convenio" className="text-xs">Convênio</Label>
-                                  <Input
-                                    id="boleto-convenio"
-                                    value={boletoConfig.bankBoletoConfigForm.convenio ?? ''}
-                                    onChange={(e) => setBoletoConfig((c) => ({ ...c, bankBoletoConfigForm: { ...c.bankBoletoConfigForm, convenio: e.target.value } }))}
-                                    placeholder="Ex: 123456"
-                                  />
-                            </div>
-                            <div className="space-y-1">
-                              <Label htmlFor="boleto-carteira" className="text-xs">Carteira</Label>
-                                  <Input
-                                    id="boleto-carteira"
-                                    value={boletoConfig.bankBoletoConfigForm.carteira ?? ''}
-                                    onChange={(e) => setBoletoConfig((c) => ({ ...c, bankBoletoConfigForm: { ...c.bankBoletoConfigForm, carteira: e.target.value } }))}
-                                    placeholder="Ex: 09"
-                                  />
-                            </div>
-                          </>
-                        )}
-                        {boletoConfig.bankBoletoProvider === 'BOLETO_CLOUD' && (
-                          <>
-                            <div className="space-y-1 sm:col-span-2">
-                              <Label htmlFor="boleto-contaToken" className="text-xs">Token da conta (Boleto Cloud) *</Label>
-                                  <Input
-                                    id="boleto-contaToken"
-                                    type="password"
-                                    placeholder="Token da conta bancária (painel Boleto Cloud → Conta → Gerar Token)"
-                                    value={boletoConfig.bankBoletoConfigForm.contaToken ?? ''}
-                                    onChange={(e) => setBoletoConfig((c) => ({ ...c, bankBoletoConfigForm: { ...c.bankBoletoConfigForm, contaToken: e.target.value } }))}
-                                  />
-                                  <p className="text-xs text-muted-foreground">Obrigatório para Boleto Cloud. Obtenha em: Conta → Consultar → Editar → Gerar Token.</p>
-                            </div>
-                            <div className="space-y-1 flex items-center gap-2">
-                              <input
-                                    type="checkbox"
-                                    id="boleto-sandbox"
-                                    checked={boletoConfig.bankBoletoConfigForm.sandbox === 'true'}
-                                    onChange={(e) => setBoletoConfig((c) => ({ ...c, bankBoletoConfigForm: { ...c.bankBoletoConfigForm, sandbox: e.target.checked ? 'true' : 'false' } }))}
-                                    className="rounded border-input"
-                                  />
-                              <Label htmlFor="boleto-sandbox" className="text-xs cursor-pointer">Usar ambiente de testes (Sandbox)</Label>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                        (companyData as any)?.unimakeConfigured
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+                      }`}
+                    >
+                      {(companyData as any)?.unimakeConfigured ? 'Sim' : 'Não'}
+                    </span>
+                  </div>
+                  {(companyData as any)?.unimakeSandbox !== undefined && (
+                    <p className="text-xs text-muted-foreground">
+                      Ambiente atual:{' '}
+                      {(companyData as any)?.unimakeSandbox ? 'Sandbox (testes)' : 'Produção'}
+                    </p>
+                  )}
+                </div>
               </div>
-              <Button onClick={handleSaveBoletoConfig} disabled={savingBoletoConfig}>
-                {savingBoletoConfig ? 'Salvando...' : 'Salvar configurações de boleto'}
+              <Button onClick={handleSaveBoletoFlag} disabled={savingBoletoFlag}>
+                {savingBoletoFlag ? 'Salvando...' : 'Salvar'}
               </Button>
             </CardContent>
           </Card>

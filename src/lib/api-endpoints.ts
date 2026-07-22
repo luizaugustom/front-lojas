@@ -632,8 +632,34 @@ export const scaleApi = {
 };
 
 // ============================================================================
-// BOLETO (Billet)
+// BOLETO (Billet) — Unimake e-Boleto
 // ============================================================================
+
+/**
+ * Resposta de configuração Unimake de uma empresa.
+ * `configured: true` indica que `appId` + `appKey` já foram cadastrados.
+ * O `appKey` NUNCA é exposto em GET — apenas o status `configured`.
+ */
+export interface UnimakeCompanyConfig {
+  appId: string;
+  configurationId: string;
+  sandbox: boolean;
+  configured: boolean;
+}
+
+/**
+ * Linha da tabela de overview (Admin) — empresas × Unimake.
+ */
+export interface UnimakeCompanyOverviewRow {
+  id: string;
+  name: string;
+  cnpj?: string | null;
+  unimakeConfigured: boolean;
+  unimakeSandbox: boolean;
+  hasCertificateA1: boolean;
+  boletoAllowed: boolean;
+  boletoEnabled: boolean;
+}
 
 export const billetApi = {
   list: (params?: { page?: number; limit?: number; status?: string; customerId?: string; startDate?: string; endDate?: string }) =>
@@ -643,15 +669,6 @@ export const billetApi = {
   cancel: (id: string) => api.post(`/billet/${id}/cancel`),
   markAsPaid: (id: string) => api.post(`/billet/${id}/mark-paid`),
   sendWhatsApp: (id: string) => api.post(`/billet/${id}/send-whatsapp`),
-  /** Envia arquivo CNAB de retorno para conciliar pagamentos (Boleto Cloud). */
-  processCnabReturn: (file: File) => {
-    const form = new FormData();
-    form.append('arquivo', file);
-    return api.post<{ processed: boolean; markedAsPaid: number; titlesInFile: number; message: string }>(
-      '/billet/cnab/process-return',
-      form,
-    );
-  },
 };
 
 // ============================================================================
@@ -1721,16 +1738,29 @@ export const adminApi = {
     }),
 
   /**
-   * PATCH /admin/boleto-cloud-config
-   * Roles: ADMIN - Atualizar configuração global do Boleto Cloud
+   * GET /admin/companies/unimake-overview
+   * Roles: ADMIN — Lista todas as empresas com o estado da integração Unimake.
    */
-  updateBoletoCloudConfig: (data: any) => api.patch('/admin/boleto-cloud-config', data),
+  listCompaniesForUnimake: () =>
+    api.get<UnimakeCompanyOverviewRow[]>('/admin/companies/unimake-overview'),
 
   /**
-   * GET /admin/boleto-cloud-config
-   * Roles: ADMIN - Obter configuração global do Boleto Cloud
+   * GET /admin/companies/:companyId/unimake
+   * Roles: ADMIN — Obter configuração Unimake de uma empresa.
+   * NÃO retorna o `appKey` — apenas `configured`, `appId` e `sandbox`.
    */
-  getBoletoCloudConfig: () => api.get('/admin/boleto-cloud-config'),
+  getCompanyUnimake: (companyId: string) =>
+    api.get<UnimakeCompanyConfig>(`/admin/companies/${companyId}/unimake`),
+
+  /**
+   * PATCH /admin/companies/:companyId/unimake
+   * Roles: ADMIN — Atualizar configuração Unimake (appId / appKey / sandbox).
+   * Todos os campos são opcionais (atualização parcial).
+   */
+  updateCompanyUnimake: (
+    companyId: string,
+    data: { appId?: string; appKey?: string; configurationId?: string; sandbox?: boolean },
+  ) => api.patch<UnimakeCompanyConfig>(`/admin/companies/${companyId}/unimake`, data),
 };
 
 // ============================================================================

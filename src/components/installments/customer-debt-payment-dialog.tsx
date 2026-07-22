@@ -27,11 +27,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Loader2, Square, CheckSquare, Eye, Download } from 'lucide-react';
+import { Loader2, Square, CheckSquare, Eye } from 'lucide-react';
 import { PaymentReceiptConfirmDialog } from './payment-receipt-confirm-dialog';
 import { BulkPaymentReceipt } from './bulk-payment-receipt';
 import { InstallmentProductsDialog } from './installment-products-dialog';
-import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 
 interface CustomerDebtPaymentDialogProps {
   open: boolean;
@@ -58,15 +57,6 @@ interface CustomerDebtSummary {
     totalInstallments: number;
     saleId?: string;
   }>;
-}
-
-interface GeneratedBillet {
-  installmentId: string;
-  installmentNumber?: number;
-  totalInstallments?: number;
-  dueDate?: string;
-  remainingAmount?: number | string;
-  newBilletPdf: string;
 }
 
 const toNumber = (value: any): number => {
@@ -136,8 +126,6 @@ export function CustomerDebtPaymentDialog({
   const [paymentData, setPaymentData] = useState<any>(null);
   const [selectedInstallmentId, setSelectedInstallmentId] = useState<string | null>(null);
   const [debtFilter, setDebtFilter] = useState<DebtFilter>('all');
-  const [showGeneratedBillets, setShowGeneratedBillets] = useState(false);
-  const [showBilletConfirm, setShowBilletConfirm] = useState(false);
 
   const companyInfo = useMemo(() => {
     if (!company) return null;
@@ -182,8 +170,6 @@ export function CustomerDebtPaymentDialog({
       setPaymentData(null);
       setSelectedInstallmentId(null);
       setDebtFilter('all');
-      setShowGeneratedBillets(false);
-      setShowBilletConfirm(false);
     }
   }, [open]);
 
@@ -245,25 +231,6 @@ export function CustomerDebtPaymentDialog({
   const hasFilteredPendingInstallments = filteredInstallments.some(
     (inst) => toNumber(inst.remainingAmount) > 0,
   );
-
-  const generatedBillets = useMemo<GeneratedBillet[]>(() => {
-    if (!paymentData?.payments || !Array.isArray(paymentData.payments)) return [];
-    return paymentData.payments
-      .filter((payment: any) => !!payment?.newBilletPdf)
-      .map((payment: any) => {
-        const details = installmentDetailsById.get(payment.installmentId);
-        return {
-          installmentId: payment.installmentId,
-          installmentNumber: details?.installmentNumber,
-          totalInstallments: details?.totalInstallments,
-          dueDate: payment.dueDate ?? details?.dueDate,
-          remainingAmount: payment.remainingAmount ?? details?.remainingAmount,
-          newBilletPdf: payment.newBilletPdf,
-        };
-      });
-  }, [paymentData?.payments, installmentDetailsById]);
-
-  const hasGeneratedBillets = generatedBillets.length > 0;
 
   const toggleSelection = (installmentId: string) => {
     setSelection((prev) => {
@@ -375,23 +342,15 @@ export function CustomerDebtPaymentDialog({
         sellerName: user?.name,
         payments: response?.data?.payments || [],
       });
-      const payments = Array.isArray(response?.data?.payments) ? response.data.payments : [];
-      const hasNewBillets = payments.some((payment: any) => !!payment?.newBilletPdf);
-      if (hasNewBillets) {
-        setShowBilletConfirm(true);
-        setShowGeneratedBillets(false);
-      } else {
-        setShowGeneratedBillets(false);
-      }
-      
+
+      // Pagamento parcial: parcela atualizada, boleto existente na Unimake permanece.
+      // A empresa baixa o PDF atualizado em /boletos (sem reimpressão local).
       toast.success(response?.data?.message || 'Pagamentos registrados com sucesso!');
       await refetch();
       onPaid?.();
-      
+
       // Mostra o diálogo de confirmação de impressão
-      if (!hasNewBillets) {
-        setShowReceiptConfirm(true);
-      }
+      setShowReceiptConfirm(true);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Erro ao registrar pagamentos');
@@ -444,49 +403,12 @@ export function CustomerDebtPaymentDialog({
 
   const handleSkipReceipt = () => {
     setShowReceiptConfirm(false);
-    if (hasGeneratedBillets && showGeneratedBillets) {
-      return;
-    }
     setPaymentData(null);
     onClose();
   };
 
-  const handleShowGeneratedBillets = () => {
-    setShowBilletConfirm(false);
-    setShowGeneratedBillets(true);
-    setShowReceiptConfirm(true);
-  };
-
-  const handleSkipGeneratedBillets = () => {
-    setShowBilletConfirm(false);
-    setShowGeneratedBillets(false);
-    setShowReceiptConfirm(true);
-  };
-
-  const downloadBilletPdf = (base64: string, filename: string) => {
-    if (!base64 || typeof window === 'undefined') return;
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i += 1) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
   const handlePrintComplete = () => {
     setShowReceipt(false);
-    if (hasGeneratedBillets) {
-      return;
-    }
     setPaymentData(null);
     onClose();
   };
@@ -701,47 +623,6 @@ export function CustomerDebtPaymentDialog({
                   />
                 </div>
               </div>
-
-              {hasGeneratedBillets && showGeneratedBillets && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
-                  <div className="text-sm font-semibold">Boletos gerados para o proximo mes</div>
-                  <div className="mt-3 space-y-2">
-                    {generatedBillets.map((billet: GeneratedBillet) => {
-                      const installmentLabel =
-                        billet.installmentNumber && billet.totalInstallments
-                          ? `Parcela ${billet.installmentNumber}/${billet.totalInstallments}`
-                          : 'Parcela atualizada';
-                      const dueDateLabel = billet.dueDate ? formatDate(billet.dueDate) : 'Nao informado';
-                      const fileName =
-                        billet.installmentNumber && billet.totalInstallments
-                          ? `boleto-parcela-${billet.installmentNumber}-${billet.totalInstallments}.pdf`
-                          : 'boleto-restante.pdf';
-
-                      return (
-                        <div
-                          key={billet.installmentId}
-                          className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-100 bg-white px-3 py-2"
-                        >
-                          <div className="text-sm">
-                            <div className="font-medium">{installmentLabel}</div>
-                            <div className="text-xs text-amber-800">Vencimento: {dueDateLabel}</div>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => downloadBilletPdf(billet.newBilletPdf, fileName)}
-                            className="flex items-center gap-2"
-                          >
-                            <Download className="h-4 w-4" />
-                            Baixar boleto
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -780,16 +661,6 @@ export function CustomerDebtPaymentDialog({
         open={showReceiptConfirm}
         onConfirm={handlePrintReceipt}
         onCancel={handleSkipReceipt}
-      />
-
-      <ConfirmationModal
-        open={showBilletConfirm}
-        onClose={handleSkipGeneratedBillets}
-        onConfirm={handleShowGeneratedBillets}
-        title="Boleto do restante"
-        description="Deseja visualizar ou imprimir o boleto referente ao valor restante da dívida?"
-        confirmText="Visualizar boleto"
-        cancelText="Não agora"
       />
 
       {/* Comprovante de pagamento para impressão */}
