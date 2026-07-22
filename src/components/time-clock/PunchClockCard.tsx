@@ -5,25 +5,36 @@ import { Clock, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PunchTypeIcon, PUNCH_TYPE_LABELS } from './PunchTypeIcon';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  useMyToday,
   useRegisterTimeClock,
 } from '@/hooks/useTimeClock';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { cn } from '@/lib/utils';
-import type { TimeClockConfig, TimeClockType } from '@/types';
+import type { TimeClockConfig, TimeClockTodayResponse, TimeClockType } from '@/types';
 
 interface Props {
   onRequireQrScan?: () => void;
   config?: TimeClockConfig | null;
   className?: string;
+  today?: TimeClockTodayResponse | null;
+  loading?: boolean;
+  onPunched?: () => void;
+  qrToken?: string;
 }
 
-export function PunchClockCard({ onRequireQrScan, config, className }: Props) {
-  const { data, isLoading, refetch } = useMyToday(true);
+export function PunchClockCard({
+  onRequireQrScan,
+  config,
+  className,
+  today,
+  loading,
+  onPunched,
+  qrToken,
+}: Props) {
   const { coords, status: geoStatus, refresh: refreshGeo } = useGeolocation({
     autoStart: true,
   });
@@ -33,12 +44,12 @@ export function PunchClockCard({ onRequireQrScan, config, className }: Props) {
     message: string;
   } | null>(null);
 
-  const punches = data?.punches ?? [];
-  const nextExpected = data?.nextExpected;
+  const punches = today?.punches ?? [];
+  const nextExpected = today?.nextExpected;
   const completed = punches.length >= 4;
   const progress = (punches.length / 4) * 100;
 
-  const handlePunch = async (qrToken?: string) => {
+  const handlePunch = async (token?: string) => {
     if (!nextExpected) return;
 
     const needsLocation = config?.requireLocation ?? true;
@@ -53,7 +64,7 @@ export function PunchClockCard({ onRequireQrScan, config, className }: Props) {
       });
       return;
     }
-    if (needsQr && !qrToken) {
+    if (needsQr && !token) {
       onRequireQrScan?.();
       return;
     }
@@ -65,7 +76,7 @@ export function PunchClockCard({ onRequireQrScan, config, className }: Props) {
         latitude: coords?.latitude,
         longitude: coords?.longitude,
         accuracyMeters: coords?.accuracyMeters,
-        qrToken,
+        qrToken: token,
         deviceInfo: {
           userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
           platform: typeof navigator !== 'undefined' ? navigator.platform : '',
@@ -80,7 +91,7 @@ export function PunchClockCard({ onRequireQrScan, config, className }: Props) {
           ? 'Ponto registrado, mas está fora do raio. Aguardando aprovação.'
           : `Ponto de ${PUNCH_TYPE_LABELS[type] ?? 'marcado'} registrado!`,
       });
-      refetch();
+      onPunched?.();
     } catch (e: any) {
       setLastResult({
         ok: false,
@@ -114,13 +125,13 @@ export function PunchClockCard({ onRequireQrScan, config, className }: Props) {
           <Progress value={progress} className="h-2" />
         </div>
 
-        {isLoading ? (
+        {loading ? (
           <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
             Carregando...
           </div>
         ) : completed ? (
-          <div className="flex flex-col items-center gap-2 py-4 text-emerald-700">
+          <div className="flex flex-col items-center gap-2 py-4 text-emerald-700 dark:text-emerald-400">
             <CheckCircle2 className="h-10 w-10" />
             <p className="font-semibold">Jornada completa!</p>
             <p className="text-xs text-muted-foreground">
@@ -129,7 +140,7 @@ export function PunchClockCard({ onRequireQrScan, config, className }: Props) {
           </div>
         ) : nextExpected ? (
           <>
-            <div className="rounded-lg border-2 border-dashed border-blue-300 bg-blue-50/40 p-4 flex items-center gap-3">
+            <div className="rounded-lg border-2 border-dashed border-blue-300 bg-blue-50/40 dark:bg-blue-950/30 dark:border-blue-800 p-4 flex items-center gap-3">
               <PunchTypeIcon type={nextExpected as TimeClockType} size="lg" />
               <div>
                 <p className="text-xs text-muted-foreground">Próxima marcação</p>
@@ -143,7 +154,7 @@ export function PunchClockCard({ onRequireQrScan, config, className }: Props) {
               size="lg"
               className="w-full"
               disabled={register.isPending || geoStatus === 'denied'}
-              onClick={() => handlePunch()}
+              onClick={() => handlePunch(qrToken)}
             >
               {register.isPending ? (
                 <>
@@ -161,21 +172,17 @@ export function PunchClockCard({ onRequireQrScan, config, className }: Props) {
         ) : null}
 
         {lastResult && (
-          <div
-            className={cn(
-              'p-3 rounded-md text-sm flex items-start gap-2',
-              lastResult.ok
-                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                : 'bg-amber-50 text-amber-800 border border-amber-200',
-            )}
-          >
+          <Alert variant={lastResult.ok ? 'success' : 'warning'}>
             {lastResult.ok ? (
-              <CheckCircle2 className="h-4 w-4 mt-0.5" />
+              <CheckCircle2 className="h-4 w-4" />
             ) : (
-              <AlertTriangle className="h-4 w-4 mt-0.5" />
+              <AlertTriangle className="h-4 w-4" />
             )}
-            <p>{lastResult.message}</p>
-          </div>
+            <AlertTitle>
+              {lastResult.ok ? 'Ponto registrado' : 'Atenção'}
+            </AlertTitle>
+            <AlertDescription>{lastResult.message}</AlertDescription>
+          </Alert>
         )}
       </CardContent>
     </Card>

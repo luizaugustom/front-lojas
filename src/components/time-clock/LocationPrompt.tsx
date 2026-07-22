@@ -59,7 +59,7 @@ export function LocationPrompt({ config, onRefresh }: Props) {
         )}
 
         {status === 'denied' && (
-          <div className="flex items-start gap-2 p-2 rounded-md bg-red-50 border border-red-200 text-xs text-red-700">
+          <div className="flex items-start gap-2 p-2 rounded-md bg-red-50 border border-red-200 text-xs text-red-700 dark:bg-red-950/30 dark:border-red-800 dark:text-red-300">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             <div>
               <p className="font-medium">Permissão de localização negada</p>
@@ -71,14 +71,14 @@ export function LocationPrompt({ config, onRefresh }: Props) {
         )}
 
         {status === 'unsupported' && (
-          <div className="flex items-start gap-2 p-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-700">
+          <div className="flex items-start gap-2 p-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-700 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             <p>Seu navegador não suporta geolocalização.</p>
           </div>
         )}
 
         {status === 'error' && error && (
-          <div className="flex items-start gap-2 p-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-700">
+          <div className="flex items-start gap-2 p-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-700 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             <p>{error}</p>
           </div>
@@ -104,8 +104,8 @@ export function LocationPrompt({ config, onRefresh }: Props) {
                 <span
                   className={`font-medium flex items-center gap-1 ${
                     distanceM <= config.radiusMeters
-                      ? 'text-emerald-700'
-                      : 'text-amber-700'
+                      ? 'text-emerald-700 dark:text-emerald-400'
+                      : 'text-amber-700 dark:text-amber-400'
                   }`}
                 >
                   {distanceM <= config.radiusMeters && (

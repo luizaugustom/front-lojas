@@ -11,6 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -166,50 +174,49 @@ export function TimeClockManageView() {
             </p>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs text-muted-foreground border-b">
-                      <th className="py-2 pr-2">Data/Hora</th>
-                      <th className="py-2 pr-2">Funcionário</th>
-                      <th className="py-2 pr-2">Tipo</th>
-                      <th className="py-2 pr-2">Distância</th>
-                      <th className="py-2 pr-2">Status</th>
-                      <th className="py-2 pr-2"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((p) => (
-                      <tr key={p.id} className="border-b last:border-0">
-                        <td className="py-2 pr-2 whitespace-nowrap">
-                          {format(new Date(p.timestamp), "dd/MM HH:mm", { locale: ptBR })}
-                        </td>
-                        <td className="py-2 pr-2">{p.seller?.name ?? '—'}</td>
-                        <td className="py-2 pr-2">
-                          <PunchTypeIcon type={p.type} size="sm" showLabel />
-                        </td>
-                        <td className="py-2 pr-2 text-xs text-muted-foreground">
-                          {typeof p.distanceMeters === 'number'
-                            ? formatDistance(p.distanceMeters)
-                            : '—'}
-                        </td>
-                        <td className="py-2 pr-2">
-                          <PunchStatusBadge status={p.status} />
-                        </td>
-                        <td className="py-2 pr-2 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setAdjustTarget(p)}
-                          >
-                            <Edit3 className="h-3.5 w-3.5" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">Data/Hora</TableHead>
+                    <TableHead>Funcionário</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Distância</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="whitespace-nowrap">
+                        {format(new Date(p.timestamp), "dd/MM HH:mm", { locale: ptBR })}
+                      </TableCell>
+                      <TableCell>{p.seller?.name ?? '—'}</TableCell>
+                      <TableCell>
+                        <PunchTypeIcon type={p.type} size="sm" showLabel />
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {typeof p.distanceMeters === 'number'
+                          ? formatDistance(p.distanceMeters)
+                          : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <PunchStatusBadge status={p.status} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setAdjustTarget(p)}
+                          aria-label="Ajustar marcação"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
 
               {totalPages > 1 && (
                 <PaginationControls

@@ -24,12 +24,15 @@ function normalizeHexColor(color: string | null): string {
 interface UIState {
   sidebarOpen: boolean;
   sidebarCollapsed: boolean;
+  sidebarHidden: boolean;
   theme: 'light' | 'dark';
   companyColor: string | null;
   toggleSidebar: () => void;
   toggleSidebarCollapsed: () => void;
+  toggleSidebarHidden: () => void;
   setSidebarOpen: (open: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  setSidebarHidden: (hidden: boolean) => void;
   toggleTheme: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
   setCompanyColor: (color: string | null) => void;
@@ -41,6 +44,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   sidebarOpen: false,
   // Sidebar no desktop: colapsado (ícones) vs expandido (ícones + texto)
   sidebarCollapsed: true,
+  // Oculta completamente o menu (modo tela cheia do PDV)
+  sidebarHidden: false,
   theme: 'light',
   companyColor: null,
   
@@ -51,6 +56,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   toggleSidebarCollapsed: () => {
     set({ sidebarCollapsed: !get().sidebarCollapsed });
   },
+
+  toggleSidebarHidden: () => {
+    set({ sidebarHidden: !get().sidebarHidden });
+  },
   
   setSidebarOpen: (open) => {
     set({ sidebarOpen: open });
@@ -58,6 +67,10 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   setSidebarCollapsed: (collapsed) => {
     set({ sidebarCollapsed: collapsed });
+  },
+
+  setSidebarHidden: (hidden) => {
+    set({ sidebarHidden: hidden });
   },
   
   toggleTheme: () => {

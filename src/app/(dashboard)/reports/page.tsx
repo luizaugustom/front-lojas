@@ -192,7 +192,7 @@ export default function ReportsPage() {
             Gere relatórios completos para envio à contabilidade
           </p>
         </div>
-        <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+        <Button variant="ghost" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
           <HelpCircle className="h-5 w-5" />
         </Button>
       </div>

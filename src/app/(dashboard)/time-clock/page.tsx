@@ -28,7 +28,7 @@ import { useMyToday, useMyStats, useTimeClockConfig } from '@/hooks/useTimeClock
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types';
 
-type TabKey = 'punch' | 'history' | 'pending' | 'qr' | 'config';
+type TabKey = 'punch' | 'history' | 'pending' | 'manage' | 'qr' | 'config';
 
 interface TabDef {
   key: TabKey;
@@ -41,7 +41,7 @@ const ALL_TABS: TabDef[] = [
   { key: 'punch', label: 'Bater Ponto', icon: Clock, roles: ['vendedor', 'empresa', 'admin', 'gestor'] },
   { key: 'history', label: 'Histórico', icon: ListChecks, roles: ['vendedor'] },
   { key: 'pending', label: 'Pendentes', icon: AlertCircle, roles: ['empresa', 'admin', 'gestor'] },
-  { key: 'history', label: 'Histórico Geral', icon: ListChecks, roles: ['empresa', 'admin', 'gestor'] },
+  { key: 'manage', label: 'Histórico Geral', icon: ListChecks, roles: ['empresa', 'admin', 'gestor'] },
   { key: 'qr', label: 'QR da Loja', icon: QrCode, roles: ['empresa', 'admin'] },
   { key: 'config', label: 'Configurações', icon: SettingsIcon, roles: ['empresa', 'admin'] },
 ];
@@ -98,7 +98,7 @@ export default function TimeClockPage() {
     router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
   };
 
-  const { data: today, isLoading: loadingToday } = useMyToday(true);
+  const { data: today, isLoading: loadingToday, refetch: refetchToday } = useMyToday(true);
   const { data: stats, isLoading: loadingStats } = useMyStats();
   const { data: config } = useTimeClockConfig();
 
@@ -154,6 +154,10 @@ export default function TimeClockPage() {
         <TabsContent value="punch" className="space-y-4 max-w-2xl mx-auto">
           <PunchClockCard
             config={config}
+            today={today}
+            loading={loadingToday}
+            onPunched={refetchToday}
+            qrToken={qrToken}
             onRequireQrScan={() => setScannerOpen(true)}
           />
 
@@ -201,7 +205,7 @@ export default function TimeClockPage() {
               />
             </TabsContent>
 
-            <TabsContent value="history" className="space-y-4 max-w-5xl mx-auto">
+            <TabsContent value="manage" className="space-y-4 max-w-5xl mx-auto">
               <TimeClockManageView />
               <TimeClockReportForm />
             </TabsContent>

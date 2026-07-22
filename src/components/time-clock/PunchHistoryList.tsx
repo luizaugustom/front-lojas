@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PunchTypeIcon } from './PunchTypeIcon';
 import { PunchStatusBadge } from './PunchStatusBadge';
-import { formatMinutesAsHM } from './format';
+import { formatDistance } from './format';
 import type { TimeClockType, TimeClockStatus } from '@/types';
 
 export interface PunchItem {
@@ -70,7 +70,7 @@ export function PunchHistoryList({
                 <div className="flex items-center gap-2">
                   {typeof p.distanceMeters === 'number' && (
                     <span className="text-[10px] text-muted-foreground hidden sm:inline">
-                      {formatMinutesAsHM(p.distanceMeters)}m
+                      {formatDistance(p.distanceMeters)}
                     </span>
                   )}
                   {p.status && <PunchStatusBadge status={p.status} />}

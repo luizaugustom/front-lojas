@@ -2,8 +2,9 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Search, FileText, ShoppingCart, HelpCircle } from 'lucide-react';
+import { Search, FileText, ShoppingCart, HelpCircle, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -30,6 +31,8 @@ import type { Product } from '@/types';
 import { parseScaleBarcode } from '@/lib/scale-barcode';
 import { useUIStore } from '@/store/ui-store';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { companyApi } from '@/lib/api-endpoints';
+import { getImageUrl } from '@/lib/image-utils';
 import { logger } from '@/lib/logger';
 
 const isValidHex = (hex: string | null | undefined) => {
@@ -67,6 +70,7 @@ const hexToRgba = (hex: string, alpha: number) => {
 };
 
 export default function SalesPage() {
+  const router = useRouter();
   const { api, user } = useAuth();
   const [search, setSearch] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -84,6 +88,9 @@ export default function SalesPage() {
   const [keyboardFocusArea, setKeyboardFocusArea] = useState<'products' | 'cart'>('cart');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const companyColor = useUIStore((state) => state.companyColor);
+  const sidebarHidden = useUIStore((state) => state.sidebarHidden);
+  const toggleSidebarHidden = useUIStore((state) => state.toggleSidebarHidden);
+  const setSidebarHidden = useUIStore((state) => state.setSidebarHidden);
   const brandColor = useMemo(() => normalizeHex(companyColor), [companyColor]);
   const gradientStart = useMemo(() => brandColor, [brandColor]);
   const gradientEnd = useMemo(() => adjustHexBrightness(brandColor, 40), [brandColor]);
@@ -110,6 +117,24 @@ export default function SalesPage() {
   const [openingDialogOpen, setOpeningDialogOpen] = useState(false);
   const [openingBalance, setOpeningBalance] = useState('');
   const [creatingClosure, setCreatingClosure] = useState(false);
+
+  useEffect(() => {
+    return () => setSidebarHidden(false);
+  }, [setSidebarHidden]);
+
+  const { data: companyData } = useQuery({
+    queryKey: ['my-company', user?.companyId],
+    queryFn: () => companyApi.myCompany().then((r) => r.data),
+    enabled: !!user?.companyId && (user.role === 'empresa' || user.role === 'vendedor'),
+  });
+  const companyLogoUrl = companyData?.logoUrl;
+  const companyLogoSrc =
+    companyLogoUrl &&
+    companyLogoUrl.trim() !== '' &&
+    companyLogoUrl !== 'null' &&
+    companyLogoUrl !== 'undefined'
+      ? getImageUrl(companyLogoUrl)
+      : null;
 
   const { data: productsResponse, isLoading } = useQuery({
     queryKey: ['products', search],
@@ -366,6 +391,20 @@ export default function SalesPage() {
   useKeyboardShortcuts({
     shortcuts: [
       {
+        key: 'F4',
+        handler: () => {
+          router.push('/installments');
+        },
+        context: ['sales'],
+      },
+      {
+        key: 'F8',
+        handler: () => {
+          router.push('/cash-closure');
+        },
+        context: ['sales'],
+      },
+      {
         key: 'F6',
         handler: () => {
           if (items.length > 0 && !checkoutOpen && !budgetOpen && !openingDialogOpen) {
@@ -461,7 +500,19 @@ export default function SalesPage() {
   };
 
   return (
-    <div className="relative flex flex-col md:flex-row h-full md:h-[calc(100vh-8rem)] gap-4">
+    <div className={`relative flex flex-col md:flex-row gap-4 ${sidebarHidden ? 'h-full min-h-0' : 'h-full md:h-[calc(100vh-8rem)]'}`}>
+      {sidebarHidden && companyLogoSrc && (
+        <div className="absolute inset-x-0 top-0 z-10 flex justify-center pointer-events-none">
+          <div className="h-16 sm:h-20 w-[55%] max-w-[400px]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={companyLogoSrc}
+              alt="Logomarca da empresa"
+              className="h-full w-full object-contain"
+            />
+          </div>
+        </div>
+      )}
       {/* Products Section */}
       <div
         className={`flex-1 flex flex-col overflow-hidden rounded-lg transition-all ${
@@ -469,9 +520,23 @@ export default function SalesPage() {
         }`}
       >
         <div className="mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <h1 className="text-2xl font-bold tracking-tight">Vendas</h1>
-            <Button variant="outline" size="icon" onClick={() => setPageHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+          <div className="flex items-center gap-2 mb-2 relative min-h-10">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebarHidden}
+              aria-label={sidebarHidden ? 'Mostrar menu' : 'Ocultar menu'}
+              title={sidebarHidden ? 'Mostrar menu' : 'Ocultar menu'}
+              className="shrink-0"
+            >
+              {sidebarHidden ? (
+                <PanelLeftOpen className="h-5 w-5" />
+              ) : (
+                <PanelLeftClose className="h-5 w-5" />
+              )}
+            </Button>
+            <h1 className={`text-2xl font-bold tracking-tight ${sidebarHidden ? 'sr-only' : ''}`}>Vendas</h1>
+            <Button variant="ghost" size="icon" onClick={() => setPageHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
               <HelpCircle className="h-5 w-5" />
             </Button>
           </div>

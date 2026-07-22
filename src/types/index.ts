@@ -788,7 +788,7 @@ export interface TimeClockDaySummary {
 
 export interface TimeClockTodayResponse {
   date: string;
-  punches: Array<{ type: TimeClockType; timestamp: string; status: TimeClockStatus }>;
+  punches: TimeClock[];
   nextExpected: TimeClockType | null;
   daySummary: TimeClockDaySummary | null;
   config: TimeClockConfig;

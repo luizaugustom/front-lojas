@@ -18,7 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const { isAuthenticated, user } = useAuth();
   const { company } = useCompany();
-  const { sidebarCollapsed } = useUIStore();
+  const { sidebarCollapsed, sidebarHidden } = useUIStore();
   const [showTrialModal, setShowTrialModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -109,11 +109,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar />
-      <div className={sidebarCollapsed ? 'flex flex-1 flex-col overflow-hidden lg:pl-16' : 'flex flex-1 flex-col overflow-hidden lg:pl-64'}>
-        <Header />
+      {!sidebarHidden && <Sidebar />}
+      <div
+        className={
+          sidebarHidden
+            ? 'flex flex-1 flex-col overflow-hidden pl-0'
+            : sidebarCollapsed
+              ? 'flex flex-1 flex-col overflow-hidden lg:pl-16'
+              : 'flex flex-1 flex-col overflow-hidden lg:pl-64'
+        }
+      >
+        {!sidebarHidden && <Header />}
         <main 
-          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 sm:p-4 lg:p-6"
+          className={
+            sidebarHidden
+              ? 'flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 sm:p-4'
+              : 'flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 sm:p-4 lg:p-6'
+          }
           role="main"
           aria-label="Conteúdo principal"
         >

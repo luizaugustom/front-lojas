@@ -461,7 +461,7 @@ export default function InboundInvoicesPage() {
           <p className="text-muted-foreground">Acompanhe as notas de compra/entrada (XML) recebidas</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
+          <Button variant="ghost" size="icon" onClick={() => setHelpOpen(true)} aria-label="Ajuda" className="shrink-0 hover:scale-105 transition-transform">
             <HelpCircle className="h-5 w-5" />
           </Button>
           {user?.role === 'empresa' && (
