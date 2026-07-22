@@ -1004,11 +1004,23 @@ export default function InboundInvoicesPage() {
                       }
                     }}
                     onKeyDown={(e) => {
-                      if (e.key !== 'Enter') return;
-                      if (editingDoc || !addOpen) return;
-                      if (expandNfeAccessKeyCandidates(accessKey).length === 0) return;
+                      if (e.key !== 'Enter' && e.key !== 'NumpadEnter') return;
                       e.preventDefault();
-                      void runSefazInboundFetchAndParse(accessKey);
+                      e.stopPropagation();
+                      if (editingDoc || !addOpen || sefazInboundXmlLoading) return;
+                      // Lê do input (não do state): leitores enviam Enter antes do React atualizar
+                      const raw = (e.currentTarget as HTMLInputElement).value;
+                      const extracted = extractNfeAccessKey(raw);
+                      const digits = raw.replace(/\D/g, '');
+                      const key = extracted ?? digits;
+                      setAccessKey(key);
+                      if (expandNfeAccessKeyCandidates(key).length === 0) {
+                        toast.error(
+                          'Chave inválida para busca. Informe 44 dígitos ou leia o código de barras (42 sem UF) e pressione Enter.',
+                        );
+                        return;
+                      }
+                      void runSefazInboundFetchAndParse(key);
                     }}
                     className={`flex-1 pr-10 ${
                       sefazFetchStatus === 'success' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''
@@ -1047,6 +1059,27 @@ export default function InboundInvoicesPage() {
                 </div>
                 <Button
                   type="button"
+                  variant="secondary"
+                  disabled={sefazInboundXmlLoading || expandNfeAccessKeyCandidates(accessKey).length === 0}
+                  onClick={() => {
+                    if (expandNfeAccessKeyCandidates(accessKey).length === 0) {
+                      toast.error(
+                        'Chave inválida para busca. Informe 44 dígitos ou leia o código de barras (42 sem UF).',
+                      );
+                      return;
+                    }
+                    void runSefazInboundFetchAndParse(accessKey);
+                  }}
+                  title="Buscar XML na SEFAZ"
+                >
+                  {sefazInboundXmlLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Buscar'
+                  )}
+                </Button>
+                <Button
+                  type="button"
                   variant="outline"
                   size="icon"
                   onClick={() => setBarcodeScannerOpen(true)}
@@ -1078,7 +1111,7 @@ export default function InboundInvoicesPage() {
                   </span>
                 ) : (
                   <>
-                    {accessKey.replace(/\D/g, '').length} dígitos — aceita 44 completos ou 42 do código de barras (sem UF). Pressione Enter para buscar na SEFAZ.
+                    {accessKey.replace(/\D/g, '').length} dígitos — aceita 44 completos ou 42 do código de barras (sem UF). Pressione Enter ou clique em Buscar.
                   </>
                 )}
               </p>
