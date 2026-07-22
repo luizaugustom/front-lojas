@@ -1933,7 +1933,7 @@ export default function InboundInvoicesPage() {
             return;
           }
           setAccessKey(value);
-          toast.message('Chave preenchida. Pressione Enter no campo para buscar na SEFAZ.');
+          toast.success('Chave preenchida. Pressione Enter no campo para buscar na SEFAZ.');
         }}
       />
     </div>
