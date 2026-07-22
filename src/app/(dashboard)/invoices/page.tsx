@@ -155,7 +155,9 @@ export default function InvoicesPage() {
   // Estados para o diálogo de busca de produtos
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [productSearch, setProductSearch] = useState('');
-  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  // Guardar o produto completo: a lista da API muda com a busca e IDs
+  // sozinhos deixariam de resolver ao adicionar vários itens.
+  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   
   // Estados para cancelamento
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -324,42 +326,38 @@ export default function InvoicesPage() {
       return;
     }
 
-    const products = productsData?.products || [];
-    const newItems = selectedProducts.map(productId => {
-      const product = products.find((p: Product) => p.id === productId);
-      if (!product) return null;
+    const newItems: NFeItem[] = selectedProducts.map((product) => ({
+      description: product.name,
+      quantity: 1,
+      unitPrice: Number(product.price),
+      ncm: product.ncm || '99999999',
+      cfop: product.cfop || '5102',
+      unitOfMeasure: 'UN',
+    }));
 
-      return {
-        description: product.name,
-        quantity: 1,
-        unitPrice: Number(product.price),
-        ncm: product.ncm || '99999999',
-        cfop: product.cfop || '5102',
-        unitOfMeasure: 'UN'
-      };
-    }).filter(item => item !== null) as NFeItem[];
+    setItems((prev) => {
+      const filteredItems = prev.filter((item) => item.description.trim() !== '');
+      return [...filteredItems, ...newItems];
+    });
 
-    // Remove o item vazio inicial se existir
-    const filteredItems = items.filter(item => item.description.trim() !== '');
-    setItems([...filteredItems, ...newItems]);
-    
-    // Reset do diálogo
     setProductSearchOpen(false);
     setSelectedProducts([]);
     setProductSearch('');
-    
+
     toast.success(`${newItems.length} produto(s) adicionado(s)`);
   };
 
-  const toggleProductSelection = (productId: string) => {
-    setSelectedProducts(prev => {
-      if (prev.includes(productId)) {
-        return prev.filter(id => id !== productId);
-      } else {
-        return [...prev, productId];
+  const toggleProductSelection = (product: Product) => {
+    setSelectedProducts((prev) => {
+      if (prev.some((p) => p.id === product.id)) {
+        return prev.filter((p) => p.id !== product.id);
       }
+      return [...prev, product];
     });
   };
+
+  const isProductSelected = (productId: string) =>
+    selectedProducts.some((p) => p.id === productId);
 
   const openEmitDialog = (type: 'nfe' | 'nfce') => {
     setEmitType(type);
@@ -1671,17 +1669,17 @@ export default function InvoicesPage() {
                       <div
                         key={product.id}
                         className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
-                          selectedProducts.includes(product.id) ? 'bg-primary/10' : ''
+                          isProductSelected(product.id) ? 'bg-primary/10' : ''
                         }`}
-                        onClick={() => toggleProductSelection(product.id)}
+                        onClick={() => toggleProductSelection(product)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <input
                                 type="checkbox"
-                                checked={selectedProducts.includes(product.id)}
-                                onChange={() => toggleProductSelection(product.id)}
+                                checked={isProductSelected(product.id)}
+                                onChange={() => toggleProductSelection(product)}
                                 className="cursor-pointer"
                                 onClick={(e) => e.stopPropagation()}
                               />
