@@ -112,9 +112,7 @@ export default function InboundInvoicesPage() {
   const [parsingXml, setParsingXml] = useState(false);
   const [sefazInboundXmlLoading, setSefazInboundXmlLoading] = useState(false);
   const [xmlStringForSubmit, setXmlStringForSubmit] = useState<string | null>(null);
-  const inboundSefazFetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inboundSefazFetchLockRef = useRef(false);
-  const lastSefazAutoFetchedKeyRef = useRef<string | null>(null);
   // Produtos da nota: por item — decisão e dados
   const [itemDecisions, setItemDecisions] = useState<ItemDecision[]>([]);
   const [itemLinkedIds, setItemLinkedIds] = useState<string[]>([]);
@@ -229,7 +227,7 @@ export default function InboundInvoicesPage() {
     setRegisterBillsFromXml((res.duplicatas?.length ?? 0) > 0);
   };
 
-  const runSefazInboundFetchAndParse = async (key44: string, isManual = false) => {
+  const runSefazInboundFetchAndParse = async (key44: string) => {
     if (inboundSefazFetchLockRef.current) return;
     inboundSefazFetchLockRef.current = true;
     setSefazInboundXmlLoading(true);
@@ -242,61 +240,19 @@ export default function InboundInvoicesPage() {
       setXmlPasted(xml);
       const { data: res } = await fiscalApi.parseInboundXml(xml);
       applyInboundParseResult(res as ParsedData, xml);
-      lastSefazAutoFetchedKeyRef.current = key44;
       setSefazFetchStatus('success');
-      if (!isManual) {
-        toast.success('XML obtido na SEFAZ. Revise os dados e defina o que fazer com os produtos.');
-      }
+      toast.success('XML obtido na SEFAZ. Revise os dados e defina o que fazer com os produtos.');
     } catch (err: any) {
-      lastSefazAutoFetchedKeyRef.current = null;
       const { message } = handleApiError(err, { showToast: false });
       setSefazFetchStatus('error');
       setSefazFetchError(message);
-      if (!isManual) {
-        toast.error(message);
-      }
+      toast.error(message);
     } finally {
       inboundSefazFetchLockRef.current = false;
       setSefazInboundXmlLoading(false);
       setConsultingNfe(false);
     }
   };
-
-  useEffect(() => {
-    if (!addOpen || editingDoc) {
-      if (inboundSefazFetchTimerRef.current) {
-        clearTimeout(inboundSefazFetchTimerRef.current);
-        inboundSefazFetchTimerRef.current = null;
-      }
-      lastSefazAutoFetchedKeyRef.current = null;
-      return;
-    }
-    const digits = accessKey.replace(/\D/g, '');
-    const canFetch = expandNfeAccessKeyCandidates(digits).length > 0;
-    if (!canFetch) {
-      lastSefazAutoFetchedKeyRef.current = null;
-      return;
-    }
-    if (accessKey === lastSefazAutoFetchedKeyRef.current) return;
-    if (inboundSefazFetchTimerRef.current) {
-      clearTimeout(inboundSefazFetchTimerRef.current);
-      inboundSefazFetchTimerRef.current = null;
-    }
-    const scheduledKey = accessKey;
-    inboundSefazFetchTimerRef.current = setTimeout(() => {
-      inboundSefazFetchTimerRef.current = null;
-      if (!addOpen || editingDoc) return;
-      if (expandNfeAccessKeyCandidates(scheduledKey).length === 0) return;
-      if (scheduledKey === lastSefazAutoFetchedKeyRef.current) return;
-      void runSefazInboundFetchAndParse(scheduledKey);
-    }, 450);
-    return () => {
-      if (inboundSefazFetchTimerRef.current) {
-        clearTimeout(inboundSefazFetchTimerRef.current);
-        inboundSefazFetchTimerRef.current = null;
-      }
-    };
-  }, [accessKey, addOpen, editingDoc]);
 
   const docs: InboundDoc[] = useMemo(() => {
     const raw: any = data;
@@ -1052,11 +1008,7 @@ export default function InboundInvoicesPage() {
                       if (editingDoc || !addOpen) return;
                       if (expandNfeAccessKeyCandidates(accessKey).length === 0) return;
                       e.preventDefault();
-                      if (inboundSefazFetchTimerRef.current) {
-                        clearTimeout(inboundSefazFetchTimerRef.current);
-                        inboundSefazFetchTimerRef.current = null;
-                      }
-                      void runSefazInboundFetchAndParse(accessKey, true);
+                      void runSefazInboundFetchAndParse(accessKey);
                     }}
                     className={`flex-1 pr-10 ${
                       sefazFetchStatus === 'success' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''
@@ -1082,7 +1034,7 @@ export default function InboundInvoicesPage() {
                         if (expandNfeAccessKeyCandidates(accessKey).length > 0) {
                           setSefazFetchStatus('idle');
                           setSefazFetchError(null);
-                          void runSefazInboundFetchAndParse(accessKey, true);
+                          void runSefazInboundFetchAndParse(accessKey);
                         }
                       }}
                       title="Tentar novamente"
@@ -1126,7 +1078,7 @@ export default function InboundInvoicesPage() {
                   </span>
                 ) : (
                   <>
-                    {accessKey.replace(/\D/g, '').length}/44 dígitos — a busca usa exatamente a chave lida e ocorre automaticamente; Enter aciona de imediato.
+                    {accessKey.replace(/\D/g, '').length} dígitos — aceita 44 completos ou 42 do código de barras (sem UF). Pressione Enter para buscar na SEFAZ.
                   </>
                 )}
               </p>
@@ -1246,7 +1198,7 @@ export default function InboundInvoicesPage() {
                       if (expandNfeAccessKeyCandidates(accessKey).length > 0) {
                         setSefazFetchStatus('idle');
                         setSefazFetchError(null);
-                        void runSefazInboundFetchAndParse(accessKey, true);
+                        void runSefazInboundFetchAndParse(accessKey);
                       }
                     }}
                     disabled={expandNfeAccessKeyCandidates(accessKey).length === 0}
@@ -1973,13 +1925,15 @@ export default function InboundInvoicesPage() {
         onClose={() => setBarcodeScannerOpen(false)}
         onScanned={(code) => {
           setBarcodeScannerOpen(false);
-          const key44 = extractNfeAccessKey(code);
-          if (key44) {
-            setAccessKey(key44);
-            void runSefazInboundFetchAndParse(key44);
-          } else {
-            toast.error('Código escaneado não contém uma chave completa de 44 dígitos');
+          const extracted = extractNfeAccessKey(code);
+          const digits = (code || '').replace(/\D/g, '');
+          const value = extracted ?? digits;
+          if (expandNfeAccessKeyCandidates(value).length === 0) {
+            toast.error('Código escaneado não contém uma chave válida (44 ou 42 dígitos)');
+            return;
           }
+          setAccessKey(value);
+          toast.message('Chave preenchida. Pressione Enter no campo para buscar na SEFAZ.');
         }}
       />
     </div>

@@ -82,18 +82,30 @@ describe('extractNfeAccessKey', () => {
     expect(expandNfeAccessKeyCandidates(INVALID_READER_PREFIX)).toEqual([]);
   });
 
-  it('não acrescenta UF a uma leitura com 42 dígitos', () => {
+  it('expande 42 dígitos do leitor (sem UF) em candidatas válidas', () => {
     const withoutUf = KEY_55.slice(2);
-    expect(extractNfeAccessKey(withoutUf)).toBeNull();
+    expect(withoutUf).toHaveLength(42);
+    const candidates = expandNfeAccessKeyCandidates(withoutUf);
+    expect(candidates).toContain(KEY_55);
+    // Ambíguo (várias UFs): extract devolve null; preferredUf resolve
+    if (candidates.length > 1) {
+      expect(extractNfeAccessKey(withoutUf)).toBeNull();
+      expect(extractNfeAccessKey(withoutUf, { preferredUfCode: '35' })).toBe(KEY_55);
+    } else {
+      expect(extractNfeAccessKey(withoutUf)).toBe(KEY_55);
+    }
   });
 
-  it('não expande leitura com 42 dígitos', () => {
+  it('prioriza UF preferida quando 42 dígitos fecham em mais de uma UF', () => {
     const withoutUf = KEY_55.slice(2);
-    expect(expandNfeAccessKeyCandidates(withoutUf)).toEqual([]);
+    expect(
+      extractNfeAccessKey(withoutUf, { preferredUfCode: KEY_55.slice(0, 2) }),
+    ).toBe(KEY_55);
   });
 
-  it('não acrescenta DV a uma leitura com 43 dígitos', () => {
+  it('acrescenta DV a uma leitura com 43 dígitos', () => {
     const withoutDv = KEY_55.slice(0, 43);
-    expect(normalizeNfeAccessKeyDigits(withoutDv)).toBeNull();
+    expect(normalizeNfeAccessKeyDigits(withoutDv)).toBe(KEY_55);
+    expect(expandNfeAccessKeyCandidates(withoutDv)).toEqual([KEY_55]);
   });
 });
