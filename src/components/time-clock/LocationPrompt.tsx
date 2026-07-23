@@ -1,24 +1,61 @@
 'use client';
 
-import { MapPin, AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import {
+  MapPin,
+  AlertTriangle,
+  RefreshCw,
+  CheckCircle2,
+  Loader2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistance } from './format';
-import { useGeolocation } from '@/hooks/useGeolocation';
 import type { TimeClockConfig } from '@/types';
+import type {
+  GeolocationCoords,
+  GeolocationStatus,
+} from '@/hooks/useGeolocation';
 
 interface Props {
   config?: TimeClockConfig | null;
-  onRefresh?: () => void;
+  coords: GeolocationCoords | null;
+  status: GeolocationStatus;
+  error: string | null;
+  loading: boolean;
+  /** Pede novamente a localização (o navegador pode reabrir o prompt se já não tiver decisão permanente) */
+  onRefresh: () => void;
+  /** Opcional: faz scroll para este card quando o pai recebe erro de geolocalização */
+  cardRef?: React.Ref<HTMLDivElement>;
 }
 
-export function LocationPrompt({ config, onRefresh }: Props) {
-  const { coords, status, error, loading, refresh } = useGeolocation({
-    autoStart: true,
-    timeout: 12_000,
-  });
+// Haversine local (cópia leve do util do backend para evitar acoplamento)
+function haversineDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6_371_000; // metros
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
+export function LocationPrompt({
+  config,
+  coords,
+  status,
+  error,
+  loading,
+  onRefresh,
+  cardRef,
+}: Props) {
   const distanceM =
     coords && config
       ? haversineDistance(
@@ -29,43 +66,82 @@ export function LocationPrompt({ config, onRefresh }: Props) {
         )
       : null;
 
+  const needsPermission = config?.requireLocation && !coords && !loading;
+  const showDeniedHelp =
+    status === 'denied' || (error && /permissão|permission|denied/i.test(error));
+
   return (
-    <Card>
+    <Card ref={cardRef}>
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">Localização</span>
+            {status === 'granted' && coords && (
+              <span className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="h-3 w-3" />
+                OK
+              </span>
+            )}
           </div>
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => {
-              refresh();
-              onRefresh?.();
-            }}
+            onClick={onRefresh}
             disabled={loading}
           >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+            )}
             Atualizar
           </Button>
         </div>
 
-        {loading && !coords && (
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
+        {needsPermission && !showDeniedHelp && (
+          <div className="rounded-md bg-blue-50 border border-blue-200 dark:bg-blue-950/30 dark:border-blue-800 p-3 space-y-2">
+            <p className="text-xs text-blue-900 dark:text-blue-200 font-medium">
+              Permita a localização para registrar o ponto
+            </p>
+            <p className="text-xs text-blue-800 dark:text-blue-300 opacity-90">
+              Ao clicar em <strong>Atualizar</strong>, o navegador vai pedir sua
+              autorização. Para desativar depois, use o ícone de cadeado na barra
+              de endereço.
+            </p>
           </div>
         )}
 
-        {status === 'denied' && (
-          <div className="flex items-start gap-2 p-2 rounded-md bg-red-50 border border-red-200 text-xs text-red-700 dark:bg-red-950/30 dark:border-red-800 dark:text-red-300">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-            <div>
+        {showDeniedHelp && (
+          <div className="flex items-start gap-2 p-3 rounded-md bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-800">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-red-700 dark:text-red-400" />
+            <div className="space-y-1 text-xs text-red-700 dark:text-red-300">
               <p className="font-medium">Permissão de localização negada</p>
-              <p className="opacity-80">
-                Habilite nas configurações do navegador para registrar o ponto.
+              <p className="opacity-90">
+                Para registrar o ponto com geolocalização, libere o acesso no
+                navegador:
               </p>
+              <ul className="list-decimal ml-4 space-y-0.5 mt-1 opacity-90">
+                <li>
+                  Clique no ícone de <strong>cadeado</strong> (ou informações)
+                  ao lado da URL.
+                </li>
+                <li>
+                  Encontre <strong>Localização</strong> e selecione{' '}
+                  <strong>Permitir</strong>.
+                </li>
+                <li>
+                  Volte aqui e clique em <strong>Atualizar</strong>.
+                </li>
+              </ul>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onRefresh}
+                className="mt-2 h-7 text-xs"
+              >
+                Tentar novamente
+              </Button>
             </div>
           </div>
         )}
@@ -77,10 +153,17 @@ export function LocationPrompt({ config, onRefresh }: Props) {
           </div>
         )}
 
-        {status === 'error' && error && (
+        {status === 'error' && error && !showDeniedHelp && (
           <div className="flex items-start gap-2 p-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-700 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             <p>{error}</p>
+          </div>
+        )}
+
+        {loading && !coords && (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
           </div>
         )}
 
@@ -120,22 +203,4 @@ export function LocationPrompt({ config, onRefresh }: Props) {
       </CardContent>
     </Card>
   );
-}
-
-// Haversine local (cópia leve do util do backend para evitar acoplamento)
-function haversineDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const R = 6_371_000; // metros
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
 }

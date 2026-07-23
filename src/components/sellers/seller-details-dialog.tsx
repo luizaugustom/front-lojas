@@ -1,20 +1,22 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { 
-  X, 
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  CreditCard, 
-  TrendingUp, 
+import {
+  X,
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  CreditCard,
+  TrendingUp,
   DollarSign,
   ShoppingCart,
   BarChart3,
   Edit,
-  RefreshCw
+  RefreshCw,
+  Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -34,6 +36,7 @@ interface SellerDetailsDialogProps {
 }
 
 export function SellerDetailsDialog({ isOpen, onClose, onEdit, seller }: SellerDetailsDialogProps) {
+  const router = useRouter();
   const [stats, setStats] = useState<SellerStats | null>(null);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
@@ -89,6 +92,13 @@ export function SellerDetailsDialog({ isOpen, onClose, onEdit, seller }: SellerD
   const handleEdit = () => {
     if (seller) {
       onEdit(seller);
+    }
+  };
+
+  const handleEditSchedule = () => {
+    if (seller) {
+      onClose();
+      router.push(`/sellers/${seller.id}/schedule`);
     }
   };
 
@@ -306,6 +316,14 @@ export function SellerDetailsDialog({ isOpen, onClose, onEdit, seller }: SellerD
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-6 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={handleEditSchedule}
+              className="text-foreground"
+            >
+              <Clock className="h-4 w-4 mr-2" />
+              Editar Jornada
+            </Button>
             <Button
               variant="outline"
               onClick={handleClose}

@@ -6,6 +6,7 @@ import { timeClockApi } from '@/lib/api-endpoints';
 import { handleApiError } from '@/lib/handleApiError';
 import type {
   AdjustTimeClockDto,
+  MyScheduleResponse,
   RegisterTimeClockDto,
   RejectTimeClockDto,
   TimeClockFilterDto,
@@ -16,6 +17,7 @@ const KEYS = {
   myHistory: (filter: TimeClockFilterDto) =>
     ['time-clock', 'my-history', filter] as const,
   myStats: (month?: string) => ['time-clock', 'my-stats', month] as const,
+  mySchedule: () => ['time-clock', 'my-schedule'] as const,
   config: (companyId?: string) => ['time-clock', 'config', companyId] as const,
   qrCode: () => ['time-clock', 'qr-code'] as const,
   pending: () => ['time-clock', 'pending'] as const,
@@ -49,6 +51,16 @@ export function useMyStats(month?: string) {
   return useQuery({
     queryKey: KEYS.myStats(month),
     queryFn: async () => (await timeClockApi.myStats({ month })).data,
+    staleTime: 60_000,
+  });
+}
+
+export function useMySchedule(enabled = true) {
+  return useQuery<MyScheduleResponse>({
+    queryKey: KEYS.mySchedule(),
+    queryFn: async () => (await timeClockApi.mySchedule()).data,
+    enabled,
+    refetchOnWindowFocus: true,
     staleTime: 60_000,
   });
 }

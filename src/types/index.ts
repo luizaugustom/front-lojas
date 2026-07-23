@@ -856,3 +856,57 @@ export interface TimeClockFilterDto {
   limit?: number;
   companyId?: string;
 }
+
+// ============================================================
+// Jornada individual do vendedor
+// ============================================================
+
+export interface SellerDayConfig {
+  entryTime?: string | null;
+  lunchOutTime?: string | null;
+  lunchInTime?: string | null;
+  exitTime?: string | null;
+}
+
+export interface SellerSchedule {
+  id: string;
+  sellerId: string;
+  workDays: number[]; // 0=Dom, 1=Seg ... 6=Sáb
+  defaultEntryTime?: string | null;
+  defaultLunchOutTime?: string | null;
+  defaultLunchInTime?: string | null;
+  defaultExitTime?: string | null;
+  lateToleranceMinutes?: number | null;
+  entryToleranceMinutes?: number | null;
+  /** Chaves '0'..'6' */
+  overrides: Record<string, SellerDayConfig>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TodaySchedule {
+  entry: string | null;
+  lunchOut: string | null;
+  lunchIn: string | null;
+  exit: string | null;
+  isWorkDay: boolean;
+  source: 'seller' | 'company';
+  lateToleranceMinutes: number;
+  entryToleranceMinutes: number;
+}
+
+export interface MyScheduleResponse {
+  sellerSchedule: SellerSchedule | null;
+  today: TodaySchedule;
+}
+
+export interface UpdateSellerScheduleDto {
+  workDays: number[];
+  defaultEntryTime?: string | null;
+  defaultLunchOutTime?: string | null;
+  defaultLunchInTime?: string | null;
+  defaultExitTime?: string | null;
+  lateToleranceMinutes?: number | null;
+  entryToleranceMinutes?: number | null;
+  overrides?: Record<string, SellerDayConfig>;
+}

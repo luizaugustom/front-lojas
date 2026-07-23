@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { HelpCircle, Clock, ListChecks, AlertCircle, QrCode, Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { QrScanner } from '@/components/time-clock/QrScanner';
 import { LocationPrompt } from '@/components/time-clock/LocationPrompt';
 import { PunchHistoryList } from '@/components/time-clock/PunchHistoryList';
 import { NextExpectedPunch, TIME_CLOCK_ORDER } from '@/components/time-clock/NextExpectedPunch';
+import { VendorScheduleCard } from '@/components/time-clock/VendorScheduleCard';
 import { TimeClockStatsCard } from '@/components/time-clock/TimeClockStatsCard';
 import { TimeClockReportForm } from '@/components/time-clock/TimeClockReportForm';
 import { PendingApprovalsList } from '@/components/time-clock/PendingApprovalsList';
@@ -24,7 +25,13 @@ import { QrCodeDisplay } from '@/components/time-clock/QrCodeDisplay';
 import { TimeClockConfigForm } from '@/components/time-clock/TimeClockConfigForm';
 import { TimeClockHistoryView } from '@/components/time-clock/TimeClockHistoryView';
 import { TimeClockManageView } from '@/components/time-clock/TimeClockManageView';
-import { useMyToday, useMyStats, useTimeClockConfig } from '@/hooks/useTimeClock';
+import {
+  useMyToday,
+  useMyStats,
+  useMySchedule,
+  useTimeClockConfig,
+} from '@/hooks/useTimeClock';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types';
 
@@ -50,6 +57,7 @@ export default function TimeClockPage() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [qrToken, setQrToken] = useState<string | undefined>();
+  const locationCardRef = useRef<HTMLDivElement>(null);
 
   const { user } = useAuth();
   const role = (user?.role ?? 'vendedor') as UserRole;
@@ -58,8 +66,6 @@ export default function TimeClockPage() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Deduplica tabs (caso duas entradas tenham a mesma `key`, mantém a primeira
-  // que casa com o role do usuário).
   const allowedTabs = useMemo(() => {
     const seen = new Set<TabKey>();
     return ALL_TABS.filter((t) => {
@@ -78,7 +84,6 @@ export default function TimeClockPage() {
 
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
 
-  // Se o papel mudar e a aba ativa não for mais permitida, voltar para 'punch'
   useEffect(() => {
     if (!allowedTabs.some((t) => t.key === activeTab)) {
       setActiveTab('punch');
@@ -98,9 +103,19 @@ export default function TimeClockPage() {
     router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
   };
 
+  // Geolocalização centralizada (compartilhada com PunchClockCard e LocationPrompt)
+  const {
+    coords,
+    status: geoStatus,
+    error: geoError,
+    loading: geoLoading,
+    refresh: refreshGeo,
+  } = useGeolocation({ autoStart: true });
+
   const { data: today, isLoading: loadingToday, refetch: refetchToday } = useMyToday(true);
   const { data: stats, isLoading: loadingStats } = useMyStats();
   const { data: config } = useTimeClockConfig();
+  const { data: mySchedule, isLoading: loadingSchedule } = useMySchedule(true);
 
   const punches = (today?.punches ?? []).map((p: any) => ({
     id: p.id,
@@ -112,6 +127,14 @@ export default function TimeClockPage() {
 
   const isCompany = role === 'empresa' || role === 'admin' || role === 'gestor';
   const isAdminCompany = role === 'empresa' || role === 'admin';
+  const isVendedor = role === 'vendedor';
+
+  const focusLocation = () => {
+    refreshGeo();
+    requestAnimationFrame(() => {
+      locationCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto">
@@ -152,43 +175,106 @@ export default function TimeClockPage() {
         </div>
 
         <TabsContent value="punch" className="space-y-4 max-w-2xl mx-auto">
-          <PunchClockCard
-            config={config}
-            today={today}
-            loading={loadingToday}
-            onPunched={refetchToday}
-            qrToken={qrToken}
-            onRequireQrScan={() => setScannerOpen(true)}
-          />
+          {isVendedor ? (
+            <>
+              <VendorScheduleCard
+                today={mySchedule?.today ?? null}
+                nextExpected={today?.nextExpected ?? null}
+                loading={loadingSchedule && !mySchedule}
+              />
 
-          <NextExpectedPunch
-            nextType={today?.nextExpected ?? null}
-            order={TIME_CLOCK_ORDER}
-          />
+              <PunchClockCard
+                config={config}
+                today={today}
+                loading={loadingToday}
+                onPunched={refetchToday}
+                qrToken={qrToken}
+                onRequireQrScan={() => setScannerOpen(true)}
+                coords={coords}
+                geoStatus={geoStatus}
+                onRequestLocation={focusLocation}
+              />
 
-          {config?.requireQrCode && scannerOpen && (
-            <QrScanner
-              onScan={(token) => {
-                setQrToken(token);
-                setScannerOpen(false);
-              }}
-              onClose={() => setScannerOpen(false)}
-            />
+              {config?.requireQrCode && scannerOpen && (
+                <QrScanner
+                  onScan={(token) => {
+                    setQrToken(token);
+                    setScannerOpen(false);
+                  }}
+                  onClose={() => setScannerOpen(false)}
+                />
+              )}
+
+              <LocationPrompt
+                config={config}
+                coords={coords}
+                status={geoStatus}
+                error={geoError}
+                loading={geoLoading}
+                onRefresh={refreshGeo}
+                cardRef={locationCardRef}
+              />
+
+              <PunchHistoryList
+                punches={punches}
+                loading={loadingToday}
+                title="Marcações de hoje"
+                emptyMessage="Nenhuma marcação registrada ainda hoje. Bate o ponto acima!"
+              />
+            </>
+          ) : (
+            <>
+              <PunchClockCard
+                config={config}
+                today={today}
+                loading={loadingToday}
+                onPunched={refetchToday}
+                qrToken={qrToken}
+                onRequireQrScan={() => setScannerOpen(true)}
+                coords={coords}
+                geoStatus={geoStatus}
+                onRequestLocation={focusLocation}
+              />
+
+              <NextExpectedPunch
+                nextType={today?.nextExpected ?? null}
+                order={TIME_CLOCK_ORDER}
+              />
+
+              {config?.requireQrCode && scannerOpen && (
+                <QrScanner
+                  onScan={(token) => {
+                    setQrToken(token);
+                    setScannerOpen(false);
+                  }}
+                  onClose={() => setScannerOpen(false)}
+                />
+              )}
+
+              <div ref={locationCardRef}>
+                <LocationPrompt
+                  config={config}
+                  coords={coords}
+                  status={geoStatus}
+                  error={geoError}
+                  loading={geoLoading}
+                  onRefresh={refreshGeo}
+                />
+              </div>
+
+              <PunchHistoryList
+                punches={punches}
+                loading={loadingToday}
+                title="Marcações de hoje"
+                emptyMessage="Nenhuma marcação registrada ainda hoje. Bate o ponto acima!"
+              />
+
+              <TimeClockStatsCard stats={stats} loading={loadingStats} />
+            </>
           )}
-
-          <LocationPrompt config={config} />
-
-          <PunchHistoryList
-            punches={punches}
-            loading={loadingToday}
-            title="Marcações de hoje"
-            emptyMessage="Nenhuma marcação registrada ainda hoje. Bate o ponto acima!"
-          />
-
-          <TimeClockStatsCard stats={stats} loading={loadingStats} />
         </TabsContent>
 
-        {role === 'vendedor' && (
+        {isVendedor && (
           <TabsContent value="history" className="max-w-3xl mx-auto">
             <TimeClockHistoryView />
           </TabsContent>

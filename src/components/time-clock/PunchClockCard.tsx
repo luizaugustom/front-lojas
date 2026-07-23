@@ -9,11 +9,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PunchTypeIcon, PUNCH_TYPE_LABELS } from './PunchTypeIcon';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import {
-  useRegisterTimeClock,
-} from '@/hooks/useTimeClock';
-import { useGeolocation } from '@/hooks/useGeolocation';
+import { useRegisterTimeClock } from '@/hooks/useTimeClock';
 import { cn } from '@/lib/utils';
+import type {
+  GeolocationCoords,
+  GeolocationStatus,
+} from '@/hooks/useGeolocation';
 import type { TimeClockConfig, TimeClockTodayResponse, TimeClockType } from '@/types';
 
 interface Props {
@@ -24,6 +25,11 @@ interface Props {
   loading?: boolean;
   onPunched?: () => void;
   qrToken?: string;
+  // Geolocalização compartilhada com o pai (evita requests duplicados)
+  coords: GeolocationCoords | null;
+  geoStatus: GeolocationStatus;
+  /** Reexecuta getCurrentPosition — reativa o prompt do navegador após grant */
+  onRequestLocation: () => void;
 }
 
 export function PunchClockCard({
@@ -34,14 +40,16 @@ export function PunchClockCard({
   loading,
   onPunched,
   qrToken,
+  coords,
+  geoStatus,
+  onRequestLocation,
 }: Props) {
-  const { coords, status: geoStatus, refresh: refreshGeo } = useGeolocation({
-    autoStart: true,
-  });
   const register = useRegisterTimeClock();
   const [lastResult, setLastResult] = useState<{
     ok: boolean;
     message: string;
+    /** Indica que a falha foi por geolocalização — habilita CTA de permissão */
+    locationError?: boolean;
   } | null>(null);
 
   const punches = today?.punches ?? [];
@@ -57,10 +65,14 @@ export function PunchClockCard({
     const hasLocation = !!coords;
 
     if (needsLocation && !hasLocation) {
-      refreshGeo();
+      onRequestLocation();
       setLastResult({
         ok: false,
-        message: 'Aguardando GPS. Tente novamente em alguns segundos.',
+        message:
+          geoStatus === 'denied'
+            ? 'Localização bloqueada. Libere o acesso e clique em "Tentar novamente" abaixo.'
+            : 'Aguardando GPS. Confirme a permissão no navegador para continuar.',
+        locationError: true,
       });
       return;
     }
@@ -93,9 +105,15 @@ export function PunchClockCard({
       });
       onPunched?.();
     } catch (e: any) {
+      const apiMessage: string =
+        e?.response?.data?.message || 'Erro ao registrar ponto.';
+      const isLocationErr = /localiza|geolocaliza|location/i.test(apiMessage);
       setLastResult({
         ok: false,
-        message: e?.response?.data?.message || 'Erro ao registrar ponto.',
+        message: isLocationErr
+          ? 'Esta loja exige geolocalização. Permita o acesso para bater o ponto.'
+          : apiMessage,
+        locationError: isLocationErr,
       });
     }
   };
@@ -181,7 +199,19 @@ export function PunchClockCard({
             <AlertTitle>
               {lastResult.ok ? 'Ponto registrado' : 'Atenção'}
             </AlertTitle>
-            <AlertDescription>{lastResult.message}</AlertDescription>
+            <AlertDescription>
+              <p>{lastResult.message}</p>
+              {lastResult.locationError && geoStatus === 'denied' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onRequestLocation}
+                  className="mt-2"
+                >
+                  Tentar novamente
+                </Button>
+              )}
+            </AlertDescription>
           </Alert>
         )}
       </CardContent>

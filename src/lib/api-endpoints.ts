@@ -401,6 +401,31 @@ export const sellerApi = {
 };
 
 // ============================================================================
+// SELLER SCHEDULE (Jornada individual do vendedor)
+// ============================================================================
+
+export const sellerScheduleApi = {
+  /**
+   * GET /seller/:sellerId/schedule
+   * Roles: COMPANY, ADMIN, MANAGER - Obter jornada configurada
+   */
+  get: (sellerId: string) => api.get(`/seller/${sellerId}/schedule`),
+
+  /**
+   * PUT /seller/:sellerId/schedule
+   * Roles: COMPANY, ADMIN - Criar/atualizar jornada individual
+   */
+  upsert: (sellerId: string, data: any) =>
+    api.put(`/seller/${sellerId}/schedule`, data),
+
+  /**
+   * DELETE /seller/:sellerId/schedule
+   * Roles: COMPANY, ADMIN - Remover (volta a usar a jornada da empresa)
+   */
+  remove: (sellerId: string) => api.delete(`/seller/${sellerId}/schedule`),
+};
+
+// ============================================================================
 // SALE
 // ============================================================================
 
@@ -1793,6 +1818,12 @@ export const timeClockApi = {
    */
   myStats: (params?: { month?: string }) =>
     api.get('/time-clock/my-stats', { params }),
+
+  /**
+   * GET /time-clock/my-schedule
+   * Roles: SELLER - Jornada efetiva do vendedor logado para hoje (com fallback para a empresa)
+   */
+  mySchedule: () => api.get('/time-clock/my-schedule'),
 
   /**
    * GET /time-clock/config
