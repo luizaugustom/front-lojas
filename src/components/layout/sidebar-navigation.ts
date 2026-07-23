@@ -55,7 +55,7 @@ interface NavigationUser {
   nfeEmissionEnabled?: boolean;
 }
 
-export function getVisibleNavigation(user: NavigationUser | null, boletoEnabled: boolean) {
+export function getVisibleNavigation(user: NavigationUser | null, boletoMenuVisible: boolean) {
   if (!user) return [];
 
   if (user.role === 'gestor') {
@@ -80,8 +80,9 @@ export function getVisibleNavigation(user: NavigationUser | null, boletoEnabled:
       return user.role === 'empresa' || (user.role === 'vendedor' && user.nfeEmissionEnabled === true);
     }
 
+    // Visível se o admin liberou (boletoAllowed). boletoEnabled é só ativação na Configurações.
     if (item.name === 'Boletos') {
-      return item.roles.includes(user.role) && boletoEnabled;
+      return item.roles.includes(user.role) && boletoMenuVisible;
     }
 
     if (item.name === 'Estabelecimentos') return false;

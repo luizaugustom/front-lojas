@@ -30,9 +30,10 @@ export function Sidebar() {
     },
     enabled: !!user && (user.role === 'empresa' || user.role === 'vendedor'),
   });
-  const boletoEnabled = companyData?.boletoAllowed === true && companyData?.boletoEnabled === true;
+  // Menu: liberação do admin. Ativação (boletoEnabled) é tratada na própria página / Configurações.
+  const boletoMenuVisible = companyData?.boletoAllowed !== false;
 
-  const filteredNavigation = getVisibleNavigation(user, boletoEnabled);
+  const filteredNavigation = getVisibleNavigation(user, boletoMenuVisible);
   
 
   return (
