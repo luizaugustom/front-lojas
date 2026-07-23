@@ -42,7 +42,7 @@ export const navigation = [
   { name: 'Notas Fiscais', href: '/invoices', icon: Receipt, roles: ['empresa'] },
   { name: 'Estabelecimentos', href: '/establishments', icon: Store, roles: ['empresa'] },
   { name: 'Notas de Entrada', href: '/inbound-invoices', icon: FileDown, roles: ['empresa'] },
-  { name: 'Boletos', href: '/boletos', icon: Banknote, roles: ['empresa', 'vendedor'] },
+  { name: 'Boletos', href: '/boletos', icon: Banknote, roles: ['empresa'] },
   { name: 'Empresas', href: '/companies', icon: Building2, roles: ['admin'] },
   { name: 'Gestores', href: '/gestores', icon: Briefcase, roles: ['admin'] },
   { name: 'Testes da API', href: '/test-api', icon: TestTube, roles: ['admin'] },

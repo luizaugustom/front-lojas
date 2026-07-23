@@ -68,7 +68,7 @@ export default function BoletosPage() {
       const res = await billetApi.list(params);
       return res.data as { data: any[]; total: number; page: number; limit: number; totalPages: number };
     },
-    enabled: !!user?.companyId,
+    enabled: !!user?.companyId && user?.role === 'empresa',
   });
 
   const { data: companyData } = useQuery({
@@ -82,7 +82,7 @@ export default function BoletosPage() {
         unimakeSandbox?: boolean;
       };
     },
-    enabled: !!user?.companyId && (user?.role === 'empresa' || user?.role === 'vendedor'),
+    enabled: !!user?.companyId && user?.role === 'empresa',
   });
 
   const { data: customersData } = useQuery({
@@ -91,7 +91,7 @@ export default function BoletosPage() {
       const res = await customerApi.list({ limit: 500, companyId: user?.companyId ?? undefined });
       return res.data as { data?: { id: string; name: string }[] };
     },
-    enabled: !!user?.companyId,
+    enabled: !!user?.companyId && user?.role === 'empresa',
   });
 
   const customers = customersData?.data ?? [];
@@ -169,12 +169,12 @@ export default function BoletosPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  if (!user?.companyId) {
+  if (!user?.companyId || user.role !== 'empresa') {
     return (
       <div className="p-6">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-muted-foreground">Você não tem empresa vinculada. Acesso apenas para empresa ou vendedor.</p>
+            <p className="text-muted-foreground">Acesso apenas para empresa.</p>
           </CardContent>
         </Card>
       </div>

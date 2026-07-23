@@ -21,10 +21,10 @@ describe('getVisibleNavigation', () => {
     );
   });
 
-  it('exibe Boletos no menu para vendedor', () => {
+  it('não exibe Boletos no menu para vendedor', () => {
     const items = getVisibleNavigation({ role: 'vendedor', nfeEmissionEnabled: false });
 
-    expect(items).toEqual(
+    expect(items).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'Boletos', href: '/boletos' }),
       ]),
