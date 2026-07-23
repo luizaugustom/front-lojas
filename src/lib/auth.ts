@@ -30,7 +30,10 @@ export function setUser(user: User): void {
     gestor: 'gestor',
   };
   const normalizedRole = (roleMap[(user.role || '').toString().toLowerCase()] || user.role) as UserRole;
-  currentUser = { ...user, role: normalizedRole };
+  const companyId =
+    user.companyId ??
+    (normalizedRole === 'empresa' ? user.id : undefined);
+  currentUser = { ...user, role: normalizedRole, companyId };
 }
 
 export function getUser(): User | null {

@@ -52,6 +52,10 @@ export default function BoletosPage() {
   const [sendingWhatsAppId, setSendingWhatsAppId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const isCompany = user?.role === 'empresa';
+  const companyId = user?.companyId ?? (isCompany ? user?.id : undefined);
+  const canAccessBoletos = isCompany && !!companyId;
+
   const limit = 20;
   const params = {
     page,
@@ -68,7 +72,7 @@ export default function BoletosPage() {
       const res = await billetApi.list(params);
       return res.data as { data: any[]; total: number; page: number; limit: number; totalPages: number };
     },
-    enabled: !!user?.companyId && user?.role === 'empresa',
+    enabled: canAccessBoletos,
   });
 
   const { data: companyData } = useQuery({
@@ -82,16 +86,16 @@ export default function BoletosPage() {
         unimakeSandbox?: boolean;
       };
     },
-    enabled: !!user?.companyId && user?.role === 'empresa',
+    enabled: canAccessBoletos,
   });
 
   const { data: customersData } = useQuery({
-    queryKey: ['customers-list-boletos', user?.companyId],
+    queryKey: ['customers-list-boletos', companyId],
     queryFn: async () => {
-      const res = await customerApi.list({ limit: 500, companyId: user?.companyId ?? undefined });
+      const res = await customerApi.list({ limit: 500, companyId: companyId ?? undefined });
       return res.data as { data?: { id: string; name: string }[] };
     },
-    enabled: !!user?.companyId && user?.role === 'empresa',
+    enabled: canAccessBoletos,
   });
 
   const customers = customersData?.data ?? [];
@@ -169,7 +173,7 @@ export default function BoletosPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  if (!user?.companyId || user.role !== 'empresa') {
+  if (!canAccessBoletos) {
     return (
       <div className="p-6">
         <Card>

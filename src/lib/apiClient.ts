@@ -557,6 +557,10 @@ export async function authLogin(
       };
       res.data.user.role = (roleMap[res.data.user.role] || res.data.user.role) as UserRole;
       if (res.data.user.companyIds) (res.data as any).user.companyIds = res.data.user.companyIds;
+      // Empresa: companyId = próprio id (refresh/login devem alinhar)
+      if (!res.data.user.companyId && res.data.user.role === 'empresa') {
+        res.data.user.companyId = res.data.user.id;
+      }
       logger.log('[authLogin] Role normalizado:', res.data.user.role);
     }
     
@@ -605,6 +609,9 @@ export async function authRefresh(): Promise<{ access_token: string; user: User 
     };
     data.user.role = (roleMap[data.user.role] || data.user.role) as UserRole;
     if (data.user.companyIds) (data as any).user.companyIds = data.user.companyIds;
+    if (!data.user.companyId && data.user.role === 'empresa') {
+      data.user.companyId = data.user.id;
+    }
     logger.log('[authRefresh] Role normalizado:', data.user.role);
   }
 
