@@ -225,7 +225,7 @@ export default function BoletosPage() {
               <p className="font-medium text-amber-800 dark:text-amber-200">Boletos não ativados</p>
               <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                 Para emitir e listar boletos, ative os boletos em{' '}
-                <Link href="/settings" className="underline font-medium">
+                <Link href="/settings/boletos" className="underline font-medium">
                   Configurações &gt; Boletos
                 </Link>
                 .
