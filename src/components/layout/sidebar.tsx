@@ -3,10 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { companyApi } from '@/lib/api-endpoints';
 import {
-  Menu,
   X,
   ChevronLeft,
   ChevronRight,
@@ -14,7 +11,6 @@ import {
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui-store';
 import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
 import { getVisibleNavigation } from './sidebar-navigation';
 
 export function Sidebar() {
@@ -22,18 +18,7 @@ export function Sidebar() {
   const { sidebarOpen, setSidebarOpen, sidebarCollapsed, toggleSidebarCollapsed } = useUIStore();
   const { user } = useAuth();
 
-  const { data: companyData } = useQuery({
-    queryKey: ['my-company-sidebar', user?.companyId],
-    queryFn: async () => {
-      const res = await companyApi.myCompany();
-      return res.data as { boletoAllowed?: boolean; boletoEnabled?: boolean };
-    },
-    enabled: !!user && (user.role === 'empresa' || user.role === 'vendedor'),
-  });
-  // Menu: liberação do admin. Ativação (boletoEnabled) é tratada na própria página / Configurações.
-  const boletoMenuVisible = companyData?.boletoAllowed !== false;
-
-  const filteredNavigation = getVisibleNavigation(user, boletoMenuVisible);
+  const filteredNavigation = getVisibleNavigation(user);
   
 
   return (

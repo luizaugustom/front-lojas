@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, Upload, X, Image as ImageIcon, MessageSquare, Store, ExternalLink, Percent, CreditCard, Plus, Edit2, Trash2, AlertCircle, HelpCircle, Banknote, FileText } from 'lucide-react';
+import { Settings as SettingsIcon, User, Bell, Lock, Save, Check, Upload, X, Image as ImageIcon, MessageSquare, Store, ExternalLink, Percent, CreditCard, Plus, Edit2, Trash2, AlertCircle, HelpCircle, Banknote } from 'lucide-react';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,7 +26,6 @@ import { toast } from 'react-hot-toast';
 import { handleApiError } from '@/lib/handleApiError';
 import { useQuery } from '@tanstack/react-query';
 import { companyApi, adminApi, cardAcquirerRateApi, managerApi } from '@/lib/api-endpoints';
-import type { UnimakeCompanyOverviewRow, UnimakeCompanyConfig } from '@/lib/api-endpoints';
 import { getImageUrl } from '@/lib/image-utils';
 import { useUIStore } from '@/store/ui-store';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
@@ -151,20 +150,6 @@ export default function SettingsPage() {
     ibptToken: '',
   });
 
-  // Estado das configurações de Unimake por empresa (apenas para admin)
-  const [unimakeOverview, setUnimakeOverview] = useState<UnimakeCompanyOverviewRow[]>([]);
-  const [loadingUnimakeOverview, setLoadingUnimakeOverview] = useState(false);
-  const [unimakeDialogOpen, setUnimakeDialogOpen] = useState(false);
-  const [unimakeDialogCompany, setUnimakeDialogCompany] = useState<UnimakeCompanyOverviewRow | null>(null);
-  const [unimakeDialogConfig, setUnimakeDialogConfig] = useState<UnimakeCompanyConfig | null>(null);
-  const [unimakeForm, setUnimakeForm] = useState({
-    appId: '',
-    appKey: '',
-    configurationId: '',
-    sandbox: true,
-  });
-  const [savingUnimake, setSavingUnimake] = useState(false);
-
   // Estado das configurações de parcelamento
   const [installmentConfig, setInstallmentConfig] = useState<{
     installmentInterestRates: Record<string, number | undefined>;
@@ -283,82 +268,6 @@ export default function SettingsPage() {
       handleApiError(error);
     } finally {
       setSavingAdminIbptGlobal(false);
-    }
-  };
-
-  const loadUnimakeOverview = useCallback(async () => {
-    try {
-      setLoadingUnimakeOverview(true);
-      const response = await adminApi.listCompaniesForUnimake();
-      setUnimakeOverview(response.data ?? []);
-    } catch (error) {
-      console.error('Erro ao carregar lista de empresas Unimake:', error);
-      setUnimakeOverview([]);
-    } finally {
-      setLoadingUnimakeOverview(false);
-    }
-  }, []);
-
-  const openUnimakeDialog = async (company: UnimakeCompanyOverviewRow) => {
-    setUnimakeDialogCompany(company);
-    setUnimakeForm({
-      appId: '',
-      appKey: '',
-      configurationId: '',
-      sandbox: company.unimakeSandbox,
-    });
-    setUnimakeDialogOpen(true);
-    try {
-      const response = await adminApi.getCompanyUnimake(company.id);
-      const cfg = response.data;
-      setUnimakeDialogConfig(cfg);
-      setUnimakeForm({
-        appId: cfg?.appId ?? '',
-        appKey: '', // nunca refletir appKey do servidor — usuário digita novamente se quiser alterar
-        configurationId: cfg?.configurationId ?? '',
-        sandbox: cfg?.sandbox ?? true,
-      });
-    } catch (error) {
-      setUnimakeDialogConfig(null);
-    }
-  };
-
-  const closeUnimakeDialog = () => {
-    setUnimakeDialogOpen(false);
-    setUnimakeDialogCompany(null);
-    setUnimakeDialogConfig(null);
-    setUnimakeForm({ appId: '', appKey: '', configurationId: '', sandbox: true });
-  };
-
-  const handleSaveUnimakeConfig = async () => {
-    if (!unimakeDialogCompany) return;
-    if (!unimakeForm.appId.trim()) {
-      toast.error('Informe o App ID');
-      return;
-    }
-    if (!unimakeForm.configurationId.trim()) {
-      toast.error('Informe o Configuration ID');
-      return;
-    }
-    setSavingUnimake(true);
-    try {
-      const payload: { appId?: string; appKey?: string; configurationId?: string; sandbox?: boolean } = {
-        appId: unimakeForm.appId.trim(),
-        configurationId: unimakeForm.configurationId.trim(),
-        sandbox: unimakeForm.sandbox,
-      };
-      if (unimakeForm.appKey.trim()) {
-        payload.appKey = unimakeForm.appKey.trim();
-      }
-      await adminApi.updateCompanyUnimake(unimakeDialogCompany.id, payload);
-      toast.success(`Unimake configurado para ${unimakeDialogCompany.name}.`);
-      await loadUnimakeOverview();
-      closeUnimakeDialog();
-    } catch (error: any) {
-      console.error('Erro ao salvar configuração Unimake:', error);
-      handleApiError(error);
-    } finally {
-      setSavingUnimake(false);
     }
   };
 
@@ -1066,7 +975,6 @@ export default function SettingsPage() {
         loadCardRates();
       } else if (user.role === 'admin') {
         loadAdminIbptGlobalConfig();
-        loadUnimakeOverview();
       }
     }
   }, [
@@ -1080,7 +988,6 @@ export default function SettingsPage() {
     loadInstallmentConfig,
     loadCardRates,
     loadAdminIbptGlobalConfig,
-    loadUnimakeOverview,
   ]);
 
   // Carregar preferências na montagem
@@ -1373,186 +1280,6 @@ export default function SettingsPage() {
                 </>
               )}
             </CardContent>
-          </Card>
-        )}
-
-        {/* Configuração Unimake por empresa — Apenas Admin */}
-        {user?.role === 'admin' && (
-          <Card className="scroll-mt-24" id="admin-boletos">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Boletos — Unimake (e-Boleto)
-              </CardTitle>
-              <CardDescription>
-                Configure por empresa as credenciais Unimake (appId/appKey). Os tokens ficam
-                armazenados criptografados e nunca são expostos à empresa ou ao frontend.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800 p-4">
-                <p className="text-sm text-amber-900 dark:text-amber-200 font-medium">
-                  O certificado A1 deve estar previamente cadastrado na ficha da empresa.
-                  Caso contrário, a emissão de boletos falhará.
-                </p>
-              </div>
-              {loadingUnimakeOverview ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-2 text-sm text-muted-foreground">Carregando empresas...</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="text-left p-3 font-medium">Empresa</th>
-                        <th className="text-left p-3 font-medium">CNPJ</th>
-                        <th className="text-center p-3 font-medium">Unimake configurado</th>
-                        <th className="text-center p-3 font-medium">Sandbox</th>
-                        <th className="text-center p-3 font-medium">Certificado A1</th>
-                        <th className="text-right p-3 font-medium">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unimakeOverview.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="p-6 text-center text-muted-foreground">
-                            Nenhuma empresa cadastrada.
-                          </td>
-                        </tr>
-                      ) : (
-                        unimakeOverview.map((row) => (
-                          <tr key={row.id} className="border-b hover:bg-muted/30">
-                            <td className="p-3 font-medium">{row.name}</td>
-                            <td className="p-3 text-muted-foreground">{row.cnpj || '—'}</td>
-                            <td className="p-3 text-center">
-                              {row.unimakeConfigured ? (
-                                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                                  Sim
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                                  Não
-                                </span>
-                              )}
-                            </td>
-                            <td className="p-3 text-center">
-                              {row.unimakeSandbox ? 'Sandbox' : 'Produção'}
-                            </td>
-                            <td className="p-3 text-center">
-                              {row.hasCertificateA1 ? (
-                                <span className="text-green-600 dark:text-green-400">Sim</span>
-                              ) : (
-                                <span className="text-amber-700 dark:text-amber-400">Não</span>
-                              )}
-                            </td>
-                            <td className="p-3 text-right">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openUnimakeDialog(row)}
-                              >
-                                Configurar
-                              </Button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-
-            {/* Dialog de configuração Unimake por empresa */}
-            <Dialog
-              open={unimakeDialogOpen}
-              onOpenChange={(open) => (open ? setUnimakeDialogOpen(true) : closeUnimakeDialog())}
-            >
-              <DialogContent className="sm:max-w-[480px]">
-                <DialogHeader>
-                  <DialogTitle>
-                    Configurar Unimake — {unimakeDialogCompany?.name}
-                  </DialogTitle>
-                  <DialogDescription>
-                    Informe as credenciais da conta Unimake desta empresa. A appKey é
-                    criptografada antes de ser persistida e nunca é exposta novamente.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="unimake-appId">App ID</Label>
-                    <Input
-                      id="unimake-appId"
-                      value={unimakeForm.appId}
-                      onChange={(e) =>
-                        setUnimakeForm((f) => ({ ...f, appId: e.target.value }))
-                      }
-                      placeholder="App ID Unimake (painel do cliente)"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="unimake-configurationId">Configuration ID</Label>
-                    <Input
-                      id="unimake-configurationId"
-                      value={unimakeForm.configurationId}
-                      onChange={(e) =>
-                        setUnimakeForm((f) => ({ ...f, configurationId: e.target.value }))
-                      }
-                      placeholder="ID da configuração Unimake (por empresa/ambiente)"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Obrigatório como query string em todas as chamadas ao provedor.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="unimake-appKey">App Key (não será exibida novamente)</Label>
-                    <Input
-                      id="unimake-appKey"
-                      type="password"
-                      value={unimakeForm.appKey}
-                      onChange={(e) =>
-                        setUnimakeForm((f) => ({ ...f, appKey: e.target.value }))
-                      }
-                      placeholder="••••••••"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Deixe em branco para manter a appKey já configurada.
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm">Ambiente Sandbox</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Use produção somente após validar todos os fluxos em sandbox.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={unimakeForm.sandbox}
-                      onCheckedChange={(checked) =>
-                        setUnimakeForm((f) => ({ ...f, sandbox: checked }))
-                      }
-                    />
-                  </div>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800 p-3">
-                    <p className="text-xs text-amber-800 dark:text-amber-200">
-                      {unimakeDialogCompany?.hasCertificateA1
-                        ? 'Certificado A1 já cadastrado para esta empresa — pronto para emitir.'
-                        : 'Atenção: esta empresa ainda não possui Certificado A1 cadastrado. A emissão de boletos falhará até que seja cadastrado na ficha da empresa.'}
-                    </p>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={closeUnimakeDialog} disabled={savingUnimake}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleSaveUnimakeConfig} disabled={savingUnimake}>
-                    {savingUnimake ? 'Salvando...' : 'Salvar'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
           </Card>
         )}
 

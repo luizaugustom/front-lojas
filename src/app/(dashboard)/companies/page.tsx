@@ -10,6 +10,7 @@ import { CompaniesTable } from '@/components/companies/companies-table';
 import { CompanyDialog } from '@/components/companies/company-dialog';
 import { CompanyStatusModal } from '@/components/companies/company-status-modal';
 import { FocusNfeConfigModal } from '@/components/companies/focus-nfe-config-modal';
+import { UnimakeConfigModal } from '@/components/companies/unimake-config-modal';
 import { Company, CreateCompanyDto } from '@/types';
 import { companyApi } from '@/lib/api-endpoints';
 import { handleApiError } from '@/lib/handleApiError';
@@ -30,6 +31,8 @@ export default function CompaniesPage() {
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [isFiscalModalOpen, setIsFiscalModalOpen] = useState(false);
   const [companyForFiscalModal, setCompanyForFiscalModal] = useState<Company | null>(null);
+  const [isBoletoModalOpen, setIsBoletoModalOpen] = useState(false);
+  const [companyForBoletoModal, setCompanyForBoletoModal] = useState<Company | null>(null);
 
   const fetchCompanies = async () => {
     try {
@@ -233,6 +236,10 @@ export default function CompaniesPage() {
             setCompanyForFiscalModal(company);
             setIsFiscalModalOpen(true);
           }}
+          onConfigureCompanyBoleto={(company) => {
+            setCompanyForBoletoModal(company);
+            setIsBoletoModalOpen(true);
+          }}
         />
       </Card>
 
@@ -273,6 +280,20 @@ export default function CompaniesPage() {
           }
         }}
         company={companyForFiscalModal}
+        onSuccess={() => {
+          fetchCompanies();
+        }}
+      />
+
+      <UnimakeConfigModal
+        open={isBoletoModalOpen}
+        onOpenChange={(open) => {
+          setIsBoletoModalOpen(open);
+          if (!open) {
+            setCompanyForBoletoModal(null);
+          }
+        }}
+        company={companyForBoletoModal}
         onSuccess={() => {
           fetchCompanies();
         }}

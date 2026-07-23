@@ -241,7 +241,7 @@ export default function BoletosPage() {
               </p>
               <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                 Sua empresa ainda não possui credenciais Unimake cadastradas. Solicite ao administrador
-                que configure o appId e appKey em Configurações Admin &gt; Boletos.
+                que configure o appId e appKey em Empresas → Configurar Boletos (Unimake).
               </p>
             </div>
           </CardContent>

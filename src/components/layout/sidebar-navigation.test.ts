@@ -2,10 +2,7 @@ import { getVisibleNavigation } from './sidebar-navigation';
 
 describe('getVisibleNavigation', () => {
   it('exibe Ponto Eletrônico no menu web para empresa', () => {
-    const items = getVisibleNavigation(
-      { role: 'empresa', nfeEmissionEnabled: false },
-      true,
-    );
+    const items = getVisibleNavigation({ role: 'empresa', nfeEmissionEnabled: false });
 
     expect(items).toEqual(
       expect.arrayContaining([
@@ -14,11 +11,8 @@ describe('getVisibleNavigation', () => {
     );
   });
 
-  it('exibe Boletos no menu quando liberado (mesmo sem boletoEnabled)', () => {
-    const items = getVisibleNavigation(
-      { role: 'empresa', nfeEmissionEnabled: false },
-      true,
-    );
+  it('exibe Boletos no menu para empresa', () => {
+    const items = getVisibleNavigation({ role: 'empresa', nfeEmissionEnabled: false });
 
     expect(items).toEqual(
       expect.arrayContaining([
@@ -27,22 +21,18 @@ describe('getVisibleNavigation', () => {
     );
   });
 
-  it('oculta Boletos no menu quando não liberado pelo admin', () => {
-    const items = getVisibleNavigation(
-      { role: 'empresa', nfeEmissionEnabled: false },
-      false,
-    );
+  it('exibe Boletos no menu para vendedor', () => {
+    const items = getVisibleNavigation({ role: 'vendedor', nfeEmissionEnabled: false });
 
-    expect(items).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ name: 'Boletos' })]),
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'Boletos', href: '/boletos' }),
+      ]),
     );
   });
 
   it('mantém Estabelecimentos oculto', () => {
-    const items = getVisibleNavigation(
-      { role: 'empresa', nfeEmissionEnabled: false },
-      true,
-    );
+    const items = getVisibleNavigation({ role: 'empresa', nfeEmissionEnabled: false });
 
     expect(items).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'Estabelecimentos' })]),
