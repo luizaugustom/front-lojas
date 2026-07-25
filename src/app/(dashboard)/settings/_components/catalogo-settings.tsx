@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Lock, Save, Store } from 'lucide-react';
+import { Lock, Save, Store, Layout, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import {
   Card,
@@ -315,6 +316,28 @@ export function CatalogoSettings() {
                 <li>• Acesso público - não requer login</li>
                 <li>• Compartilhe o link com seus clientes!</li>
               </ul>
+            </div>
+
+            <div className="rounded-lg border-2 border-dashed border-purple-200 bg-purple-50/50 p-4 dark:border-purple-800 dark:bg-purple-950/30">
+              <div className="flex items-start gap-3">
+                <Layout className="mt-0.5 h-5 w-5 shrink-0 text-purple-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-purple-900 dark:text-purple-100">
+                    Personalize sua página com o Website Builder
+                  </p>
+                  <p className="mt-1 text-xs text-purple-700 dark:text-purple-300">
+                    Monte sua página pública arrastando blocos (banner, produtos, textos, depoimentos),
+                    escolha cores e fontes. Tudo visual, sem código.
+                  </p>
+                  <Link
+                    href="/settings/catalogo/editor"
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-700"
+                  >
+                    Abrir editor visual
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </div>
             </div>
           </>
         )}
