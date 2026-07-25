@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext } from 'react';
+import type { StorefrontCompany } from '@/lib/storefront-types';
 
 export interface StorefrontProduct {
   id: string;
@@ -20,6 +21,7 @@ export interface StorefrontProduct {
 }
 
 export interface StorefrontData {
+  company?: StorefrontCompany;
   products: StorefrontProduct[];
   promotedProducts: StorefrontProduct[];
   openProduct?: (p: StorefrontProduct) => void;

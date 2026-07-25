@@ -345,6 +345,23 @@ export const storefrontApi = {
    * Roles: COMPANY - Reseta o design para o estado inicial
    */
   reset: () => api.post('/storefront/design/reset'),
+
+  /**
+   * POST /storefront/upload-asset
+   * Roles: COMPANY - Upload de imagem para blocos do storefront
+   * Content-Type: multipart/form-data
+   * Body: FormData com campo 'file' (imagem)
+   * @returns { url, fileName, size }
+   */
+  uploadAsset: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post<{ url: string; fileName: string; size: number }>(
+      '/storefront/upload-asset',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+  },
 };
 
 // ============================================================================

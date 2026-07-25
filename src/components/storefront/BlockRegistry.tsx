@@ -8,6 +8,14 @@ import { ProductGridBlock } from './blocks/products/ProductGridBlock';
 import { ProductCarouselBlock } from './blocks/products/ProductCarouselBlock';
 import { FeaturedProductsBlock } from './blocks/products/FeaturedProductsBlock';
 import { CategoriesBlock } from './blocks/products/CategoriesBlock';
+import { HeaderBlock } from './blocks/marketing/HeaderBlock';
+import { HeroBlock } from './blocks/marketing/HeroBlock';
+import { VideoBlock } from './blocks/marketing/VideoBlock';
+import { DividerBlock } from './blocks/marketing/DividerBlock';
+import { PromotionsBlock } from './blocks/marketing/PromotionsBlock';
+import { CouponBlock } from './blocks/marketing/CouponBlock';
+import { TestimonialsBlock } from './blocks/marketing/TestimonialsBlock';
+import { AboutBlock } from './blocks/marketing/AboutBlock';
 
 export interface BlockDefinition {
   type: BlockType;
@@ -24,12 +32,37 @@ export interface BlockDefinition {
  * editor leem daqui — sem mudanças no core.
  */
 export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
+  header: {
+    type: 'header',
+    label: 'Cabeçalho',
+    category: 'content',
+    description: 'Logo, nome e telefone da empresa no topo',
+    defaultProps: { showLogo: true, showName: true, showPhone: true, transparent: false },
+    Renderer: HeaderBlock as React.FC<{ block: Block; context?: any }>,
+  },
+  hero: {
+    type: 'hero',
+    label: 'Banner principal',
+    category: 'marketing',
+    description: 'Imagem grande com título, subtítulo e botão de ação',
+    defaultProps: {
+      imageUrl: '',
+      title: 'Bem-vindo',
+      subtitle: '',
+      ctaText: '',
+      ctaUrl: '',
+      overlayOpacity: 0.4,
+      textAlign: 'center',
+      height: 'lg',
+    },
+    Renderer: HeroBlock as React.FC<{ block: Block; context?: any }>,
+  },
   text: {
     type: 'text',
     label: 'Texto',
     category: 'content',
-    description: 'Bloco de texto com formatação rica',
-    defaultProps: { html: '<p>Edite este texto.</p>', align: 'left', maxWidth: 'md' },
+    description: 'Bloco de texto com formatação',
+    defaultProps: { html: 'Edite este texto.', align: 'left', maxWidth: 'md' },
     Renderer: TextBlock as React.FC<{ block: Block; context?: any }>,
   },
   image: {
@@ -40,6 +73,14 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     defaultProps: { imageUrl: '', alt: '', caption: '', width: 100, rounded: true },
     Renderer: ImageBlock as React.FC<{ block: Block; context?: any }>,
   },
+  video: {
+    type: 'video',
+    label: 'Vídeo',
+    category: 'content',
+    description: 'Embed de YouTube ou Vimeo',
+    defaultProps: { provider: 'youtube', videoId: '', aspectRatio: '16:9' },
+    Renderer: VideoBlock as React.FC<{ block: Block; context?: any }>,
+  },
   spacer: {
     type: 'spacer',
     label: 'Espaço',
@@ -47,6 +88,14 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     description: 'Espaço vertical entre seções',
     defaultProps: { height: 40 },
     Renderer: SpacerBlock as React.FC<{ block: Block; context?: any }>,
+  },
+  divider: {
+    type: 'divider',
+    label: 'Divisor',
+    category: 'content',
+    description: 'Linha horizontal divisora',
+    defaultProps: { style: 'solid', color: '#E5E7EB', width: 100 },
+    Renderer: DividerBlock as React.FC<{ block: Block; context?: any }>,
   },
   product_grid: {
     type: 'product_grid',
@@ -80,57 +129,39 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     defaultProps: { title: 'Categorias', layout: 'pills', showCount: true },
     Renderer: CategoriesBlock as React.FC<{ block: Block; context?: any }>,
   },
-  // Tipos ainda não implementados — placeholders amigáveis.
-  header: placeholderMeta('Cabeçalho', 'Logo, nome, busca, carrinho (Fase 4)', 'product', { showLogo: true, showName: true, showPhone: true, showCart: true, showSearch: true, transparent: false }),
-  hero: placeholderMeta('Banner principal', 'Imagem grande com chamada e CTA (Fase 4)', 'marketing', { imageUrl: '', title: '', subtitle: '', ctaText: '', ctaUrl: '', overlayOpacity: 0.4, textAlign: 'center', height: 'lg' }),
-  video: placeholderMeta('Vídeo', 'Embed de YouTube ou Vimeo (Fase 4)', 'content', { provider: 'youtube', videoId: '', aspectRatio: '16:9' }),
-  divider: placeholderMeta('Divisor', 'Linha horizontal divisora (Fase 4)', 'content', { style: 'solid', color: '#E5E7EB', width: 100 }),
-  promotions: placeholderMeta('Promoções', 'Promoções ativas em carrossel (Fase 4)', 'marketing', { title: 'Promoções', layout: 'carousel' }),
-  coupon: placeholderMeta('Cupom', 'Cupom de desconto em destaque (Fase 4)', 'marketing', { code: '', description: '', expiresAt: null, highlight: true }),
-  testimonials: placeholderMeta('Depoimentos', 'Avaliações de clientes (Fase 4)', 'marketing', { title: 'O que dizem nossos clientes', items: [] }),
-  about: placeholderMeta('Sobre', 'História da empresa (Fase 4)', 'marketing', { title: 'Sobre nós', html: '', imageUrl: '', imageSide: 'left' }),
+  promotions: {
+    type: 'promotions',
+    label: 'Promoções',
+    category: 'marketing',
+    description: 'Produtos em promoção em carrossel ou grade',
+    defaultProps: { title: 'Promoções', layout: 'carousel' },
+    Renderer: PromotionsBlock as React.FC<{ block: Block; context?: any }>,
+  },
+  coupon: {
+    type: 'coupon',
+    label: 'Cupom',
+    category: 'marketing',
+    description: 'Cupom de desconto em destaque com botão de copiar',
+    defaultProps: { code: '', description: '', expiresAt: null, highlight: true },
+    Renderer: CouponBlock as React.FC<{ block: Block; context?: any }>,
+  },
+  testimonials: {
+    type: 'testimonials',
+    label: 'Depoimentos',
+    category: 'marketing',
+    description: 'Avaliações de clientes com foto e nota',
+    defaultProps: { title: 'O que dizem nossos clientes', items: [] },
+    Renderer: TestimonialsBlock as React.FC<{ block: Block; context?: any }>,
+  },
+  about: {
+    type: 'about',
+    label: 'Sobre',
+    category: 'marketing',
+    description: 'História da empresa com texto e imagem',
+    defaultProps: { title: 'Sobre nós', html: '', imageUrl: '', imageSide: 'left' },
+    Renderer: AboutBlock as React.FC<{ block: Block; context?: any }>,
+  },
 };
-
-function placeholderMeta(
-  label: string,
-  description: string,
-  category: 'content' | 'product' | 'marketing',
-  defaultProps: Record<string, any>,
-): BlockDefinition {
-  return {
-    type: 'text',
-    label,
-    category,
-    description,
-    defaultProps,
-    Renderer: PlaceholderBlock as React.FC<{ block: Block; context?: any }>,
-  };
-}
-
-function PlaceholderBlock({ block }: { block: Block }) {
-  const def = BLOCK_REGISTRY[block.type];
-  return (
-    <section
-      className="mx-auto px-4 sm:px-6 lg:px-8"
-      style={{
-        marginTop: 'var(--sf-section-spacing)',
-        marginBottom: 'var(--sf-section-spacing)',
-      }}
-    >
-      <div
-        className="border-2 border-dashed rounded-md p-6 text-center"
-        style={{
-          borderColor: 'var(--sf-border)',
-          color: 'var(--sf-text-muted)',
-          borderRadius: 'var(--sf-radius)',
-        }}
-      >
-        <p className="text-sm font-medium">{def?.label || block.type}</p>
-        <p className="text-xs mt-1 opacity-70">Bloco em construção — disponível em breve</p>
-      </div>
-    </section>
-  );
-}
 
 export function getBlockDefinition(type: BlockType): BlockDefinition | undefined {
   return BLOCK_REGISTRY[type];
@@ -143,4 +174,3 @@ export function listAllBlocks(): BlockDefinition[] {
 export function listBlocksByCategory(category: 'content' | 'product' | 'marketing'): BlockDefinition[] {
   return Object.values(BLOCK_REGISTRY).filter((b) => b.category === category);
 }
-

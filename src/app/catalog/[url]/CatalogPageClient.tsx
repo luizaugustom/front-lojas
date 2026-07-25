@@ -186,6 +186,7 @@ export default function CatalogPageClient() {
         blocks={data.blocks}
         theme={data.theme || DEFAULT_THEME}
         data={{
+          company: data.company,
           products,
           promotedProducts,
           openProduct,

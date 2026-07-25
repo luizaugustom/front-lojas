@@ -8,10 +8,15 @@ interface ThemeProviderProps {
   children: React.ReactNode;
 }
 
+const GOOGLE_FONTS_HOST = 'https://fonts.googleapis.com/css2';
+
 /**
  * Injeta os tokens do tema (cores, fontes, radius, spacing) como CSS
  * custom properties no `:root`. Os renderers dos blocos usam essas vars
  * (`var(--sf-primary)`, etc.) para se adequar ao tema da empresa.
+ *
+ * Carrega dinamicamente os links de Google Fonts para as fontes
+ * escolhidas pelo admin (heading + body) e os remove ao desmontar.
  *
  * Componentes do storefront devem usar SEMPRE essas vars em vez de
  * cores hard-coded — assim o tema da empresa se propaga sem mudanças.
@@ -56,6 +61,21 @@ export function ThemeProvider({ theme, children }: ThemeProviderProps) {
     };
     root.style.setProperty('--sf-section-spacing', spacingMap[merged.spacing]);
 
+    // Carrega Google Fonts dinamicamente para as fontes usadas
+    const fonts = Array.from(new Set([merged.fonts.heading, merged.fonts.body]));
+    const linkHref = `${GOOGLE_FONTS_HOST}?family=${fonts
+      .map((f) => f.replace(/ /g, '+') + ':wght@400;500;600;700')
+      .join('&family=')}&display=swap`;
+    const linkId = 'sf-google-fonts';
+    let linkEl = document.getElementById(linkId) as HTMLLinkElement | null;
+    if (!linkEl) {
+      linkEl = document.createElement('link');
+      linkEl.id = linkId;
+      linkEl.rel = 'stylesheet';
+      document.head.appendChild(linkEl);
+    }
+    linkEl.href = linkHref;
+
     return () => {
       // Limpa as CSS vars ao desmontar (evita vazar para outras páginas)
       [
@@ -63,6 +83,9 @@ export function ThemeProvider({ theme, children }: ThemeProviderProps) {
         '--sf-background', '--sf-surface', '--sf-text', '--sf-text-muted', '--sf-border',
         '--sf-font-heading', '--sf-font-body', '--sf-radius', '--sf-section-spacing',
       ].forEach((v) => root.style.removeProperty(v));
+
+      // Não removemos o <link> de Google Fonts — múltiplos storefronts
+      // podem coexistir e o browser cacheia eficientemente.
     };
   }, [merged]);
 

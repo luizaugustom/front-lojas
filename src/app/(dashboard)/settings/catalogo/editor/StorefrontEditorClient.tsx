@@ -362,18 +362,54 @@ function BlockPropertyEditor({
   const { TextBlockEditor } = require('@/components/storefront/editor/editors/TextBlockEditor');
   const { ImageBlockEditor } = require('@/components/storefront/editor/editors/ImageBlockEditor');
   const { SpacerBlockEditor } = require('@/components/storefront/editor/editors/SpacerBlockEditor');
+  const { HeaderBlockEditor } = require('@/components/storefront/editor/editors/HeaderBlockEditor');
+  const { HeroBlockEditor } = require('@/components/storefront/editor/editors/HeroBlockEditor');
+  const { VideoBlockEditor } = require('@/components/storefront/editor/editors/VideoBlockEditor');
+  const { DividerBlockEditor } = require('@/components/storefront/editor/editors/DividerBlockEditor');
+  const { ProductGridBlockEditor } = require('@/components/storefront/editor/editors/ProductGridBlockEditor');
+  const { ProductCarouselBlockEditor } = require('@/components/storefront/editor/editors/ProductCarouselBlockEditor');
+  const { FeaturedProductsBlockEditor } = require('@/components/storefront/editor/editors/FeaturedProductsBlockEditor');
+  const { CategoriesBlockEditor } = require('@/components/storefront/editor/editors/CategoriesBlockEditor');
+  const { PromotionsBlockEditor } = require('@/components/storefront/editor/editors/PromotionsBlockEditor');
+  const { CouponBlockEditor } = require('@/components/storefront/editor/editors/CouponBlockEditor');
+  const { TestimonialsBlockEditor } = require('@/components/storefront/editor/editors/TestimonialsBlockEditor');
+  const { AboutBlockEditor } = require('@/components/storefront/editor/editors/AboutBlockEditor');
 
   switch (block.type) {
+    case 'header':
+      return <HeaderBlockEditor block={block} onUpdate={onUpdate} />;
+    case 'hero':
+      return <HeroBlockEditor block={block} onUpdate={onUpdate} />;
     case 'text':
       return <TextBlockEditor block={block} onUpdate={onUpdate} />;
     case 'image':
       return <ImageBlockEditor block={block} onUpdate={onUpdate} />;
+    case 'video':
+      return <VideoBlockEditor block={block} onUpdate={onUpdate} />;
     case 'spacer':
       return <SpacerBlockEditor block={block} onUpdate={onUpdate} />;
+    case 'divider':
+      return <DividerBlockEditor block={block} onUpdate={onUpdate} />;
+    case 'product_grid':
+      return <ProductGridBlockEditor block={block} onUpdate={onUpdate} />;
+    case 'product_carousel':
+      return <ProductCarouselBlockEditor block={block} onUpdate={onUpdate} />;
+    case 'featured_products':
+      return <FeaturedProductsBlockEditor block={block} onUpdate={onUpdate} />;
+    case 'categories':
+      return <CategoriesBlockEditor block={block} onUpdate={onUpdate} />;
+    case 'promotions':
+      return <PromotionsBlockEditor block={block} onUpdate={onUpdate} />;
+    case 'coupon':
+      return <CouponBlockEditor block={block} onUpdate={onUpdate} />;
+    case 'testimonials':
+      return <TestimonialsBlockEditor block={block} onUpdate={onUpdate} />;
+    case 'about':
+      return <AboutBlockEditor block={block} onUpdate={onUpdate} />;
     default:
       return (
         <div className="text-xs text-gray-400 italic">
-          Editor para {block.type} ainda não implementado. Disponível nas próximas fases.
+          Editor para {block.type} ainda não implementado.
         </div>
       );
   }

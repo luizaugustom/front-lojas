@@ -1,6 +1,7 @@
 'use client';
 
 import { Block } from '@/lib/storefront-types';
+import { RichTextEditor } from '../RichTextEditor';
 
 interface Props {
   block: Block;
@@ -21,8 +22,7 @@ const maxWidthOptions: Array<{ value: 'sm' | 'md' | 'lg' | 'full'; label: string
 ];
 
 /**
- * Editor do bloco de texto. Por enquanto campos simples; o rich text
- * editor (Fase 5) substitui o textarea.
+ * Editor do bloco de texto com RichTextEditor (negrito, listas, links).
  */
 export function TextBlockEditor({ block, onUpdate }: Props) {
   const { html = '', align = 'left', maxWidth = 'md' } = block.props || {};
@@ -31,16 +31,11 @@ export function TextBlockEditor({ block, onUpdate }: Props) {
     <div className="space-y-3">
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-1">Conteúdo</label>
-        <textarea
-          value={String(html).replace(/<[^>]*>/g, '')}
-          onChange={(e) => onUpdate({ html: e.target.value })}
-          rows={6}
-          className="w-full text-sm px-2 py-1.5 border rounded-md resize-y"
+        <RichTextEditor
+          value={String(html)}
+          onChange={(newHtml) => onUpdate({ html: newHtml })}
           placeholder="Digite o texto do bloco"
         />
-        <p className="text-[10px] text-gray-400 mt-1">
-          O editor rich text (negrito, itálico, listas) entra na Fase 5.
-        </p>
       </div>
 
       <div>

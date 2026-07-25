@@ -1,6 +1,7 @@
 'use client';
 
-import { StorefrontTheme } from '@/lib/storefront-types';
+import { StorefrontTheme, DEFAULT_THEME } from '@/lib/storefront-types';
+import { RotateCcw } from 'lucide-react';
 
 interface ThemePanelProps {
   theme: StorefrontTheme;
@@ -22,17 +23,133 @@ const COLOR_TOKENS: Array<{ key: keyof StorefrontTheme['colors']; label: string;
   { key: 'border', label: 'Borda', hint: 'Linhas divisórias' },
 ];
 
+interface PalettePreset {
+  name: string;
+  colors: StorefrontTheme['colors'];
+}
+
+const PALETTE_PRESETS: PalettePreset[] = [
+  {
+    name: 'Padrão (Azul)',
+    colors: {
+      primary: '#3B82F6',
+      secondary: '#1E40AF',
+      accent: '#F59E0B',
+      background: '#F9FAFB',
+      surface: '#FFFFFF',
+      text: '#111827',
+      textMuted: '#6B7280',
+      border: '#E5E7EB',
+    },
+  },
+  {
+    name: 'Esmeralda',
+    colors: {
+      primary: '#10B981',
+      secondary: '#065F46',
+      accent: '#F97316',
+      background: '#F0FDF4',
+      surface: '#FFFFFF',
+      text: '#111827',
+      textMuted: '#6B7280',
+      border: '#D1FAE5',
+    },
+  },
+  {
+    name: 'Vinho',
+    colors: {
+      primary: '#991B1B',
+      secondary: '#7F1D1D',
+      accent: '#F59E0B',
+      background: '#FEF2F2',
+      surface: '#FFFFFF',
+      text: '#1F2937',
+      textMuted: '#6B7280',
+      border: '#FECACA',
+    },
+  },
+  {
+    name: 'Escuro',
+    colors: {
+      primary: '#60A5FA',
+      secondary: '#3B82F6',
+      accent: '#FBBF24',
+      background: '#0F172A',
+      surface: '#1E293B',
+      text: '#F1F5F9',
+      textMuted: '#94A3B8',
+      border: '#334155',
+    },
+  },
+  {
+    name: 'Pastel',
+    colors: {
+      primary: '#EC4899',
+      secondary: '#DB2777',
+      accent: '#8B5CF6',
+      background: '#FDF2F8',
+      surface: '#FFFFFF',
+      text: '#1F2937',
+      textMuted: '#6B7280',
+      border: '#FBCFE8',
+    },
+  },
+];
+
 /**
- * Aba "Tema" do editor. Permite ajustar cores, fontes, raio e
- * espaçamento. Mudanças aplicam em tempo real no canvas via CSS vars.
- *
- * Fase 5 vai adicionar preview responsivo e validação Zod nos tokens.
+ * Aba "Tema" do editor. Permite ajustar cores (com presets), fontes,
+ * raio e espaçamento. Mudanças aplicam em tempo real no canvas via CSS vars.
  */
 export function ThemePanel({ theme, onUpdate }: ThemePanelProps) {
+  function resetAll() {
+    if (typeof window !== 'undefined' && !window.confirm('Voltar ao tema padrão? Isso afeta todas as cores, fontes e estilos.')) {
+      return;
+    }
+    onUpdate(DEFAULT_THEME);
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="font-medium text-sm mb-3">Cores</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium text-sm">Paleta</h3>
+          <button
+            type="button"
+            onClick={resetAll}
+            className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+            title="Restaurar tema padrão"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Resetar
+          </button>
+        </div>
+
+        <div className="grid grid-cols-5 gap-1.5 mb-3">
+          {PALETTE_PRESETS.map((preset) => {
+            const isActive =
+              preset.colors.primary === theme.colors.primary &&
+              preset.colors.background === theme.colors.background;
+            return (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={() => onUpdate({ colors: preset.colors })}
+                title={preset.name}
+                className={`flex flex-col items-center gap-0.5 p-1 rounded border ${
+                  isActive ? 'border-blue-500 ring-1 ring-blue-200' : 'border-gray-200 hover:border-gray-400'
+                }`}
+              >
+                <div className="flex w-full h-4 rounded overflow-hidden">
+                  <div className="flex-1" style={{ backgroundColor: preset.colors.primary }} />
+                  <div className="flex-1" style={{ backgroundColor: preset.colors.accent }} />
+                  <div className="flex-1" style={{ backgroundColor: preset.colors.background }} />
+                </div>
+                <span className="text-[9px] text-gray-600 leading-tight">{preset.name}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="space-y-2">
           {COLOR_TOKENS.map((token) => (
             <ColorRow
@@ -41,7 +158,7 @@ export function ThemePanel({ theme, onUpdate }: ThemePanelProps) {
               label={token.label}
               hint={token.hint}
               onChange={(value) =>
-                onUpdate({ colors: { [token.key]: value } } as any)
+                onUpdate({ colors: { ...theme.colors, [token.key]: value } } as any)
               }
             />
           ))}
@@ -63,6 +180,9 @@ export function ThemePanel({ theme, onUpdate }: ThemePanelProps) {
             options={FONT_OPTIONS}
             onChange={(value) => onUpdate({ fonts: { ...theme.fonts, body: value } })}
           />
+          <p className="text-[10px] text-gray-400 mt-1">
+            Fontes são carregadas via Google Fonts (link injetado pela ThemeProvider).
+          </p>
         </div>
       </div>
 

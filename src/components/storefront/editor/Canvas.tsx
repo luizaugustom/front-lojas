@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -7,6 +8,7 @@ import { Block } from '@/lib/storefront-types';
 import { StorefrontRenderer } from '@/components/storefront/StorefrontRenderer';
 import { getBlockDefinition } from '@/components/storefront/BlockRegistry';
 import { useStorefrontEditor } from '@/store/storefront-editor-store';
+import { ViewportSwitcher, Viewport, viewportWidth } from './ViewportSwitcher';
 
 interface CanvasProps {
   blocks: Block[];
@@ -18,19 +20,24 @@ interface CanvasProps {
  * Centro do editor. Mostra o preview ao vivo do storefront (mesmo
  * renderer que o público) com sobreposições para seleção e drag handles.
  *
+ * Suporta preview responsivo: o usuário pode alternar entre desktop,
+ * tablet e celular para ver como o layout aparece em cada dispositivo.
+ *
  * `useSortable` em cada item + `useDroppable` no container permitem:
  *  - arrastar do palette → adiciona bloco
  *  - arrastar dentro do canvas → reordena
- *
- * O canvas inteiro é uma "zona de drop" para receber drops do palette
- * no final da lista (sem precisar acertar um bloco específico).
  */
 export function Canvas({ blocks, selectedBlockId, onSelect }: CanvasProps) {
   const theme = useStorefrontEditor((s) => s.theme);
+  const [viewport, setViewport] = useState<Viewport>('desktop');
 
   return (
     <div className="p-6 min-h-full">
-      <CanvasDropZone>
+      <div className="flex justify-center mb-4">
+        <ViewportSwitcher value={viewport} onChange={setViewport} />
+      </div>
+
+      <CanvasDropZone viewport={viewport}>
         {blocks.length === 0 ? (
           <EmptyCanvas />
         ) : (
@@ -54,20 +61,35 @@ export function Canvas({ blocks, selectedBlockId, onSelect }: CanvasProps) {
   );
 }
 
-function CanvasDropZone({ children }: { children: React.ReactNode }) {
+function CanvasDropZone({
+  children,
+  viewport,
+}: {
+  children: React.ReactNode;
+  viewport: Viewport;
+}) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'canvas-end',
     data: { blockIndex: -1 },
   });
 
+  const width = viewportWidth(viewport);
+  const isMobile = viewport !== 'desktop';
+
   return (
-    <div
-      ref={setNodeRef}
-      className={`mx-auto max-w-5xl bg-white shadow-sm rounded-lg overflow-hidden transition ${
-        isOver ? 'ring-2 ring-blue-400 ring-offset-2' : ''
-      }`}
-    >
-      {children}
+    <div className="mx-auto flex justify-center">
+      <div
+        ref={setNodeRef}
+        style={{
+          width,
+          maxWidth: '100%',
+        }}
+        className={`bg-white shadow-sm rounded-lg overflow-hidden border transition-all ${
+          isOver ? 'ring-2 ring-blue-400 ring-offset-2' : ''
+        } ${isMobile ? 'border-x' : ''}`}
+      >
+        {children}
+      </div>
     </div>
   );
 }
