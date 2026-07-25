@@ -4,6 +4,10 @@ import { Block, BlockType } from '@/lib/storefront-types';
 import { TextBlock } from './blocks/TextBlock';
 import { ImageBlock } from './blocks/ImageBlock';
 import { SpacerBlock } from './blocks/SpacerBlock';
+import { ProductGridBlock } from './blocks/products/ProductGridBlock';
+import { ProductCarouselBlock } from './blocks/products/ProductCarouselBlock';
+import { FeaturedProductsBlock } from './blocks/products/FeaturedProductsBlock';
+import { CategoriesBlock } from './blocks/products/CategoriesBlock';
 
 export interface BlockDefinition {
   type: BlockType;
@@ -44,21 +48,47 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     defaultProps: { height: 40 },
     Renderer: SpacerBlock as React.FC<{ block: Block; context?: any }>,
   },
-  // Os tipos abaixo são registrados apenas com metadata; os renderers
-  // serão implementados nas Fases 3 e 4. Renderizam um placeholder
-  // amigável até lá.
-  header: placeholderMeta('Cabeçalho', 'Logo, nome, busca, carrinho', 'product', { showLogo: true, showName: true, showPhone: true, showCart: true, showSearch: true, transparent: false }),
-  hero: placeholderMeta('Banner principal', 'Imagem grande com chamada e CTA', 'marketing', { imageUrl: '', title: '', subtitle: '', ctaText: '', ctaUrl: '', overlayOpacity: 0.4, textAlign: 'center', height: 'lg' }),
-  video: placeholderMeta('Vídeo', 'Embed de YouTube ou Vimeo', 'content', { provider: 'youtube', videoId: '', aspectRatio: '16:9' }),
-  divider: placeholderMeta('Divisor', 'Linha horizontal divisora', 'content', { style: 'solid', color: '#E5E7EB', width: 100 }),
-  product_grid: placeholderMeta('Grade de produtos', 'Produtos em grade', 'product', { title: 'Produtos', columns: 4, category: null, limit: 12, showPrice: true }),
-  product_carousel: placeholderMeta('Carrossel de produtos', 'Produtos em carrossel', 'product', { title: 'Em destaque', category: null, autoplay: false, limit: 10 }),
-  featured_products: placeholderMeta('Produtos destaque', 'Produtos escolhidos manualmente', 'product', { title: 'Selecionados para você', productIds: [], columns: 4 }),
-  categories: placeholderMeta('Categorias', 'Navegação por categoria', 'product', { title: 'Categorias', layout: 'pills', showCount: true }),
-  promotions: placeholderMeta('Promoções', 'Promoções ativas em carrossel', 'marketing', { title: 'Promoções', layout: 'carousel' }),
-  coupon: placeholderMeta('Cupom', 'Cupom de desconto em destaque', 'marketing', { code: '', description: '', expiresAt: null, highlight: true }),
-  testimonials: placeholderMeta('Depoimentos', 'Avaliações de clientes', 'marketing', { title: 'O que dizem nossos clientes', items: [] }),
-  about: placeholderMeta('Sobre', 'História da empresa', 'marketing', { title: 'Sobre nós', html: '', imageUrl: '', imageSide: 'left' }),
+  product_grid: {
+    type: 'product_grid',
+    label: 'Grade de produtos',
+    category: 'product',
+    description: 'Produtos em grade com filtros',
+    defaultProps: { title: 'Nossos produtos', columns: 4, category: null, limit: 12, showPrice: true },
+    Renderer: ProductGridBlock as React.FC<{ block: Block; context?: any }>,
+  },
+  product_carousel: {
+    type: 'product_carousel',
+    label: 'Carrossel de produtos',
+    category: 'product',
+    description: 'Produtos em carrossel horizontal',
+    defaultProps: { title: 'Em destaque', category: null, autoplay: false, limit: 10 },
+    Renderer: ProductCarouselBlock as React.FC<{ block: Block; context?: any }>,
+  },
+  featured_products: {
+    type: 'featured_products',
+    label: 'Produtos destaque',
+    category: 'product',
+    description: 'Produtos escolhidos manualmente pelo admin',
+    defaultProps: { title: 'Selecionados para você', productIds: [], columns: 4 },
+    Renderer: FeaturedProductsBlock as React.FC<{ block: Block; context?: any }>,
+  },
+  categories: {
+    type: 'categories',
+    label: 'Categorias',
+    category: 'product',
+    description: 'Navegação por categoria de produtos',
+    defaultProps: { title: 'Categorias', layout: 'pills', showCount: true },
+    Renderer: CategoriesBlock as React.FC<{ block: Block; context?: any }>,
+  },
+  // Tipos ainda não implementados — placeholders amigáveis.
+  header: placeholderMeta('Cabeçalho', 'Logo, nome, busca, carrinho (Fase 4)', 'product', { showLogo: true, showName: true, showPhone: true, showCart: true, showSearch: true, transparent: false }),
+  hero: placeholderMeta('Banner principal', 'Imagem grande com chamada e CTA (Fase 4)', 'marketing', { imageUrl: '', title: '', subtitle: '', ctaText: '', ctaUrl: '', overlayOpacity: 0.4, textAlign: 'center', height: 'lg' }),
+  video: placeholderMeta('Vídeo', 'Embed de YouTube ou Vimeo (Fase 4)', 'content', { provider: 'youtube', videoId: '', aspectRatio: '16:9' }),
+  divider: placeholderMeta('Divisor', 'Linha horizontal divisora (Fase 4)', 'content', { style: 'solid', color: '#E5E7EB', width: 100 }),
+  promotions: placeholderMeta('Promoções', 'Promoções ativas em carrossel (Fase 4)', 'marketing', { title: 'Promoções', layout: 'carousel' }),
+  coupon: placeholderMeta('Cupom', 'Cupom de desconto em destaque (Fase 4)', 'marketing', { code: '', description: '', expiresAt: null, highlight: true }),
+  testimonials: placeholderMeta('Depoimentos', 'Avaliações de clientes (Fase 4)', 'marketing', { title: 'O que dizem nossos clientes', items: [] }),
+  about: placeholderMeta('Sobre', 'História da empresa (Fase 4)', 'marketing', { title: 'Sobre nós', html: '', imageUrl: '', imageSide: 'left' }),
 };
 
 function placeholderMeta(
@@ -68,7 +98,7 @@ function placeholderMeta(
   defaultProps: Record<string, any>,
 ): BlockDefinition {
   return {
-    type: 'text', // será sobrescrito
+    type: 'text',
     label,
     category,
     description,
@@ -77,11 +107,6 @@ function placeholderMeta(
   };
 }
 
-/**
- * Placeholder genérico para blocos ainda não implementados.
- * Mostra um aviso sutil de "bloco em construção" no renderer público
- * e um preview real quando o tipo for implementado.
- */
 function PlaceholderBlock({ block }: { block: Block }) {
   const def = BLOCK_REGISTRY[block.type];
   return (
@@ -107,24 +132,15 @@ function PlaceholderBlock({ block }: { block: Block }) {
   );
 }
 
-/**
- * Retorna a definição de um bloco pelo tipo. Útil para o editor
- * mostrar label, ícone, descrição no palette e no properties panel.
- */
 export function getBlockDefinition(type: BlockType): BlockDefinition | undefined {
   return BLOCK_REGISTRY[type];
 }
 
-/**
- * Lista todos os blocos disponíveis para o palette do editor.
- */
 export function listAllBlocks(): BlockDefinition[] {
   return Object.values(BLOCK_REGISTRY);
 }
 
-/**
- * Lista os blocos por categoria (content, product, marketing).
- */
 export function listBlocksByCategory(category: 'content' | 'product' | 'marketing'): BlockDefinition[] {
   return Object.values(BLOCK_REGISTRY).filter((b) => b.category === category);
 }
+

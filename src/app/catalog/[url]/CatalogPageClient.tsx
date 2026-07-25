@@ -1,34 +1,45 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
+import { X, MessageCircle, Package } from 'lucide-react';
 import { StorefrontRenderer } from '@/components/storefront/StorefrontRenderer';
 import { PublicStorefrontResponse, DEFAULT_THEME } from '@/lib/storefront-types';
+import { StorefrontProduct } from '@/components/storefront/StorefrontDataContext';
 import { getApiBaseUrl } from '@/lib/api-base-url';
 import { handleApiError } from '@/lib/handleApiError';
 import { logger } from '@/lib/logger';
-import { Package } from 'lucide-react';
+import { getImageUrl } from '@/lib/image-utils';
+
+interface ProductModalState {
+  product: StorefrontProduct;
+  photoIndex: number;
+}
 
 /**
  * Página pública do storefront (renderer novo baseado em website builder).
  *
  * Fluxo:
  * 1. Busca o design publicado em GET /public/storefront/:url
- * 2. Aplica o tema (ThemeProvider) e itera os blocos via StorefrontRenderer
- * 3. Se a empresa ainda não publicou nada, mostra estado vazio amigável
- *
- * A antiga lógica de 937 linhas (cart, modal, versículo, etc.) foi
- * removida porque o storefront novo é totalmente data-driven. As
- * funcionalidades de carrinho/WhatsApp serão reintroduzidas via
- * blocos na Fase 3 (product_grid, product_carousel).
+ * 2. Se houver blocos de produto, busca também os produtos em
+ *    GET /public/catalog/:url/products (mantido por compatibilidade)
+ * 3. Aplica o tema e itera os blocos via StorefrontRenderer
+ * 4. Modal de produto e integração WhatsApp (Fase 4)
  */
 export default function CatalogPageClient() {
   const params = useParams();
   const url = params.url as string;
+  const searchParams = useSearchParams();
+
   const [data, setData] = useState<PublicStorefrontResponse | null>(null);
+  const [products, setProducts] = useState<StorefrontProduct[]>([]);
+  const [promotedProducts, setPromotedProducts] = useState<StorefrontProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [modal, setModal] = useState<ProductModalState | null>(null);
 
+  // Fetch do design
   useEffect(() => {
     const fetchStorefront = async () => {
       try {
@@ -53,7 +64,7 @@ export default function CatalogPageClient() {
             const data = JSON.parse(errorText);
             if (data?.message) message = Array.isArray(data.message) ? data.message[0] : data.message;
           } catch {
-            // não era JSON, usa a mensagem padrão
+            // ignore
           }
           throw new Error(message);
         }
@@ -72,6 +83,36 @@ export default function CatalogPageClient() {
     if (url) fetchStorefront();
   }, [url]);
 
+  // Fetch dos produtos (só se houver bloco de produto)
+  useEffect(() => {
+    if (!data) return;
+    const hasProductBlock = data.blocks.some((b) =>
+      ['product_grid', 'product_carousel', 'featured_products', 'categories'].includes(b.type),
+    );
+    if (!hasProductBlock) {
+      setProducts([]);
+      setPromotedProducts([]);
+      return;
+    }
+
+    const fetchProducts = async () => {
+      try {
+        const baseUrl = (
+          process.env.NEXT_PUBLIC_PUBLIC_API_URL?.trim() || getApiBaseUrl()
+        ).replace(/\/+$/, '');
+        const response = await fetch(`${baseUrl}/public/catalog/${url}/products`);
+        if (!response.ok) return;
+        const json = await response.json();
+        setProducts(json.products || []);
+        setPromotedProducts(json.promotedProducts || []);
+      } catch (err) {
+        logger.error('❌ Erro ao buscar produtos:', err);
+      }
+    };
+
+    fetchProducts();
+  }, [data, url]);
+
   // Título da aba
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -89,6 +130,24 @@ export default function CatalogPageClient() {
       document.title = 'Catálogo';
     }
   }, [data?.company, data?.company?.fantasyName, data?.company?.name, loading, error]);
+
+  // Deep link: ?product=:id abre o modal do produto
+  useEffect(() => {
+    const productId = searchParams.get('product');
+    if (!productId || products.length === 0) return;
+    const found = [...promotedProducts, ...products].find((p) => p.id === productId);
+    if (found && modal?.product.id !== found.id) {
+      setModal({ product: found, photoIndex: 0 });
+    }
+  }, [searchParams, products, promotedProducts, modal?.product.id]);
+
+  const openProduct = useCallback((p: StorefrontProduct) => {
+    setModal({ product: p, photoIndex: 0 });
+  }, []);
+
+  const onCategoryClick = useCallback((_category: string) => {
+    // Fase 7: filtrar storefront por categoria (scroll até grade com filtro)
+  }, []);
 
   if (loading) {
     return (
@@ -117,16 +176,24 @@ export default function CatalogPageClient() {
     );
   }
 
-  // Estado vazio (empresa ainda não publicou um design)
   if (data.needsSetup || (data.blocks?.length ?? 0) === 0) {
     return <EmptyState companyName={data.company.fantasyName || data.company.name} />;
   }
 
   return (
-    <StorefrontRenderer
-      blocks={data.blocks}
-      theme={data.theme || DEFAULT_THEME}
-    />
+    <>
+      <StorefrontRenderer
+        blocks={data.blocks}
+        theme={data.theme || DEFAULT_THEME}
+        data={{
+          products,
+          promotedProducts,
+          openProduct,
+          onCategoryClick,
+        }}
+      />
+      {modal && <ProductModal state={modal} onClose={() => setModal(null)} company={data.company} />}
+    </>
   );
 }
 
@@ -145,6 +212,92 @@ function EmptyState({ companyName }: { companyName: string }) {
           O catálogo público desta empresa está em configuração. Em breve
           estará disponível aqui.
         </p>
+      </div>
+    </div>
+  );
+}
+
+function ProductModal({
+  state,
+  onClose,
+  company,
+}: {
+  state: ProductModalState;
+  onClose: () => void;
+  company: PublicStorefrontResponse['company'];
+}) {
+  const { product, photoIndex } = state;
+  const phoneDigits = (company.phone || '').replace(/\D/g, '');
+  const whatsappLink = phoneDigits
+    ? `https://wa.me/55${phoneDigits}?text=${encodeURIComponent(`Olá! Tenho interesse no produto: ${product.name}`)}`
+    : '#';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full sm:max-w-lg sm:rounded-lg overflow-hidden max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center p-3 border-b">
+          <h3 className="font-medium text-sm truncate">{product.name}</h3>
+          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-700">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="relative aspect-square bg-gray-100">
+          {product.photos?.[photoIndex] ? (
+            <Image
+              src={getImageUrl(product.photos[photoIndex])}
+              alt={product.name}
+              fill
+              className="object-contain"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+              <Package className="h-16 w-16" />
+            </div>
+          )}
+        </div>
+        <div className="p-4 space-y-2 overflow-y-auto">
+          {product.description && (
+            <p className="text-sm text-gray-700">{product.description}</p>
+          )}
+          <div className="flex items-baseline gap-2">
+            {product.isOnPromotion && product.promotionPrice ? (
+              <>
+                <span className="text-2xl font-bold" style={{ color: 'var(--sf-accent)' }}>
+                  R$ {Number(product.promotionPrice).toFixed(2)}
+                </span>
+                <span className="text-sm text-gray-400 line-through">
+                  R$ {Number(product.originalPrice || product.price).toFixed(2)}
+                </span>
+              </>
+            ) : (
+              <span className="text-2xl font-bold" style={{ color: 'var(--sf-text)' }}>
+                R$ {Number(product.price).toFixed(2)}
+              </span>
+            )}
+          </div>
+          {product.size && (
+            <p className="text-xs text-gray-500">Tamanho: {product.size}</p>
+          )}
+          <a
+            href={whatsappLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-md text-sm font-medium"
+            style={{
+              backgroundColor: 'var(--sf-primary)',
+              color: '#fff',
+            }}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Falar no WhatsApp
+          </a>
+        </div>
       </div>
     </div>
   );
