@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { HelpCircle, Clock, ListChecks, AlertCircle, QrCode, Settings as SettingsIcon } from 'lucide-react';
+import { HelpCircle, Clock, ListChecks, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHelpModal } from '@/components/help';
@@ -21,8 +21,6 @@ import { VendorScheduleCard } from '@/components/time-clock/VendorScheduleCard';
 import { TimeClockStatsCard } from '@/components/time-clock/TimeClockStatsCard';
 import { TimeClockReportForm } from '@/components/time-clock/TimeClockReportForm';
 import { PendingApprovalsList } from '@/components/time-clock/PendingApprovalsList';
-import { QrCodeDisplay } from '@/components/time-clock/QrCodeDisplay';
-import { TimeClockConfigForm } from '@/components/time-clock/TimeClockConfigForm';
 import { TimeClockHistoryView } from '@/components/time-clock/TimeClockHistoryView';
 import { TimeClockManageView } from '@/components/time-clock/TimeClockManageView';
 import {
@@ -35,7 +33,7 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types';
 
-type TabKey = 'punch' | 'history' | 'pending' | 'manage' | 'qr' | 'config';
+type TabKey = 'punch' | 'history' | 'pending' | 'manage';
 
 interface TabDef {
   key: TabKey;
@@ -49,8 +47,6 @@ const ALL_TABS: TabDef[] = [
   { key: 'history', label: 'Histórico', icon: ListChecks, roles: ['vendedor'] },
   { key: 'pending', label: 'Pendentes', icon: AlertCircle, roles: ['empresa', 'admin', 'gestor'] },
   { key: 'manage', label: 'Histórico Geral', icon: ListChecks, roles: ['empresa', 'admin', 'gestor'] },
-  { key: 'qr', label: 'QR da Loja', icon: QrCode, roles: ['empresa', 'admin'] },
-  { key: 'config', label: 'Configurações', icon: SettingsIcon, roles: ['empresa', 'admin'] },
 ];
 
 export default function TimeClockPage() {
@@ -103,7 +99,6 @@ export default function TimeClockPage() {
     router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
   };
 
-  // Geolocalização centralizada (compartilhada com PunchClockCard e LocationPrompt)
   const {
     coords,
     status: geoStatus,
@@ -126,7 +121,6 @@ export default function TimeClockPage() {
   }));
 
   const isCompany = role === 'empresa' || role === 'admin' || role === 'gestor';
-  const isAdminCompany = role === 'empresa' || role === 'admin';
   const isVendedor = role === 'vendedor';
 
   const focusLocation = () => {
@@ -294,19 +288,6 @@ export default function TimeClockPage() {
             <TabsContent value="manage" className="space-y-4 max-w-5xl mx-auto">
               <TimeClockManageView />
               <TimeClockReportForm />
-            </TabsContent>
-          </>
-        )}
-
-        {isAdminCompany && (
-          <>
-            <TabsContent value="qr" className="space-y-4 max-w-3xl mx-auto">
-              <QrCodeDisplay />
-              <TimeClockConfigForm />
-            </TabsContent>
-
-            <TabsContent value="config" className="max-w-3xl mx-auto">
-              <TimeClockConfigForm />
             </TabsContent>
           </>
         )}

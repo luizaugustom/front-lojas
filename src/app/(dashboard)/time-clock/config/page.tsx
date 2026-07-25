@@ -4,16 +4,16 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 /**
- * Página legada — agora redireciona para `/time-clock?tab=config`.
+ * Página legada — redireciona para Configurações > Ponto Eletrônico.
  */
 export default function TimeClockConfigPage() {
   const router = useRouter();
   useEffect(() => {
-    router.replace('/time-clock?tab=config');
+    router.replace('/settings/ponto');
   }, [router]);
   return (
     <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-      Redirecionando para Ponto Eletrônico...
+      Redirecionando para Configurações...
     </div>
   );
 }

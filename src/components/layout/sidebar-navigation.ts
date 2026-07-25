@@ -53,6 +53,7 @@ export const navigation = [
 interface NavigationUser {
   role: string;
   nfeEmissionEnabled?: boolean;
+  boletoAllowed?: boolean;
 }
 
 export function getVisibleNavigation(user: NavigationUser | null) {
@@ -78,6 +79,10 @@ export function getVisibleNavigation(user: NavigationUser | null) {
 
     if (item.name === 'Notas Fiscais') {
       return user.role === 'empresa' || (user.role === 'vendedor' && user.nfeEmissionEnabled === true);
+    }
+
+    if (item.name === 'Boletos') {
+      return user.role === 'empresa' && user.boletoAllowed === true;
     }
 
     if (item.name === 'Estabelecimentos') return false;

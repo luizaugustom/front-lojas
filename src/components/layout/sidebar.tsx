@@ -11,14 +11,23 @@ import {
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui-store';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
 import { getVisibleNavigation } from './sidebar-navigation';
 
 export function Sidebar() {
   const pathname = usePathname();
   const { sidebarOpen, setSidebarOpen, sidebarCollapsed, toggleSidebarCollapsed } = useUIStore();
   const { user } = useAuth();
+  const { company } = useCompany();
 
-  const filteredNavigation = getVisibleNavigation(user);
+  const filteredNavigation = getVisibleNavigation(
+    user
+      ? {
+          ...user,
+          boletoAllowed: company?.boletoAllowed === true,
+        }
+      : null,
+  );
   
 
   return (

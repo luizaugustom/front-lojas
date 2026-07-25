@@ -3,6 +3,7 @@ import {
   Bell,
   BookOpen,
   Building2,
+  Clock,
   CreditCard,
   FileBadge,
   FileText,
@@ -23,6 +24,7 @@ export type SettingsCategoryId =
   | 'boletos'
   | 'taxas-cartao'
   | 'notificacoes'
+  | 'ponto'
   | 'administracao';
 
 export type SettingsRole = 'empresa' | 'admin' | 'gestor' | 'vendedor';
@@ -102,9 +104,9 @@ const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
     slug: 'whatsapp',
     href: '/settings/whatsapp',
     title: 'WhatsApp',
-    description: 'Conexão e status do WhatsApp da empresa.',
+    description: 'Conexão e status do WhatsApp do sistema.',
     icon: MessageSquare,
-    roles: ['empresa', 'admin'],
+    roles: ['admin'],
   },
   {
     id: 'parcelamento',
@@ -143,6 +145,15 @@ const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
     roles: ['empresa', 'admin', 'gestor'],
   },
   {
+    id: 'ponto',
+    slug: 'ponto',
+    href: '/settings/ponto',
+    title: 'Ponto Eletrônico',
+    description: 'Localização, QR Code, regras e jornadas dos vendedores.',
+    icon: Clock,
+    roles: ['empresa', 'admin'],
+  },
+  {
     id: 'administracao',
     slug: 'administracao',
     href: '/settings/administracao',
@@ -179,26 +190,35 @@ const getCompanyLockReason = (
     return 'As mensagens automáticas exigem plano PRO ou teste grátis e autorização.';
   }
 
-  if (id === 'boletos' && company?.boletoAllowed === false) {
-    return 'A emissão de boletos não está disponível para esta empresa.';
-  }
-
   return undefined;
+};
+
+const isCategoryVisibleForCompany = (
+  id: SettingsCategoryId,
+  role: SettingsRole,
+  company?: SettingsCompany,
+): boolean => {
+  if (role === 'empresa' && id === 'boletos') {
+    return company?.boletoAllowed === true;
+  }
+  return true;
 };
 
 export const getSettingsCategories = (
   role: SettingsRole,
   company?: SettingsCompany,
 ): VisibleSettingsCategory[] =>
-  SETTINGS_CATEGORIES.filter((category) => category.roles.includes(role)).map((category) => {
-    const lockReason = role === 'empresa' ? getCompanyLockReason(category.id, company) : undefined;
+  SETTINGS_CATEGORIES.filter((category) => category.roles.includes(role))
+    .filter((category) => isCategoryVisibleForCompany(category.id, role, company))
+    .map((category) => {
+      const lockReason = role === 'empresa' ? getCompanyLockReason(category.id, company) : undefined;
 
-    return {
-      ...category,
-      locked: lockReason !== undefined,
-      lockReason,
-    };
-  });
+      return {
+        ...category,
+        locked: lockReason !== undefined,
+        lockReason,
+      };
+    });
 
 export const getSettingsCategory = (id: SettingsCategoryId): SettingsCategory => {
   const category = CATEGORY_BY_ID.get(id);

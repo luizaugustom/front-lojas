@@ -115,7 +115,7 @@ export function getTimeClockHelpTabs(): PageHelpTab[] {
             <CardContent className="space-y-3">
               <StepItem
                 number={1}
-                text="Configure a loja: em 'Config. Ponto' informe latitude/longitude, raio e regras."
+                text="Configure a loja: em Configurações > Ponto Eletrônico informe latitude/longitude, raio e regras."
               />
               <StepItem
                 number={2}
@@ -123,7 +123,7 @@ export function getTimeClockHelpTabs(): PageHelpTab[] {
               />
               <StepItem
                 number={3}
-                text="Gere o espelho mensal em Relatórios Contábeis > Relatório de Ponto Eletrônico."
+                text="Gere o espelho mensal na aba Histórico Geral do Ponto Eletrônico."
               />
             </CardContent>
           </Card>
@@ -142,7 +142,7 @@ export function getTimeClockHelpTabs(): PageHelpTab[] {
             <TipItem icon="📍" text="Configure o raio ideal: galpões 100-150m, escritórios 30-50m." />
             <TipItem icon="📱" text="Use QR obrigatório em locais públicos (shoppings)." />
             <TipItem icon="⏰" text="Configure os 4 horários de marcação para receber notificações." />
-            <TipItem icon="✅" text="Revise pendentes diariamente em 'Aprovar Pontos'." />
+            <TipItem icon="✅" text="Revise pendentes diariamente em 'Pendentes'." />
           </CardContent>
         </Card>
       ),
@@ -162,15 +162,15 @@ export function getTimeClockHelpTabs(): PageHelpTab[] {
             />
             <TroubleshootItem
               problem="QR inválido ou adulterado"
-              solution="A empresa deve rotacionar o QR em 'Config. Ponto' > Rotacionar. O token anterior é invalidado."
+              solution="A empresa deve rotacionar o QR em Configurações > Ponto Eletrônico > QR da loja. O token anterior é invalidado."
             />
             <TroubleshootItem
               problem="Ponto fora do raio"
-              solution="Verifique a precisão do GPS. Aprovações manuais ficam em 'Aprovar Pontos'."
+              solution="Verifique a precisão do GPS. Aprovações manuais ficam em 'Pendentes'."
             />
             <TroubleshootItem
               problem="Não recebo notificações"
-              solution="Verifique 'Lembretes automáticos' em Config. Ponto e as permissões de notificação do navegador."
+              solution="Verifique 'Lembretes automáticos' em Configurações > Ponto Eletrônico e as permissões de notificação do navegador."
             />
           </CardContent>
         </Card>

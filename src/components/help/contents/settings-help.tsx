@@ -6,6 +6,7 @@ import {
   BookOpen,
   Building2,
   CheckCircle2,
+  Clock,
   CreditCard,
   FileBadge,
   FileText,
@@ -24,7 +25,7 @@ const STAGGER = 50;
 
 export const settingsHelpTitle = 'Central de Ajuda - Configurações';
 export const settingsHelpDescription =
-  'Hub com 11 categorias para gerenciar perfil, empresa, fiscal, catálogo, mensagens, WhatsApp, boletos, taxas e administração.';
+  'Hub com 12 categorias para gerenciar perfil, empresa, fiscal, catálogo, mensagens, WhatsApp, boletos, taxas, ponto e administração.';
 export const settingsHelpIcon = <Settings className="h-6 w-6 text-blue-600 dark:text-blue-400" />;
 
 interface CategoryHelp {
@@ -83,6 +84,11 @@ const CATEGORY_HELP: readonly CategoryHelp[] = [
     description: 'Preferências de alertas e notificações do sistema.',
   },
   {
+    title: 'Ponto Eletrônico',
+    description:
+      'Localização da loja, raio, QR Code, regras de batida e jornadas individuais dos vendedores.',
+  },
+  {
     title: 'Administração',
     description:
       'Recursos administrativos: token IBPT global (admin) ou gestão de empresas e troca de senhas (gestor).',
@@ -101,6 +107,7 @@ const CATEGORY_ICONS: Record<string, JSX.Element> = {
   Boletos: <Landmark className="h-5 w-5 text-emerald-500" />,
   'Taxas de Cartão': <Percent className="h-5 w-5 text-rose-500" />,
   Notificações: <Bell className="h-5 w-5 text-teal-500" />,
+  'Ponto Eletrônico': <Clock className="h-5 w-5 text-orange-500" />,
   Administração: <ShieldCheck className="h-5 w-5 text-slate-500" />,
 };
 
@@ -124,7 +131,7 @@ export function getSettingsHelpTabs(): PageHelpTab[] {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">As 11 categorias</CardTitle>
+              <CardTitle className="text-base">As 12 categorias</CardTitle>
               <CardDescription>
                 O hub lista apenas as categorias visíveis para o seu papel. Cartas bloqueadas
                 exibem o motivo (<em>lockReason</em>) e não disparam nenhuma requisição de
@@ -304,7 +311,7 @@ export function getSettingsHelpTabs(): PageHelpTab[] {
               />
               <StepItem
                 number={3}
-                text="Boletos exige autorização comercial (boletoAllowed). A categoria aparece bloqueada com a explicação caso a empresa não tenha permissão."
+                text="Boletos só aparece nas configurações quando o administrador libera boletoAllowed. Com a liberação ativa, a categoria fica desbloqueada para a empresa ativar a emissão."
               />
             </CardContent>
           </Card>

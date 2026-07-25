@@ -21,11 +21,11 @@ const VISIBLE_CATEGORIES_FOR_EMPRESA = [
   'Certificado Digital',
   'Catálogo',
   'Mensagens Automáticas',
-  'WhatsApp',
   'Parcelamento',
   'Boletos',
   'Taxas de Cartão',
   'Notificações',
+  'Ponto Eletrônico',
 ];
 
 const isEmpresaAuthConfigured = process.env.E2E_SKIP_AUTH !== 'true';
