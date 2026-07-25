@@ -316,6 +316,38 @@ export const companyApi = {
 };
 
 // ============================================================================
+// STOREFRONT (website builder público)
+// ============================================================================
+
+export const storefrontApi = {
+  /**
+   * GET /storefront/design
+   * Roles: COMPANY - Design (DRAFT + PUBLISHED) da empresa autenticada
+   */
+  getDesign: () => api.get('/storefront/design'),
+
+  /**
+   * PUT /storefront/design
+   * Roles: COMPANY - Salvar rascunho (DRAFT) do design
+   * Body: { theme?, blocks? }
+   */
+  saveDraft: (data: { theme?: Record<string, any>; blocks?: Array<Record<string, any>> }) =>
+    api.put('/storefront/design', data),
+
+  /**
+   * POST /storefront/design/publish
+   * Roles: COMPANY - Publica o DRAFT atual
+   */
+  publish: () => api.post('/storefront/design/publish'),
+
+  /**
+   * POST /storefront/design/reset
+   * Roles: COMPANY - Reseta o design para o estado inicial
+   */
+  reset: () => api.post('/storefront/design/reset'),
+};
+
+// ============================================================================
 // SELLER
 // ============================================================================
 
