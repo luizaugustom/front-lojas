@@ -139,8 +139,18 @@ export function DadosFiscaisSettings() {
           fiscalDataForm.aliquotaIbsDefault === ''
             ? undefined
             : Number(fiscalDataForm.aliquotaIbsDefault),
+      }).then((response) => {
+        const data = response.data ?? {};
+        if (data.cscSyncWarning) {
+          toast.error(
+            data.message ||
+              'CSC salvo localmente, mas não sincronizado com a FocusNFE. Verifique o token e o painel Focus.',
+            { duration: 8000 },
+          );
+        } else {
+          toast.success('Dados fiscais salvos com sucesso!');
+        }
       });
-      toast.success('Dados fiscais salvos com sucesso!');
       await loadFiscalConfig();
     } catch (error) {
       console.error('Erro ao salvar dados fiscais:', error);
@@ -357,7 +367,9 @@ export function DadosFiscaisSettings() {
                   autoComplete="off"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Obrigatório para QR Code da NFC-e. Será sincronizado com a FocusNFE ao salvar.
+                  Use o CSC e o ID Token do mesmo ambiente selecionado acima (homologação ≠ produção
+                  na SEFAZ). Copie exatamente como no portal da SEFAZ, incluindo hífens. Ao salvar,
+                  sincronizamos com a FocusNFE (evita rejeição 464 — Hash do QR-Code).
                 </p>
               </div>
 
@@ -375,6 +387,9 @@ export function DadosFiscaisSettings() {
                   placeholder="000001"
                   maxLength={6}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Até 6 dígitos, com zeros à esquerda se a SEFAZ informar (ex.: 000001).
+                </p>
               </div>
 
               <div className="space-y-2">
