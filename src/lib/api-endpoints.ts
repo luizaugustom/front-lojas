@@ -297,20 +297,22 @@ export const companyApi = {
     api.patch(`/company/${id}/fiscal-config`, data),
 
   /**
-   * GET /admin/focus-nfe-config
-   * Como o token FocusNFE é global no Admin, esse endpoint delega para
-   * a rota admin. O `_id` é ignorado e mantido por compatibilidade de assinatura.
+   * GET /company/:id/nfeio-config
+   * Token e ambiente FocusNFE por empresa.
    */
-  getFocusNfeConfigForAdmin: (_id?: string) => api.get('/admin/nfeio-config'),
+  getFocusNfeConfigForAdmin: (id: string) => api.get(`/company/${id}/nfeio-config`),
 
   /**
-   * PATCH /admin/nfeio-config
-   * Atualiza o token e ambiente FocusNFE globais.
+   * PATCH /company/:id/nfeio-config
+   * Atualiza o token e ambiente FocusNFE da empresa.
    */
-  updateFocusNfeConfigForAdmin: (_id: string, data: any) =>
-    api.patch('/admin/nfeio-config', {
-      ...(data.focusNfeApiKey !== undefined && { nfeioApiKey: data.focusNfeApiKey }),
-      ...(data.focusNfeEnvironment !== undefined && { nfeioEnvironment: data.focusNfeEnvironment }),
+  updateFocusNfeConfigForAdmin: (id: string, data: any) =>
+    api.patch(`/company/${id}/nfeio-config`, {
+      ...(data.focusNfeApiKey !== undefined && { nfeioApiKey: data.focusNfeApiKey, focusNfeApiKey: data.focusNfeApiKey }),
+      ...(data.focusNfeEnvironment !== undefined && {
+        nfeioEnvironment: data.focusNfeEnvironment,
+        focusNfeEnvironment: data.focusNfeEnvironment,
+      }),
       ...(data.ibptToken !== undefined && { ibptToken: data.ibptToken }),
     }),
 };

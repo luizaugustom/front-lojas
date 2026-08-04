@@ -27,8 +27,8 @@ interface FocusNfeConfigModalProps {
 
 /**
  * Modal de configuração da API FocusNFE por empresa.
- * Substitui o antigo `SefazFiscalConfigModal` (NFe.io). O token FocusNFE
- * é global no Admin, então este modal delega para a rota /admin/focus-nfe-config.
+ * Substitui o antigo `SefazFiscalConfigModal` (NFe.io).
+ * Persiste token e ambiente em /company/:id/nfeio-config.
  */
 export function FocusNfeConfigModal({
   open,
