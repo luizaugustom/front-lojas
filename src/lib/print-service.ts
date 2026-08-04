@@ -47,11 +47,11 @@ async function enrichContentForWeb(content: string): Promise<string> {
         const dataUrl = await QRCode.toDataURL(qrUrl, {
           errorCorrectionLevel: 'M',
           margin: 1,
-          width: 180,
+          width: 140,
           type: 'image/png',
         });
         parts.push(
-          `<div style="text-align:center;margin:8px 0;"><img src="${dataUrl}" alt="QR Code NFC-e" width="180" height="180" style="image-rendering:pixelated;" /></div>`,
+          `<div style="text-align:center;margin:6px 0;"><img src="${dataUrl}" alt="QR Code NFC-e" width="140" height="140" style="image-rendering:pixelated;" /></div>`,
         );
       } catch (error) {
         console.warn('Falha ao gerar QR Code para impressão web:', error);
@@ -100,19 +100,19 @@ async function formatContentForWeb(content: string): Promise<string> {
           }
           body {
             margin: 0;
-            padding: 5mm;
+            padding: 4mm;
             font-family: 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.2;
+            font-size: 9px;
+            line-height: 1.15;
             width: 70mm;
           }
         }
         body {
           margin: 0;
-          padding: 5mm;
+          padding: 4mm;
           font-family: 'Courier New', monospace;
-          font-size: 12px;
-          line-height: 1.2;
+          font-size: 9px;
+          line-height: 1.15;
           width: 70mm;
           background: white;
         }
