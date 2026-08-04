@@ -2,6 +2,8 @@
  * Serviço de impressão universal que funciona tanto no desktop (Electron) quanto na web
  */
 
+import QRCode from 'qrcode';
+
 declare global {
   interface Window {
     electronAPI?: {
@@ -22,19 +24,67 @@ export function isElectron(): boolean {
   return typeof window !== 'undefined' && window.electronAPI !== undefined;
 }
 
+const PRINT_MARKER_REGEX = /<<(?:ESC_POS_BINARY:([A-Za-z0-9+/=]+)|NFC_E_QR:([^>\n]+))>>/g;
+
+/**
+ * Converte marcadores de QR/ESC-POS do cupom NFC-e em HTML imprimível no browser.
+ * Desktop (Electron) interpreta os marcadores nativamente; na web geramos PNG do QR.
+ */
+async function enrichContentForWeb(content: string): Promise<string> {
+  const markerRegex = new RegExp(PRINT_MARKER_REGEX.source, 'g');
+  const parts: string[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = markerRegex.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(escapeHtml(content.substring(lastIndex, match.index)));
+    }
+
+    const qrUrl = match[2]?.trim();
+    if (qrUrl) {
+      try {
+        const dataUrl = await QRCode.toDataURL(qrUrl, {
+          errorCorrectionLevel: 'M',
+          margin: 1,
+          width: 180,
+          type: 'image/png',
+        });
+        parts.push(
+          `<div style="text-align:center;margin:8px 0;"><img src="${dataUrl}" alt="QR Code NFC-e" width="180" height="180" style="image-rendering:pixelated;" /></div>`,
+        );
+      } catch (error) {
+        console.warn('Falha ao gerar QR Code para impressão web:', error);
+        parts.push(escapeHtml(qrUrl));
+      }
+    }
+    // ESC_POS_BINARY: sem decodificador no browser — omitir (QR deve vir como NFC_E_QR)
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < content.length) {
+    parts.push(escapeHtml(content.substring(lastIndex)));
+  }
+
+  return parts.join('');
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/ /g, '&nbsp;')
+    .replace(/\n/g, '<br/>');
+}
+
 /**
  * Formata conteúdo de texto para impressão HTML (web)
  */
-function formatContentForWeb(content: string): string {
-  // Converter quebras de linha para <br>
-  const htmlContent = content
-    .split('\n')
-    .map(line => {
-      // Preservar espaços em branco
-      const formattedLine = line.replace(/ /g, '&nbsp;');
-      return `<div style="font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.2; white-space: pre-wrap;">${formattedLine}</div>`;
-    })
-    .join('');
+async function formatContentForWeb(content: string): Promise<string> {
+  const bodyHtml = await enrichContentForWeb(content);
 
   return `
     <!DOCTYPE html>
@@ -73,7 +123,7 @@ function formatContentForWeb(content: string): string {
       </style>
     </head>
     <body>
-      <div class="content">${content}</div>
+      <div class="content">${bodyHtml}</div>
     </body>
     </html>
   `;
@@ -90,8 +140,8 @@ async function printInBrowser(content: string): Promise<{ success: boolean; erro
       return { success: false, error: 'Não foi possível abrir janela de impressão. Verifique se os pop-ups estão bloqueados.' };
     }
 
-    // Formatar conteúdo para HTML
-    const htmlContent = formatContentForWeb(content);
+    // Formatar conteúdo para HTML (inclui QR Code da NFC-e)
+    const htmlContent = await formatContentForWeb(content);
 
     // Escrever conteúdo na janela
     printWindow.document.write(htmlContent);
@@ -208,4 +258,3 @@ export async function testPrinter(printerName?: string | null): Promise<{ succes
     return { success: false, error: error.message };
   }
 }
-

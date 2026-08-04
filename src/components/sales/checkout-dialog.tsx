@@ -27,7 +27,6 @@ import { CreditCardInstallmentModal } from './credit-card-installment-modal';
 import { PrintConfirmationDialog } from './print-confirmation-dialog';
 import { CustomerCopyConfirmationDialog } from './customer-copy-confirmation-dialog';
 import { StoreCreditVoucherConfirmationDialog } from './store-credit-voucher-confirmation-dialog';
-import { NfceDetailsModal } from './NfceDetailsModal';
 import { useAuth } from '@/hooks/useAuth';
 import { printContent as printContentService } from '@/lib/print-service';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
@@ -98,24 +97,6 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
     nfceSerie?: string;
     pdvSeries?: Record<string, string>;
   } | null>(null);
-  // ATO DIAT 38/2020 — Art. 8º: NFC-e autorizada visível ao caixa e ao consumidor
-  const [nfceAutorizada, setNfceAutorizada] = useState<{
-    id: string;
-    documentNumber: string;
-    serie: string;
-    accessKey: string;
-    protocol: string;
-    authorizationDateTime: string;
-    qrCodeUrl?: string;
-    qrCode?: string;
-    pdfUrl?: string;
-    xmlUrl?: string;
-    totalValue: number;
-    contingencia: boolean;
-    ttdType?: 'TTD_706' | 'TTD_707' | 'TTD_710';
-    pdvCode?: string;
-  } | null>(null);
-  const [showNfceDetailsModal, setShowNfceDetailsModal] = useState(false);
   const [pendingPrintContent, setPendingPrintContent] = useState<{
     content: any;
     type: string;
@@ -1204,35 +1185,6 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
         toast(saleData_resp.warning, { icon: '⚠️', duration: 5000 });
       }
 
-      // ATO DIAT 38/2020 — Art. 8º: abrir modal com dados da NFC-e autorizada
-      // quando a venda gerou NFC-e (e não cupom não fiscal / MOCK).
-      const fiscalDoc = saleData_resp?.fiscalDocument || saleData_resp?.fiscalDocuments?.[0];
-      const isMockNfce =
-        fiscalDoc?.status === 'MOCK' ||
-        fiscalDoc?.isMock === true ||
-        options?.forceMockNfce === true;
-      if (printType !== 'non-fiscal' && fiscalDoc?.accessKey && !isMockNfce) {
-        setNfceAutorizada({
-          id: fiscalDoc.id,
-          documentNumber: fiscalDoc.documentNumber,
-          serie: fiscalDoc.serieNumber || nfceSeries || '1',
-          accessKey: fiscalDoc.accessKey,
-          protocol: fiscalDoc.protocol || '',
-          authorizationDateTime:
-            fiscalDoc.authorizationDateTime || fiscalDoc.emissionDate || new Date().toISOString(),
-          qrCodeUrl: fiscalDoc.qrCodeUrl,
-          qrCode: fiscalDoc.qrCode,
-          pdfUrl: fiscalDoc.pdfUrl,
-          xmlUrl: fiscalDoc.xmlUrl,
-          totalValue: Number(fiscalDoc.totalValue || saleData_resp?.total || 0),
-          contingencia: !!fiscalDoc.contingencia,
-          ttdType: fiscalDoc.nfcContingencyType || undefined,
-          pdvCode: fiscalDoc.pdvCode || pdvCode || undefined,
-        });
-        // Pequeno delay para o modal de impressão aparecer primeiro
-        setTimeout(() => setShowNfceDetailsModal(true), 250);
-      }
-
       // Resposta em modo NFe: não abrir fluxo de impressão NFC-e.
       // Boletos criados são listados via `createdBoletos` (sem carnê PDF local).
       if (printType === 'nfe') {
@@ -1915,16 +1867,6 @@ export function CheckoutDialog({ open, onClose, initialClient, onSaleCreated }: 
         remainingBalance={pendingCreditVoucherData.remainingBalance}
       />
     )}
-
-    {/* ATO DIAT 38/2020 — Art. 8º: Modal da NFC-e autorizada (idônea como DANFE) */}
-    <NfceDetailsModal
-      open={showNfceDetailsModal}
-      onOpenChange={(o) => {
-        setShowNfceDetailsModal(o);
-        if (!o) setNfceAutorizada(null);
-      }}
-      nfce={nfceAutorizada}
-    />
   </>
   );
 }
