@@ -175,6 +175,7 @@ export default function TimeClockPage() {
                 today={mySchedule?.today ?? null}
                 nextExpected={today?.nextExpected ?? null}
                 loading={loadingSchedule && !mySchedule}
+                punchesReady={!!today}
               />
 
               <PunchClockCard
@@ -233,6 +234,8 @@ export default function TimeClockPage() {
               <NextExpectedPunch
                 nextType={today?.nextExpected ?? null}
                 order={TIME_CLOCK_ORDER}
+                loading={loadingToday}
+                ready={!!today}
               />
 
               {config?.requireQrCode && scannerOpen && (
