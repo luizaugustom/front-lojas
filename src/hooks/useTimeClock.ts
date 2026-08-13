@@ -84,6 +84,13 @@ export function useRegisterTimeClock() {
       toast.success(label);
     },
     onError: (err) => {
+      const status = (err as any)?.response?.status;
+      if (status === 403) {
+        toast.error(
+          'Sem permissão para bater ponto. Entre com uma conta de vendedor.',
+        );
+        return;
+      }
       const { message } = handleApiError(err);
       toast.error(message);
     },

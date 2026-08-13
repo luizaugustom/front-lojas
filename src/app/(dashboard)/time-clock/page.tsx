@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { HelpCircle, Clock, ListChecks, AlertCircle } from 'lucide-react';
+import { HelpCircle, Clock, ListChecks, AlertCircle, Info, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PageHelpModal } from '@/components/help';
 import {
   getTimeClockHelpTabs,
@@ -26,13 +27,13 @@ import {
 import { QrScanner } from '@/components/time-clock/QrScanner';
 import { LocationPrompt } from '@/components/time-clock/LocationPrompt';
 import { PunchHistoryList } from '@/components/time-clock/PunchHistoryList';
-import { NextExpectedPunch, TIME_CLOCK_ORDER } from '@/components/time-clock/NextExpectedPunch';
 import { VendorScheduleCard } from '@/components/time-clock/VendorScheduleCard';
 import { TimeClockStatsCard } from '@/components/time-clock/TimeClockStatsCard';
 import { TimeClockReportForm } from '@/components/time-clock/TimeClockReportForm';
 import { PendingApprovalsList } from '@/components/time-clock/PendingApprovalsList';
 import { TimeClockHistoryView } from '@/components/time-clock/TimeClockHistoryView';
 import { TimeClockManageView } from '@/components/time-clock/TimeClockManageView';
+import { QrCodeDisplay } from '@/components/time-clock/QrCodeDisplay';
 import {
   useMyToday,
   useMyStats,
@@ -54,7 +55,8 @@ interface TabDef {
 }
 
 const ALL_TABS: TabDef[] = [
-  { key: 'punch', label: 'Bater Ponto', icon: Clock, roles: ['vendedor', 'empresa', 'admin', 'gestor'] },
+  { key: 'punch', label: 'Bater Ponto', icon: Clock, roles: ['vendedor'] },
+  { key: 'punch', label: 'QR da Loja', icon: QrCode, roles: ['empresa', 'admin', 'gestor'] },
   { key: 'history', label: 'Histórico', icon: ListChecks, roles: ['vendedor'] },
   { key: 'pending', label: 'Pendentes', icon: AlertCircle, roles: ['empresa', 'admin', 'gestor'] },
   { key: 'manage', label: 'Histórico Geral', icon: ListChecks, roles: ['empresa', 'admin', 'gestor'] },
@@ -69,6 +71,8 @@ export default function TimeClockPage() {
 
   const { user } = useAuth();
   const role = (user?.role ?? 'vendedor') as UserRole;
+  const isCompany = role === 'empresa' || role === 'admin' || role === 'gestor';
+  const isVendedor = role === 'vendedor';
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -117,12 +121,12 @@ export default function TimeClockPage() {
     error: geoError,
     loading: geoLoading,
     refresh: refreshGeo,
-  } = useGeolocation({ autoStart: true });
+  } = useGeolocation({ autoStart: isVendedor });
 
-  const { data: today, isLoading: loadingToday, refetch: refetchToday } = useMyToday(true);
+  const { data: today, isLoading: loadingToday, refetch: refetchToday } = useMyToday(isVendedor);
   const { data: stats, isLoading: loadingStats } = useMyStats();
   const { data: config } = useTimeClockConfig();
-  const { data: mySchedule, isLoading: loadingSchedule } = useMySchedule(true);
+  const { data: mySchedule, isLoading: loadingSchedule } = useMySchedule(isVendedor);
 
   const punches = (today?.punches ?? []).map((p: any) => ({
     id: p.id,
@@ -131,10 +135,6 @@ export default function TimeClockPage() {
     status: p.status,
     distanceMeters: p.distanceMeters,
   }));
-
-  const isCompany = role === 'empresa' || role === 'admin' || role === 'gestor';
-  const isVendedor = role === 'vendedor';
-
   const focusLocation = () => {
     refreshGeo();
     requestAnimationFrame(() => {
@@ -274,34 +274,16 @@ export default function TimeClockPage() {
             </>
           ) : (
             <>
-              {punchCard}
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Ponto é batido pelos vendedores</AlertTitle>
+                <AlertDescription>
+                  Contas de empresa/gestor não registram ponto. Exiba o QR Code
+                  abaixo para os vendedores lerem no celular.
+                </AlertDescription>
+              </Alert>
 
-              <NextExpectedPunch
-                nextType={today?.nextExpected ?? null}
-                order={TIME_CLOCK_ORDER}
-                loading={loadingToday}
-                ready={!!today}
-              />
-
-              {qrDialog}
-
-              <div ref={locationCardRef}>
-                <LocationPrompt
-                  config={effectiveConfig}
-                  coords={coords}
-                  status={geoStatus}
-                  error={geoError}
-                  loading={geoLoading}
-                  onRefresh={refreshGeo}
-                />
-              </div>
-
-              <PunchHistoryList
-                punches={punches}
-                loading={loadingToday}
-                title="Marcações de hoje"
-                emptyMessage="Nenhuma marcação registrada ainda hoje. Bate o ponto acima!"
-              />
+              <QrCodeDisplay />
 
               <TimeClockStatsCard stats={stats} loading={loadingStats} />
             </>
