@@ -58,15 +58,19 @@ export function PunchClockCard({
   } | null>(null);
 
   const punches = today?.punches ?? [];
-  const nextExpected = today?.nextExpected;
+  const nextExpected = today?.nextExpected ?? null;
   const completed = !!today && punches.length >= 4;
+  // Sem my-today / nextExpected: não esconder o CTA — assume ENTRY
+  const displayNext: TimeClockType | null =
+    loading || completed ? null : (nextExpected ?? 'ENTRY');
   const progress = (Math.min(punches.length, 4) / 4) * 100;
 
   const handlePunchRef = useRef<(token?: string) => Promise<void>>(async () => {});
 
   const handlePunch = async (token?: string) => {
-    if (!nextExpected) return;
     if (register.isPending) return;
+    const punchType = (nextExpected ?? displayNext) as TimeClockType | null;
+    if (!punchType || completed) return;
 
     const requireLocation = config?.requireLocation ?? true;
     const requireQrCode = config?.requireQrCode ?? false;
@@ -99,7 +103,7 @@ export function PunchClockCard({
     setLastResult(null);
     try {
       const result = await register.mutateAsync({
-        type: nextExpected,
+        type: punchType,
         latitude: coords?.latitude,
         longitude: coords?.longitude,
         accuracyMeters: coords?.accuracyMeters,
@@ -111,7 +115,7 @@ export function PunchClockCard({
         },
       });
       const pending = result?.status === 'PENDING_REVIEW';
-      const type = (result?.type as TimeClockType) ?? nextExpected;
+      const type = (result?.type as TimeClockType) ?? punchType;
       setLastResult({
         ok: !pending,
         message: pending
@@ -180,14 +184,14 @@ export function PunchClockCard({
               Você já registrou todas as marcações de hoje.
             </p>
           </div>
-        ) : nextExpected ? (
+        ) : displayNext ? (
           <>
             <div className="rounded-lg border-2 border-dashed border-blue-300 bg-blue-50/40 dark:bg-blue-950/30 dark:border-blue-800 p-4 flex items-center gap-3">
-              <PunchTypeIcon type={nextExpected as TimeClockType} size="lg" />
+              <PunchTypeIcon type={displayNext} size="lg" />
               <div>
                 <p className="text-xs text-muted-foreground">Próxima marcação</p>
                 <p className="text-lg font-semibold">
-                  {PUNCH_TYPE_LABELS[nextExpected as TimeClockType]}
+                  {PUNCH_TYPE_LABELS[displayNext]}
                 </p>
               </div>
             </div>
@@ -195,7 +199,7 @@ export function PunchClockCard({
             <Button
               size="lg"
               className="w-full"
-              disabled={register.isPending || geoStatus === 'denied'}
+              disabled={register.isPending}
               onClick={() => void handlePunch()}
             >
               {register.isPending ? (
