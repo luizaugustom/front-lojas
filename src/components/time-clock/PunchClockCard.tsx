@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Clock, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PunchTypeIcon, PUNCH_TYPE_LABELS } from './PunchTypeIcon';
+import { resolvePunchAction } from './punch-action';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRegisterTimeClock } from '@/hooks/useTimeClock';
@@ -17,23 +18,28 @@ import type {
 } from '@/hooks/useGeolocation';
 import type { TimeClockConfig, TimeClockTodayResponse, TimeClockType } from '@/types';
 
+export interface PunchClockApi {
+  punchWithToken: (token: string) => void;
+}
+
 interface Props {
   onRequireQrScan?: () => void;
+  /** Expõe punchWithToken para o pai registrar após ler o QR */
+  onReady?: (api: PunchClockApi) => void;
   config?: TimeClockConfig | null;
   className?: string;
   today?: TimeClockTodayResponse | null;
   loading?: boolean;
   onPunched?: () => void;
   qrToken?: string;
-  // Geolocalização compartilhada com o pai (evita requests duplicados)
   coords: GeolocationCoords | null;
   geoStatus: GeolocationStatus;
-  /** Reexecuta getCurrentPosition — reativa o prompt do navegador após grant */
   onRequestLocation: () => void;
 }
 
 export function PunchClockCard({
   onRequireQrScan,
+  onReady,
   config,
   className,
   today,
@@ -48,7 +54,6 @@ export function PunchClockCard({
   const [lastResult, setLastResult] = useState<{
     ok: boolean;
     message: string;
-    /** Indica que a falha foi por geolocalização — habilita CTA de permissão */
     locationError?: boolean;
   } | null>(null);
 
@@ -57,14 +62,23 @@ export function PunchClockCard({
   const completed = !!today && punches.length >= 4;
   const progress = (Math.min(punches.length, 4) / 4) * 100;
 
+  const handlePunchRef = useRef<(token?: string) => Promise<void>>(async () => {});
+
   const handlePunch = async (token?: string) => {
     if (!nextExpected) return;
+    if (register.isPending) return;
 
-    const needsLocation = config?.requireLocation ?? true;
-    const needsQr = config?.requireQrCode ?? false;
-    const hasLocation = !!coords;
+    const requireLocation = config?.requireLocation ?? true;
+    const requireQrCode = config?.requireQrCode ?? false;
+    const effectiveToken = token ?? qrToken;
+    const action = resolvePunchAction({
+      requireLocation,
+      requireQrCode,
+      hasLocation: !!coords,
+      hasQrToken: !!effectiveToken,
+    });
 
-    if (needsLocation && !hasLocation) {
+    if (action.kind === 'need_location') {
       onRequestLocation();
       setLastResult({
         ok: false,
@@ -76,7 +90,8 @@ export function PunchClockCard({
       });
       return;
     }
-    if (needsQr && !token) {
+
+    if (action.kind === 'need_qr') {
       onRequireQrScan?.();
       return;
     }
@@ -88,7 +103,7 @@ export function PunchClockCard({
         latitude: coords?.latitude,
         longitude: coords?.longitude,
         accuracyMeters: coords?.accuracyMeters,
-        qrToken: token,
+        qrToken: effectiveToken,
         deviceInfo: {
           userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
           platform: typeof navigator !== 'undefined' ? navigator.platform : '',
@@ -118,6 +133,17 @@ export function PunchClockCard({
     }
   };
 
+  handlePunchRef.current = handlePunch;
+
+  useEffect(() => {
+    if (!onReady) return;
+    onReady({
+      punchWithToken: (token: string) => {
+        void handlePunchRef.current(token);
+      },
+    });
+  }, [onReady]);
+
   return (
     <Card className={cn('border-2', className)}>
       <CardContent className="p-4 sm:p-6 space-y-4">
@@ -136,9 +162,7 @@ export function PunchClockCard({
         <div>
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
             <span>Progresso do dia</span>
-            <span>
-              {punches.length}/4 marcações
-            </span>
+            <span>{punches.length}/4 marcações</span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
@@ -172,7 +196,7 @@ export function PunchClockCard({
               size="lg"
               className="w-full"
               disabled={register.isPending || geoStatus === 'denied'}
-              onClick={() => handlePunch(qrToken)}
+              onClick={() => void handlePunch()}
             >
               {register.isPending ? (
                 <>
@@ -182,7 +206,7 @@ export function PunchClockCard({
               ) : (
                 <>
                   <Clock className="h-4 w-4 mr-2" />
-                  Bater ponto agora
+                  Bater ponto
                 </>
               )}
             </Button>

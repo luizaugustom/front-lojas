@@ -1,10 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { HelpCircle, Clock, ListChecks, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { PageHelpModal } from '@/components/help';
 import {
   getTimeClockHelpTabs,
@@ -12,7 +19,10 @@ import {
   timeClockHelpDescription,
   timeClockHelpIcon,
 } from '@/components/help/contents/time-clock-help';
-import { PunchClockCard } from '@/components/time-clock/PunchClockCard';
+import {
+  PunchClockCard,
+  type PunchClockApi,
+} from '@/components/time-clock/PunchClockCard';
 import { QrScanner } from '@/components/time-clock/QrScanner';
 import { LocationPrompt } from '@/components/time-clock/LocationPrompt';
 import { PunchHistoryList } from '@/components/time-clock/PunchHistoryList';
@@ -30,6 +40,7 @@ import {
   useTimeClockConfig,
 } from '@/hooks/useTimeClock';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { useIsMobile } from '@/hooks/useResponsive';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types';
 
@@ -52,8 +63,9 @@ const ALL_TABS: TabDef[] = [
 export default function TimeClockPage() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [qrToken, setQrToken] = useState<string | undefined>();
   const locationCardRef = useRef<HTMLDivElement>(null);
+  const punchApiRef = useRef<PunchClockApi | null>(null);
+  const isMobile = useIsMobile();
 
   const { user } = useAuth();
   const role = (user?.role ?? 'vendedor') as UserRole;
@@ -130,6 +142,54 @@ export default function TimeClockPage() {
     });
   };
 
+  const handlePunchReady = useCallback((api: PunchClockApi) => {
+    punchApiRef.current = api;
+  }, []);
+
+  const handleQrScanned = (token: string) => {
+    setScannerOpen(false);
+    punchApiRef.current?.punchWithToken(token);
+  };
+
+  // Vendedor: config vem de my-today; empresa/admin: endpoint /config
+  const effectiveConfig = config ?? today?.config ?? null;
+
+  const punchCard = (
+    <PunchClockCard
+      config={effectiveConfig}
+      today={today}
+      loading={loadingToday}
+      onPunched={refetchToday}
+      onRequireQrScan={() => setScannerOpen(true)}
+      onReady={handlePunchReady}
+      coords={coords}
+      geoStatus={geoStatus}
+      onRequestLocation={focusLocation}
+    />
+  );
+
+  const qrDialog = (
+    <Dialog open={scannerOpen} onOpenChange={setScannerOpen}>
+      <DialogContent className="sm:max-w-md p-4">
+        <DialogHeader>
+          <DialogTitle>Ler QR Code da loja</DialogTitle>
+          <DialogDescription>
+            Aponte a câmera para o QR Code gerado pela empresa. O ponto será
+            registrado automaticamente após a leitura.
+          </DialogDescription>
+        </DialogHeader>
+        {scannerOpen && (
+          <QrScanner
+            autoStart
+            containerId="time-clock-qr-scanner"
+            onScan={handleQrScanned}
+            onClose={() => setScannerOpen(false)}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     <div className="space-y-4 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
@@ -171,37 +231,32 @@ export default function TimeClockPage() {
         <TabsContent value="punch" className="space-y-4 max-w-2xl mx-auto">
           {isVendedor ? (
             <>
-              <VendorScheduleCard
-                today={mySchedule?.today ?? null}
-                nextExpected={today?.nextExpected ?? null}
-                loading={loadingSchedule && !mySchedule}
-                punchesReady={!!today}
-              />
-
-              <PunchClockCard
-                config={config}
-                today={today}
-                loading={loadingToday}
-                onPunched={refetchToday}
-                qrToken={qrToken}
-                onRequireQrScan={() => setScannerOpen(true)}
-                coords={coords}
-                geoStatus={geoStatus}
-                onRequestLocation={focusLocation}
-              />
-
-              {config?.requireQrCode && scannerOpen && (
-                <QrScanner
-                  onScan={(token) => {
-                    setQrToken(token);
-                    setScannerOpen(false);
-                  }}
-                  onClose={() => setScannerOpen(false)}
-                />
+              {isMobile ? (
+                <>
+                  {punchCard}
+                  <VendorScheduleCard
+                    today={mySchedule?.today ?? null}
+                    nextExpected={today?.nextExpected ?? null}
+                    loading={loadingSchedule && !mySchedule}
+                    punchesReady={!!today}
+                  />
+                </>
+              ) : (
+                <>
+                  <VendorScheduleCard
+                    today={mySchedule?.today ?? null}
+                    nextExpected={today?.nextExpected ?? null}
+                    loading={loadingSchedule && !mySchedule}
+                    punchesReady={!!today}
+                  />
+                  {punchCard}
+                </>
               )}
 
+              {qrDialog}
+
               <LocationPrompt
-                config={config}
+                config={effectiveConfig}
                 coords={coords}
                 status={geoStatus}
                 error={geoError}
@@ -219,17 +274,7 @@ export default function TimeClockPage() {
             </>
           ) : (
             <>
-              <PunchClockCard
-                config={config}
-                today={today}
-                loading={loadingToday}
-                onPunched={refetchToday}
-                qrToken={qrToken}
-                onRequireQrScan={() => setScannerOpen(true)}
-                coords={coords}
-                geoStatus={geoStatus}
-                onRequestLocation={focusLocation}
-              />
+              {punchCard}
 
               <NextExpectedPunch
                 nextType={today?.nextExpected ?? null}
@@ -238,19 +283,11 @@ export default function TimeClockPage() {
                 ready={!!today}
               />
 
-              {config?.requireQrCode && scannerOpen && (
-                <QrScanner
-                  onScan={(token) => {
-                    setQrToken(token);
-                    setScannerOpen(false);
-                  }}
-                  onClose={() => setScannerOpen(false)}
-                />
-              )}
+              {qrDialog}
 
               <div ref={locationCardRef}>
                 <LocationPrompt
-                  config={config}
+                  config={effectiveConfig}
                   coords={coords}
                   status={geoStatus}
                   error={geoError}
