@@ -43,3 +43,36 @@ export function formatDistance(meters: number | null | undefined): string {
   if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(2)} km`;
 }
+
+/** Folga máxima pela imprecisão do GPS (metros). Deve bater com a API. */
+export const GPS_ACCURACY_SLOP_CAP_METERS = 75;
+
+export function haversineDistanceMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/** Mesma regra da API: raio da loja + precisão do GPS (limitada). */
+export function isWithinRadius(
+  distanceMeters: number,
+  radiusMeters: number,
+  accuracyMeters = 0,
+): boolean {
+  if (!Number.isFinite(distanceMeters) || !Number.isFinite(radiusMeters)) {
+    return false;
+  }
+  const slop = Math.min(Math.max(accuracyMeters || 0, 0), GPS_ACCURACY_SLOP_CAP_METERS);
+  return distanceMeters <= radiusMeters + slop;
+}

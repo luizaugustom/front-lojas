@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PunchTypeIcon, PUNCH_TYPE_LABELS } from './PunchTypeIcon';
-import { resolvePunchAction, isFlagOn } from './punch-action';
+import { resolvePunchAction, isFlagOn, punchStatusFromRegisterResult } from './punch-action';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRegisterTimeClock } from '@/hooks/useTimeClock';
@@ -118,8 +118,10 @@ export function PunchClockCard({
           language: typeof navigator !== 'undefined' ? navigator.language : '',
         },
       });
-      const pending = result?.status === 'PENDING_REVIEW';
-      const type = (result?.type as TimeClockType) ?? punchType;
+      const pending =
+        punchStatusFromRegisterResult(result) === 'PENDING_REVIEW';
+      const type =
+        (result?.timeClock?.type as TimeClockType) ?? punchType;
       setLastResult({
         ok: !pending,
         message: pending

@@ -69,7 +69,7 @@ export function PunchHistoryList({
                 </div>
                 <div className="flex items-center gap-2">
                   {typeof p.distanceMeters === 'number' && (
-                    <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                    <span className="text-[10px] text-muted-foreground">
                       {formatDistance(p.distanceMeters)}
                     </span>
                   )}

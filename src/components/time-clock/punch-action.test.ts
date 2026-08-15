@@ -1,4 +1,8 @@
-import { resolvePunchAction, isFlagOn } from './punch-action';
+import {
+  resolvePunchAction,
+  isFlagOn,
+  punchStatusFromRegisterResult,
+} from './punch-action';
 
 describe('isFlagOn', () => {
   it('aceita true e equivalentes da API', () => {
@@ -57,5 +61,24 @@ describe('resolvePunchAction', () => {
         hasQrToken: true,
       }),
     ).toEqual({ kind: 'register' });
+  });
+});
+
+describe('punchStatusFromRegisterResult', () => {
+  it('lê status em timeClock (formato real da API)', () => {
+    expect(
+      punchStatusFromRegisterResult({
+        timeClock: { status: 'PENDING_REVIEW' },
+        nextExpected: 'LUNCH_OUT',
+      }),
+    ).toBe('PENDING_REVIEW');
+  });
+
+  it('aceita status no nível raiz como fallback', () => {
+    expect(punchStatusFromRegisterResult({ status: 'VALID' })).toBe('VALID');
+  });
+
+  it('retorna undefined quando não há status', () => {
+    expect(punchStatusFromRegisterResult({ nextExpected: null })).toBeUndefined();
   });
 });

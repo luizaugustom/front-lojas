@@ -80,10 +80,18 @@ export function useRegisterTimeClock() {
       qc.invalidateQueries({ queryKey: ['time-clock', 'my-stats'] });
       qc.invalidateQueries({ queryKey: ['time-clock', 'pending'] });
       qc.invalidateQueries({ queryKey: ['time-clock', 'list'] });
-      const label = result?.nextExpected
-        ? `Ponto registrado! Próxima: ${result.nextExpected}`
-        : 'Ponto registrado com sucesso!';
-      toast.success(label);
+      const punchStatus = result?.timeClock?.status ?? result?.status;
+      const pending = punchStatus === 'PENDING_REVIEW';
+      const label = pending
+        ? 'Ponto registrado, mas está fora do raio. Aguardando aprovação.'
+        : result?.nextExpected
+          ? `Ponto registrado! Próxima: ${result.nextExpected}`
+          : 'Ponto registrado com sucesso!';
+      if (pending) {
+        toast(label, { icon: '⚠️' });
+      } else {
+        toast.success(label);
+      }
     },
     onError: (err) => {
       const status = (err as any)?.response?.status;
