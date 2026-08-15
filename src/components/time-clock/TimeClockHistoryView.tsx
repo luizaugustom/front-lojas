@@ -18,6 +18,7 @@ import { PaginationControls } from '@/components/ui/pagination-controls';
 import { PunchTypeIcon, PUNCH_TYPE_LABELS } from '@/components/time-clock/PunchTypeIcon';
 import { PunchStatusBadge } from '@/components/time-clock/PunchStatusBadge';
 import { formatMinutesLong } from '@/components/time-clock/format';
+import { parseTimeClockListResponse } from '@/components/time-clock/parse-time-clock-list';
 import { useMyHistory } from '@/hooks/useTimeClock';
 import type { TimeClockStatus, TimeClockType } from '@/types';
 
@@ -61,8 +62,7 @@ export function TimeClockHistoryView() {
     limit,
   });
 
-  const items: any[] = Array.isArray(data) ? data : (data as any)?.data ?? [];
-  const total: number = (data as any)?.total ?? items.length;
+  const { items, total } = parseTimeClockListResponse(data);
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
   return (
