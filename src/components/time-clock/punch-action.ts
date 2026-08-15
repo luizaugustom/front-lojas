@@ -3,6 +3,10 @@ export type PunchAction =
   | { kind: 'need_qr' }
   | { kind: 'register' };
 
+export function isFlagOn(value: unknown): boolean {
+  return value === true || value === 1 || value === '1' || value === 'true';
+}
+
 export function resolvePunchAction(opts: {
   requireLocation: boolean;
   requireQrCode: boolean;

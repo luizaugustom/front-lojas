@@ -69,7 +69,7 @@ export function QrCodeDisplay() {
             Leitura do QR Code
           </CardTitle>
           <CardDescription>
-            Quando ativo, o vendedor precisa ler o QR Code da loja para bater o ponto.
+            Ligue para obrigar a leitura do QR da loja. Desligado, o ponto é só com localização.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -78,13 +78,11 @@ export function QrCodeDisplay() {
           ) : (
             <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
               <div className="min-w-0 space-y-1">
-                <p className="text-sm font-medium">
-                  {requireQr ? 'QR Code obrigatório' : 'QR Code opcional'}
-                </p>
+                <p className="text-sm font-medium">Exigir QR Code da empresa</p>
                 <p className="text-xs text-muted-foreground">
                   {requireQr
-                    ? 'O ponto só é registrado após a leitura do QR gerado pela empresa.'
-                    : 'O vendedor pode bater o ponto só com a localização, sem ler o QR.'}
+                    ? 'Ligado: ao bater o ponto, o vendedor abre a câmera e lê o QR da loja.'
+                    : 'Desligado: o vendedor bate o ponto sem ler o QR.'}
                 </p>
               </div>
               <Switch

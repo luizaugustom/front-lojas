@@ -35,7 +35,8 @@ export function useMyToday(enabled = true) {
     queryFn: async () => (await timeClockApi.myToday()).data,
     enabled,
     refetchOnWindowFocus: true,
-    staleTime: 30_000,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 
@@ -100,12 +101,13 @@ export function useRegisterTimeClock() {
 
 // =================== CONFIG (EMPRESA) ===================
 
-export function useTimeClockConfig(companyId?: string) {
+export function useTimeClockConfig(companyId?: string, enabled = true) {
   return useQuery({
     queryKey: KEYS.config(companyId),
     queryFn: async () =>
       (await timeClockApi.getConfig(companyId ? { companyId } : undefined)).data,
-    staleTime: 5 * 60_000,
+    enabled,
+    staleTime: 30_000,
   });
 }
 
@@ -116,6 +118,7 @@ export function useUpdateTimeClockConfig() {
       (await timeClockApi.updateConfig(data)).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['time-clock', 'config'] });
+      qc.invalidateQueries({ queryKey: ['time-clock', 'my-today'] });
       toast.success('Configuração atualizada com sucesso!');
     },
     onError: (err) => {

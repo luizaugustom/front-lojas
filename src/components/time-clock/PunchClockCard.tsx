@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PunchTypeIcon, PUNCH_TYPE_LABELS } from './PunchTypeIcon';
-import { resolvePunchAction } from './punch-action';
+import { resolvePunchAction, isFlagOn } from './punch-action';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRegisterTimeClock } from '@/hooks/useTimeClock';
@@ -72,8 +72,12 @@ export function PunchClockCard({
     const punchType = (nextExpected ?? displayNext) as TimeClockType | null;
     if (!punchType || completed) return;
 
-    const requireLocation = config?.requireLocation ?? true;
-    const requireQrCode = config?.requireQrCode ?? false;
+    const requireLocation = isFlagOn(
+      today?.config?.requireLocation ?? config?.requireLocation ?? true,
+    );
+    const requireQrCode = isFlagOn(
+      today?.config?.requireQrCode ?? config?.requireQrCode,
+    );
     const effectiveToken = token ?? qrToken;
     const action = resolvePunchAction({
       requireLocation,

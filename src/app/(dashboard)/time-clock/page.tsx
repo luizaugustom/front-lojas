@@ -130,7 +130,7 @@ export default function TimeClockPage() {
     undefined,
     isCompany,
   );
-  const { data: config } = useTimeClockConfig();
+  const { data: config } = useTimeClockConfig(undefined, isCompany);
   const { data: mySchedule, isLoading: loadingSchedule } = useMySchedule(isVendedor);
 
   const punches = (today?.punches ?? []).map((p: any) => ({
@@ -156,8 +156,8 @@ export default function TimeClockPage() {
     punchApiRef.current?.punchWithToken(token);
   };
 
-  // Vendedor: config vem de my-today; empresa/admin: endpoint /config
-  const effectiveConfig = config ?? today?.config ?? null;
+  // Vendedor: sempre a config de my-today (GET /config é só empresa e 403 mascara o QR).
+  const effectiveConfig = (isVendedor ? today?.config : config) ?? today?.config ?? config ?? null;
 
   const punchCard = (
     <PunchClockCard

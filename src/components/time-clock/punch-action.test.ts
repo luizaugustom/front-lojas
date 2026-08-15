@@ -1,4 +1,18 @@
-import { resolvePunchAction } from './punch-action';
+import { resolvePunchAction, isFlagOn } from './punch-action';
+
+describe('isFlagOn', () => {
+  it('aceita true e equivalentes da API', () => {
+    expect(isFlagOn(true)).toBe(true);
+    expect(isFlagOn(1)).toBe(true);
+    expect(isFlagOn('true')).toBe(true);
+  });
+
+  it('recusa false, 0 e ausente', () => {
+    expect(isFlagOn(false)).toBe(false);
+    expect(isFlagOn(0)).toBe(false);
+    expect(isFlagOn(undefined)).toBe(false);
+  });
+});
 
 describe('resolvePunchAction', () => {
   it('pede GPS quando exige localização e não há coords', () => {
@@ -12,10 +26,10 @@ describe('resolvePunchAction', () => {
     ).toEqual({ kind: 'need_location' });
   });
 
-  it('abre QR quando GPS ok e exige QR sem token', () => {
+  it('abre QR também quando a flag vem como 1 da API', () => {
     expect(
       resolvePunchAction({
-        requireLocation: true,
+        requireLocation: false,
         requireQrCode: true,
         hasLocation: true,
         hasQrToken: false,
