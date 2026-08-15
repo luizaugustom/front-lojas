@@ -76,7 +76,7 @@ export function QrScanner({
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
           setState('success');
-          onScanRef.current(decodedText);
+          onScanRef.current(decodedText.trim());
           void stop();
         },
         () => {
