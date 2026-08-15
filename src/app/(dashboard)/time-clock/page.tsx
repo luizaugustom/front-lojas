@@ -39,6 +39,7 @@ import {
   useMyStats,
   useMySchedule,
   useTimeClockConfig,
+  useTimeClockStats,
 } from '@/hooks/useTimeClock';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useIsMobile } from '@/hooks/useResponsive';
@@ -124,7 +125,11 @@ export default function TimeClockPage() {
   } = useGeolocation({ autoStart: isVendedor });
 
   const { data: today, isLoading: loadingToday, refetch: refetchToday } = useMyToday(isVendedor);
-  const { data: stats, isLoading: loadingStats } = useMyStats();
+  const { data: myStats, isLoading: loadingMyStats } = useMyStats(undefined, isVendedor);
+  const { data: companyStats, isLoading: loadingCompanyStats } = useTimeClockStats(
+    undefined,
+    isCompany,
+  );
   const { data: config } = useTimeClockConfig();
   const { data: mySchedule, isLoading: loadingSchedule } = useMySchedule(isVendedor);
 
@@ -271,6 +276,8 @@ export default function TimeClockPage() {
                 title="Marcações de hoje"
                 emptyMessage="Nenhuma marcação registrada ainda hoje. Bate o ponto acima!"
               />
+
+              <TimeClockStatsCard stats={myStats} loading={loadingMyStats} />
             </>
           ) : (
             <>
@@ -284,8 +291,6 @@ export default function TimeClockPage() {
               </Alert>
 
               <QrCodeDisplay />
-
-              <TimeClockStatsCard stats={stats} loading={loadingStats} />
             </>
           )}
         </TabsContent>
@@ -301,8 +306,8 @@ export default function TimeClockPage() {
             <TabsContent value="pending" className="space-y-4 max-w-3xl mx-auto">
               <PendingApprovalsList />
               <TimeClockStatsCard
-                stats={stats}
-                loading={loadingStats}
+                stats={companyStats}
+                loading={loadingCompanyStats}
                 title="Indicadores da empresa"
               />
             </TabsContent>

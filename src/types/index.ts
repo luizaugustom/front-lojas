@@ -796,13 +796,16 @@ export interface TimeClockTodayResponse {
 
 export interface TimeClockStats {
   month: string;
-  totalDays: number;
-  workedDays: number;
-  missedDays: number;
+  totalDays?: number;
+  workedDays?: number;
+  missedDays?: number;
+  /** Nomes reais retornados por GET /time-clock/my-stats */
+  completedDays?: number;
+  incompleteDays?: number;
   totalWorkedMinutes: number;
   totalLateMinutes: number;
   totalOvertimeMinutes: number;
-  averageDailyMinutes: number;
+  averageDailyMinutes?: number;
 }
 
 export interface TimeClockQrCode {

@@ -47,10 +47,11 @@ export function useMyHistory(filter: TimeClockFilterDto = {}) {
   });
 }
 
-export function useMyStats(month?: string) {
+export function useMyStats(month?: string, enabled = true) {
   return useQuery({
     queryKey: KEYS.myStats(month),
     queryFn: async () => (await timeClockApi.myStats({ month })).data,
+    enabled,
     staleTime: 60_000,
   });
 }
@@ -176,10 +177,11 @@ export function useSellerTimeClockHistory(
   });
 }
 
-export function useTimeClockStats(month?: string) {
+export function useTimeClockStats(month?: string, enabled = true) {
   return useQuery({
     queryKey: KEYS.stats(month),
     queryFn: async () => (await timeClockApi.stats({ month })).data,
+    enabled,
     staleTime: 60_000,
   });
 }

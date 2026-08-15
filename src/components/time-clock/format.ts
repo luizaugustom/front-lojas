@@ -19,6 +19,24 @@ export function formatMinutesLong(min: number | null | undefined): string {
   return `${h}h ${m}min`;
 }
 
+/** Dias trabalhados no formato "completos/total", sem undefined. */
+export function formatWorkedDays(stats?: {
+  workedDays?: number | null;
+  totalDays?: number | null;
+  completedDays?: number | null;
+  incompleteDays?: number | null;
+} | null): string {
+  const worked = Number(stats?.workedDays ?? stats?.completedDays ?? 0);
+  const incomplete = Number(stats?.incompleteDays ?? 0);
+  const total = Number(
+    stats?.totalDays ??
+      (stats?.completedDays != null ? Number(stats.completedDays) + incomplete : 0),
+  );
+  const safeWorked = Number.isFinite(worked) ? worked : 0;
+  const safeTotal = Number.isFinite(total) ? total : 0;
+  return `${safeWorked}/${safeTotal}`;
+}
+
 /** Formata distância em metros com unidade adequada */
 export function formatDistance(meters: number | null | undefined): string {
   if (meters === null || meters === undefined || isNaN(meters)) return '—';
