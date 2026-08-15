@@ -121,6 +121,19 @@ export function SellerScheduleEditor({
     overrides[String(day)] ?? { ...EMPTY_DAY };
 
   const handleSave = async () => {
+    const cleanOverrides: Record<string, SellerDayConfig> = {};
+    for (const [day, cfg] of Object.entries(overrides)) {
+      const next: SellerDayConfig = {
+        entryTime: cfg.entryTime || undefined,
+        lunchOutTime: cfg.lunchOutTime || undefined,
+        lunchInTime: cfg.lunchInTime || undefined,
+        exitTime: cfg.exitTime || undefined,
+      };
+      if (next.entryTime || next.lunchOutTime || next.lunchInTime || next.exitTime) {
+        cleanOverrides[day] = next;
+      }
+    }
+
     const dto: UpdateSellerScheduleDto = {
       workDays,
       defaultEntryTime: defaultEntryTime || null,
@@ -129,7 +142,7 @@ export function SellerScheduleEditor({
       defaultExitTime: defaultExitTime || null,
       lateToleranceMinutes: lateToleranceMinutes ? Number(lateToleranceMinutes) : null,
       entryToleranceMinutes: entryToleranceMinutes ? Number(entryToleranceMinutes) : null,
-      overrides,
+      overrides: cleanOverrides,
     };
 
     try {
