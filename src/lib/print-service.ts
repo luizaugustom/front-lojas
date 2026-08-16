@@ -51,7 +51,7 @@ async function enrichContentForWeb(content: string): Promise<string> {
           type: 'image/png',
         });
         parts.push(
-          `<div style="text-align:center;margin:6px 0;"><img src="${dataUrl}" alt="QR Code NFC-e" width="80" height="80" style="image-rendering:pixelated;" /></div>`,
+          `<div style="text-align:center;margin:6px 0;width:100%;"><img src="${dataUrl}" alt="QR Code NFC-e" width="80" height="80" style="display:block;margin:0 auto;image-rendering:pixelated;" /></div>`,
         );
       } catch (error) {
         console.warn('Falha ao gerar QR Code para impressão web:', error);
