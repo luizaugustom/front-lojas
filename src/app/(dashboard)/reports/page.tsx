@@ -426,7 +426,10 @@ export default function ReportsPage() {
                   O Relatório Completo inclui:
                 </h3>
                 <ul className="space-y-0 text-xs text-blue-800 dark:text-blue-300 leading-tight">
-                  <li>✓ <strong>Vendas:</strong> Todas as vendas do período com detalhes</li>
+                  <li>✓ <strong>Vendas:</strong> Todas as vendas do período (itens, pagamento e CPF já tratados)</li>
+                  <li>✓ <strong>Vendas com NF:</strong> Vendas com NFC-e/NF-e (planilha separada, com tipo e número)</li>
+                  <li>✓ <strong>Vendas sem NF:</strong> Vendas sem nota fiscal (planilha separada)</li>
+                  <li>✓ <strong>Pagamentos de Parcelas:</strong> Recebimentos de crediário no período</li>
                   <li>✓ <strong>Produtos:</strong> Estoque, preços e movimentações</li>
                   <li>✓ <strong>Notas Fiscais (Saída):</strong> Documentos emitidos pela empresa</li>
                   <li>✓ <strong>Notas Fiscais de Entrada:</strong> Documentos recebidos (em página separada)</li>
