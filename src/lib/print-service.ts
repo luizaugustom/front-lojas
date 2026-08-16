@@ -100,20 +100,20 @@ async function formatContentForWeb(content: string): Promise<string> {
           }
           body {
             margin: 0;
-            padding: 1mm;
+            padding: 4mm;
             font-family: 'Courier New', monospace;
-            font-size: 9px;
-            line-height: 1.15;
-            width: 78mm;
+            font-size: 7px;
+            line-height: 1.0;
+            width: 72mm;
           }
         }
         body {
           margin: 0;
-          padding: 1mm;
+          padding: 4mm;
           font-family: 'Courier New', monospace;
-          font-size: 9px;
-          line-height: 1.15;
-          width: 78mm;
+          font-size: 7px;
+          line-height: 1.0;
+          width: 72mm;
           background: white;
         }
         .content {
