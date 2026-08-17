@@ -5,8 +5,17 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { X, MessageCircle, Package } from 'lucide-react';
 import { StorefrontRenderer } from '@/components/storefront/StorefrontRenderer';
-import { PublicStorefrontResponse, DEFAULT_THEME } from '@/lib/storefront-types';
+import {
+  PublicStorefrontResponse,
+  DEFAULT_THEME,
+  CatalogConfig,
+} from '@/lib/storefront-types';
 import { StorefrontProduct } from '@/components/storefront/StorefrontDataContext';
+import {
+  SimpleCatalogRenderer,
+  type CatalogProduct,
+  type CatalogCompany,
+} from '@/components/catalog/SimpleCatalogRenderer';
 import { getApiBaseUrl } from '@/lib/api-base-url';
 import { handleApiError } from '@/lib/handleApiError';
 import { logger } from '@/lib/logger';
@@ -39,7 +48,11 @@ export default function CatalogPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<ProductModalState | null>(null);
 
-  // Fetch do design
+  // Catálogo simplificado (V2) — quando a empresa usa CatalogConfig
+  const [v2Config, setV2Config] = useState<CatalogConfig | null>(null);
+  const [v2Company, setV2Company] = useState<CatalogCompany | null>(null);
+
+  // Fetch do design — tenta V2 primeiro (catálogo simplificado), fallback para V1
   useEffect(() => {
     const fetchStorefront = async () => {
       try {
@@ -48,6 +61,24 @@ export default function CatalogPageClient() {
           process.env.NEXT_PUBLIC_PUBLIC_API_URL?.trim() || getApiBaseUrl()
         ).replace(/\/+$/, '');
 
+        // 1) Tenta V2 (catálogo simplificado)
+        const v2Response = await fetch(`${baseUrl}/public/catalog-v2/${url}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (v2Response.ok) {
+          const v2Json = await v2Response.json();
+          logger.log('✅ Catálogo simplificado carregado:', v2Json);
+          setV2Config(v2Json.config as CatalogConfig);
+          setV2Company(v2Json.company as CatalogCompany);
+          return;
+        }
+        if (v2Response.status !== 404) {
+          // Erro diferente de 404 — ainda tenta V1 antes de desistir
+          logger.warn(`V2 retornou ${v2Response.status}, tentando V1...`);
+        }
+
+        // 2) Fallback V1 (website builder)
         const response = await fetch(`${baseUrl}/public/storefront/${url}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -178,6 +209,18 @@ export default function CatalogPageClient() {
 
   if (data.needsSetup || (data.blocks?.length ?? 0) === 0) {
     return <EmptyState companyName={data.company.fantasyName || data.company.name} />;
+  }
+
+  // Catálogo simplificado (V2) — usa SimpleCatalogRenderer com 3 templates
+  if (v2Config && v2Company) {
+    const v2Products: CatalogProduct[] = products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: Number(p.price ?? 0),
+      imageUrl: (p as any).imageUrl ?? null,
+      description: (p as any).description ?? null,
+    }));
+    return <SimpleCatalogRenderer config={v2Config} company={v2Company} products={v2Products} />;
   }
 
   return (

@@ -16,6 +16,12 @@ jest.mock('@/hooks/useCompany', () => ({
   useCompany: () => mockCompany(),
 }));
 
+// Catálogo simplificado (V2) — mockado para evitar request real no teste legado
+jest.mock('@/hooks/useCatalogConfig', () => ({
+  useCatalogConfig: () => ({ data: null, isError: true }),
+  useUpdateCatalogConfig: () => ({ mutateAsync: jest.fn(), isPending: false }),
+}));
+
 jest.mock('react-hot-toast', () => ({
   toast: { success: jest.fn(), error: jest.fn() },
 }));
