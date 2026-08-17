@@ -89,3 +89,45 @@ export interface PublicStorefrontResponse {
   publishedAt: string | null;
   needsSetup?: boolean;
 }
+
+// ───────────────────────────────────────────────────────────────
+// Catálogo simplificado (3 templates prontos)
+// ───────────────────────────────────────────────────────────────
+
+export type CatalogTemplateId = 'CLASSIC' | 'MODERN' | 'BOLD';
+
+export type CatalogTexts = {
+  heroTitle: string;
+  heroSubtitle: string;
+  aboutTitle: string;
+  aboutBody: string;
+  contactPhone: string;
+  contactEmail: string;
+  footerText: string;
+};
+
+export type CatalogColors = {
+  primary: string;
+  secondary: string;
+  accent: string;
+  background: string;
+  surface: string;
+  text: string;
+  textMuted: string;
+  border: string;
+};
+
+export type CatalogConfig = {
+  id: string;
+  companyId: string;
+  templateId: CatalogTemplateId;
+  logoUrl: string | null;
+  heroImageUrl: string | null;
+  texts: CatalogTexts;
+  colors: CatalogColors;
+};
+
+export type UpdateCatalogConfigPayload = {
+  templateId?: CatalogTemplateId;
+  texts?: Partial<CatalogTexts>;
+};

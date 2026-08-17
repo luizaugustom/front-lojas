@@ -1962,3 +1962,36 @@ export const timeClockApi = {
   reportCsv: (params?: any) =>
     api.get('/time-clock/report/csv', { params, responseType: 'blob' }),
 };
+
+// ============================================================================
+// CATALOG (simplificado - 3 templates)
+// ============================================================================
+
+export const catalogConfigApi = {
+  /**
+   * GET /catalog/config
+   * Roles: COMPANY - Retorna config (cria com defaults se não existir)
+   */
+  get: () => api.get('/catalog/config'),
+
+  /**
+   * PUT /catalog/config
+   * Roles: COMPANY - Atualiza templateId/texts
+   */
+  update: (payload: { templateId?: 'CLASSIC' | 'MODERN' | 'BOLD'; texts?: Record<string, string> }) =>
+    api.put('/catalog/config', payload),
+
+  /**
+   * POST /catalog/upload-asset
+   * Roles: COMPANY - Upload de logo/hero para Spaces
+   * Body: FormData com 'file' e 'type' (logo|hero)
+   */
+  uploadAsset: (file: File, type: 'logo' | 'hero') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+    return api.post<{ url: string }>('/catalog/upload-asset', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
