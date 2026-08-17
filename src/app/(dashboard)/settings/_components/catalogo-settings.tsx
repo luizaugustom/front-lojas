@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Lock, Save, Store, Layout, ExternalLink } from 'lucide-react';
+import { Lock, Save, Store, Layout, ExternalLink, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import {
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
+import { useCatalogConfig } from '@/hooks/useCatalogConfig';
 import { handleApiError } from '@/lib/handleApiError';
 
 const PUBLIC_SITE_URL = (process.env.NEXT_PUBLIC_PUBLIC_SITE_URL || 'https://montshop.app').replace(/\/+$/, '');
@@ -47,6 +48,10 @@ const LoaderBlock = ({ label }: { label: string }) => (
 export function CatalogoSettings() {
   const { api: authApi } = useAuth();
   const { company } = useCompany();
+  // Detecta se a empresa já tem o catálogo simplificado criado
+  // (CatalogConfig é auto-seeded na criação da empresa).
+  const { data: simplifiedCatalog, isError: hasNoSimplified } = useCatalogConfig();
+  const showSimplified = !hasNoSimplified && !!simplifiedCatalog;
   const [catalogPageConfig, setCatalogPageConfig] = useState<CatalogConfig | null>(null);
   const [loadingCatalogPage, setLoadingCatalogPage] = useState(false);
   const [updatingCatalogPage, setUpdatingCatalogPage] = useState(false);
@@ -316,6 +321,27 @@ export function CatalogoSettings() {
                 <li>• Acesso público - não requer login</li>
                 <li>• Compartilhe o link com seus clientes!</li>
               </ul>
+            </div>
+
+            <div className="rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
+              <div className="flex items-start gap-3">
+                <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    Personalize com o catálogo simplificado
+                  </p>
+                  <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
+                    Escolha um dos 3 templates prontos, edite textos e cores. Ideal para quem quer rapidez.
+                  </p>
+                  <Link
+                    href="/settings/catalogo/editor-simples"
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                  >
+                    {showSimplified ? 'Personalizar catálogo simplificado' : 'Usar catálogo simplificado'}
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </div>
             </div>
 
             <div className="rounded-lg border-2 border-dashed border-purple-200 bg-purple-50/50 p-4 dark:border-purple-800 dark:bg-purple-950/30">
