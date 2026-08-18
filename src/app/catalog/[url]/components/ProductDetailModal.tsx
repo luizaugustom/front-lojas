@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, Package } from 'lucide-react';
 
 import {
@@ -44,6 +44,11 @@ export function ProductDetailModal({
   );
   const addToCart = usePublicCartStore((s) => s.addWithQuantity);
   const [quantity, setQuantity] = useState(1);
+
+  // Resetar quantidade quando o produto aberto muda.
+  useEffect(() => {
+    setQuantity(1);
+  }, [productId]);
 
   const isOutOfStock = !!data && data.stockQuantity <= 0;
 
