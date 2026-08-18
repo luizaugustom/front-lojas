@@ -21,7 +21,7 @@ export default function CatalogPageClient() {
     if (info.data?.company) {
       const name =
         info.data.company.fantasyName?.trim() || info.data.company.name;
-      document.title = `${name} — Catálogo`;
+      document.title = `Catálogo ${name}`;
     }
   }, [info.data]);
 
