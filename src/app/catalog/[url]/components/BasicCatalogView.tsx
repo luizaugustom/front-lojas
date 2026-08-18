@@ -1,20 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   useBasicCatalogInfo,
   useBasicCatalogProducts,
   type BasicCatalogCompany,
   type BasicCatalogFilters,
 } from '@/hooks/useBasicCatalog';
+import { useCatalogQueryState } from '@/hooks/useCatalogQueryState';
 import { BasicCatalogHeader } from './BasicCatalogHeader';
 import { SearchBar } from './SearchBar';
-import { FilterDrawer, type SortKey } from './FilterDrawer';
+import { FilterDrawer } from './FilterDrawer';
 import { ProductGrid } from './ProductGrid';
 import { CartBar } from './CartBar';
 import { CartDrawer } from './CartDrawer';
 import { CatalogFooter } from './CatalogFooter';
 import { EmptyProducts } from './EmptyProducts';
+import { ProductDetailModal } from './ProductDetailModal';
 import {
   catalogColorsToStyle,
   mergeCatalogColors,
@@ -24,39 +26,44 @@ type Props = {
   url: string;
 };
 
-const DEFAULT_SORT: SortKey = 'name-asc';
 const DEFAULT_LIMIT = 24;
 
 export function BasicCatalogView({ url }: Props) {
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [category, setCategory] = useState<string | undefined>(undefined);
-  const [minPrice, setMinPrice] = useState<string>('');
-  const [maxPrice, setMaxPrice] = useState<string>('');
-  const [sort, setSort] = useState<SortKey>(DEFAULT_SORT);
-  const [page, setPage] = useState(1);
-  const [cartOpen, setCartOpen] = useState(false);
-
-  // Debounce simples (sem deps novas) — 300ms.
-  useEffect(() => {
-    const handle = setTimeout(() => setDebouncedSearch(search.trim()), 300);
-    return () => clearTimeout(handle);
-  }, [search]);
-
-  // Reset paginação quando filtros mudam
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, category, minPrice, maxPrice, sort]);
-
-  const filters: BasicCatalogFilters = {
-    search: debouncedSearch || undefined,
+  const q = useCatalogQueryState();
+  const {
+    search,
+    debouncedSearch,
     category,
-    minPrice: minPrice ? Number(minPrice) : undefined,
-    maxPrice: maxPrice ? Number(maxPrice) : undefined,
+    minPrice,
+    maxPrice,
     sort,
     page,
-    limit: DEFAULT_LIMIT,
-  };
+    productId,
+    setSearch,
+    setCategory,
+    setMinPrice,
+    setMaxPrice,
+    setSort,
+    setPage,
+    openProduct,
+    closeProduct,
+    resetFilters,
+  } = q;
+
+  const [cartOpen, setCartOpen] = useState(false);
+
+  const filters = useMemo<BasicCatalogFilters>(
+    () => ({
+      search: debouncedSearch || undefined,
+      category,
+      minPrice: minPrice ? Number(minPrice) : undefined,
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      sort,
+      page,
+      limit: DEFAULT_LIMIT,
+    }),
+    [debouncedSearch, category, minPrice, maxPrice, sort, page],
+  );
 
   const info = useBasicCatalogInfo(url);
   const products = useBasicCatalogProducts(url, filters);
@@ -66,15 +73,6 @@ export function BasicCatalogView({ url }: Props) {
   const catalogStyle = catalogColorsToStyle(
     mergeCatalogColors(company?.catalogColors),
   );
-
-  const handleReset = () => {
-    setSearch('');
-    setCategory(undefined);
-    setMinPrice('');
-    setMaxPrice('');
-    setSort(DEFAULT_SORT);
-    setPage(1);
-  };
 
   return (
     <div
@@ -107,7 +105,7 @@ export function BasicCatalogView({ url }: Props) {
             onMinPriceChange={setMinPrice}
             onMaxPriceChange={setMaxPrice}
             onSortChange={setSort}
-            onReset={handleReset}
+            onReset={resetFilters}
           />
         </div>
 
@@ -116,17 +114,21 @@ export function BasicCatalogView({ url }: Props) {
             Erro ao carregar produtos. Tente novamente.
           </p>
         ) : products.data && products.data.products.length === 0 ? (
-          <EmptyProducts onClear={handleReset} />
+          <EmptyProducts onClear={resetFilters} />
         ) : products.data ? (
           <>
-            <ProductGrid company={company!} data={products.data} />
+            <ProductGrid
+              company={company!}
+              data={products.data}
+              onOpenProduct={openProduct}
+            />
             {products.data.totalPages > 1 ? (
               <div className="mt-6 flex items-center justify-center gap-2">
                 <button
                   type="button"
                   className="rounded-md border border-slate-200 px-3 py-1 text-sm disabled:opacity-40"
                   disabled={page <= 1 || products.isFetching}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setPage(Math.max(1, page - 1))}
                 >
                   Anterior
                 </button>
@@ -137,7 +139,7 @@ export function BasicCatalogView({ url }: Props) {
                   type="button"
                   className="rounded-md border border-slate-200 px-3 py-1 text-sm disabled:opacity-40"
                   disabled={page >= products.data.totalPages || products.isFetching}
-                  onClick={() => setPage((p) => p + 1)}
+                  onClick={() => setPage(page + 1)}
                 >
                   Próxima
                 </button>
@@ -162,6 +164,13 @@ export function BasicCatalogView({ url }: Props) {
           <CatalogFooter company={company} />
         </>
       ) : null}
+
+      <ProductDetailModal
+        url={url}
+        productId={productId}
+        onClose={closeProduct}
+        brandColor={company?.brandColor}
+      />
     </div>
   );
 }

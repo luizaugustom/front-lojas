@@ -20,8 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { SortKey } from '@/hooks/useCatalogQueryState';
 
-export type SortKey = 'name-asc' | 'price-asc' | 'price-desc';
+export type { SortKey };
 
 type Props = {
   categories: string[];

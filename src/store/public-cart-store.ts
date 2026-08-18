@@ -15,6 +15,10 @@ export type PublicCartItem = {
 type State = {
   items: PublicCartItem[];
   add: (item: Omit<PublicCartItem, 'quantity'>) => void;
+  addWithQuantity: (
+    item: Omit<PublicCartItem, 'quantity'>,
+    quantity: number,
+  ) => void;
   increment: (productId: string) => void;
   decrement: (productId: string) => void;
   remove: (productId: string) => void;
@@ -45,6 +49,29 @@ export const usePublicCartStore = create<State>()(
             };
           }
           return { items: [...s.items, { ...item, quantity: 1 }] };
+        }),
+      addWithQuantity: (item, quantity) =>
+        set((s) => {
+          const safe = Math.max(1, Math.floor(quantity));
+          const existing = s.items.find((i) => i.productId === item.productId);
+          if (existing) {
+            return {
+              items: s.items.map((i) =>
+                i.productId === item.productId
+                  ? {
+                      ...i,
+                      quantity: Math.min(i.maxStock, i.quantity + safe),
+                    }
+                  : i,
+              ),
+            };
+          }
+          return {
+            items: [
+              ...s.items,
+              { ...item, quantity: Math.min(item.maxStock, safe) },
+            ],
+          };
         }),
       increment: (productId) =>
         set((s) => ({

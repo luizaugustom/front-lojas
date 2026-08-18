@@ -57,6 +57,18 @@ export type BasicCatalogFilters = {
   limit?: number;
 };
 
+export type PublicCatalogProductDetail = {
+  id: string;
+  name: string;
+  description: string | null;
+  photos: string[];
+  price: string;
+  category: string | null;
+  barcode: string;
+  size: string | null;
+  stockQuantity: number;
+};
+
 function getBaseUrl(): string {
   if (typeof window !== 'undefined') return getApiBaseUrl();
   return getDirectApiBaseUrl();
@@ -106,5 +118,23 @@ export function useBasicCatalogProducts(
     placeholderData: keepPreviousData,
     staleTime: 30 * 1000,
     retry: 1,
+  });
+}
+
+export function usePublicProductDetail(
+  url: string,
+  productId: string | undefined,
+) {
+  return useQuery({
+    queryKey: ['public-catalog', 'product', url, productId],
+    enabled: !!url && !!productId,
+    staleTime: 60 * 1000,
+    retry: 1,
+    queryFn: () =>
+      fetcher<PublicCatalogProductDetail>(
+        `/public/catalog/${encodeURIComponent(url)}/products/${encodeURIComponent(
+          productId as string,
+        )}`,
+      ),
   });
 }

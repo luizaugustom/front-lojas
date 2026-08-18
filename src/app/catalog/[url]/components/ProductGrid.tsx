@@ -7,9 +7,10 @@ import { ProductCard } from './ProductCard';
 type Props = {
   company: BasicCatalogCompany;
   data: BasicCatalogProductsResponse;
+  onOpenProduct: (productId: string) => void;
 };
 
-export function ProductGrid({ company, data }: Props) {
+export function ProductGrid({ company, data, onOpenProduct }: Props) {
   const { products } = data;
 
   return (
@@ -19,6 +20,7 @@ export function ProductGrid({ company, data }: Props) {
           product={p}
           key={p.id}
           brandColor={company.brandColor}
+          onOpen={() => onOpenProduct(p.id)}
         />
       ))}
     </div>
