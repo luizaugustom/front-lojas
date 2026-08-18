@@ -15,6 +15,10 @@ import { CartBar } from './CartBar';
 import { CartDrawer } from './CartDrawer';
 import { CatalogFooter } from './CatalogFooter';
 import { EmptyProducts } from './EmptyProducts';
+import {
+  catalogColorsToStyle,
+  mergeCatalogColors,
+} from '@/lib/catalog-colors';
 
 type Props = {
   url: string;
@@ -59,6 +63,9 @@ export function BasicCatalogView({ url }: Props) {
 
   const company: BasicCatalogCompany | undefined = info.data?.company;
   const categories: string[] = info.data?.categories ?? [];
+  const catalogStyle = catalogColorsToStyle(
+    mergeCatalogColors(company?.catalogColors),
+  );
 
   const handleReset = () => {
     setSearch('');
@@ -70,7 +77,14 @@ export function BasicCatalogView({ url }: Props) {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div
+      className="catalog-root flex min-h-screen flex-col"
+      style={{
+        ...catalogStyle,
+        backgroundColor: 'var(--catalog-bg)',
+        color: 'var(--catalog-text)',
+      }}
+    >
       {company ? <BasicCatalogHeader company={company} /> : null}
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-4 md:px-6 md:py-6">
@@ -111,7 +125,7 @@ export function BasicCatalogView({ url }: Props) {
                 >
                   Anterior
                 </button>
-                <span className="text-sm tabular-nums text-slate-600">
+                <span className="text-sm tabular-nums opacity-70">
                   Página {page} de {products.data.totalPages}
                 </span>
                 <button

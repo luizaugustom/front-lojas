@@ -24,11 +24,18 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import {
+  DEFAULT_CATALOG_COLORS,
+  HEX_COLOR_PATTERN,
+  mergeCatalogColors,
+  type CatalogColors,
+} from '@/lib/catalog-colors';
 
 interface CatalogPageConfig {
   catalogPageUrl: string | null;
   catalogPageEnabled: boolean;
   catalogPageAllowed: boolean | null;
+  catalogColors?: CatalogColors | null;
   pageUrl: string | null;
 }
 
@@ -47,14 +54,28 @@ const withPublicSiteUrl = (path?: string | null) => {
   return `${PUBLIC_SITE_URL}${normalizedPath}`;
 };
 
+const COLOR_FIELDS: { key: keyof CatalogColors; label: string }[] = [
+  { key: 'backgroundColor', label: 'Fundo da página' },
+  { key: 'headerBackgroundColor', label: 'Fundo do cabeçalho' },
+  { key: 'headerTextColor', label: 'Texto do cabeçalho' },
+  { key: 'footerBackgroundColor', label: 'Fundo do rodapé' },
+  { key: 'footerTextColor', label: 'Texto do rodapé' },
+  { key: 'textColor', label: 'Texto do conteúdo' },
+];
+
 export function CatalogoSettings({ locked, lockReason }: CatalogoSettingsProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [config, setConfig] = useState<CatalogPageConfig | null>(null);
-  const [form, setForm] = useState<{ url: string; enabled: boolean }>({
+  const [form, setForm] = useState<{
+    url: string;
+    enabled: boolean;
+    colors: CatalogColors;
+  }>({
     url: '',
     enabled: false,
+    colors: DEFAULT_CATALOG_COLORS,
   });
 
   const load = useCallback(async () => {
@@ -67,6 +88,7 @@ export function CatalogoSettings({ locked, lockReason }: CatalogoSettingsProps) 
       setForm({
         url: data.catalogPageUrl ?? '',
         enabled: Boolean(data.catalogPageEnabled),
+        colors: mergeCatalogColors(data.catalogColors),
       });
     } catch (error) {
       console.error('Erro ao carregar configurações do catálogo:', error);
@@ -120,7 +142,13 @@ export function CatalogoSettings({ locked, lockReason }: CatalogoSettingsProps) 
         toast.error('Informe uma URL para a página de catálogo');
         return;
       }
-      const updates: Record<string, unknown> = {};
+      if (!Object.values(form.colors).every((value) => HEX_COLOR_PATTERN.test(value))) {
+        toast.error('Informe cores no formato #RRGGBB');
+        return;
+      }
+      const updates: Record<string, unknown> = {
+        catalogColors: form.colors,
+      };
       const trimmed = form.url.trim();
       if (trimmed) updates.catalogPageUrl = trimmed;
       else if (config?.catalogPageUrl) updates.catalogPageUrl = null;
@@ -159,7 +187,7 @@ export function CatalogoSettings({ locked, lockReason }: CatalogoSettingsProps) 
           Página de Catálogo Pública
         </CardTitle>
         <CardDescription>
-          Ative uma página pública com seus produtos. Layout padrão do sistema.
+          Ative uma página pública com seus produtos e personalize as cores do tema claro.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -229,6 +257,87 @@ export function CatalogoSettings({ locked, lockReason }: CatalogoSettingsProps) 
           </p>
         </div>
 
+        <div className="space-y-4 rounded-lg border border-border p-4">
+          <div>
+            <p className="font-medium">Aparência</p>
+            <p className="text-sm text-muted-foreground">
+              O catálogo público usa apenas o tema claro. Os botões continuam com a
+              cor da marca.
+            </p>
+          </div>
+          <div
+            className="overflow-hidden rounded-lg border border-border"
+            aria-hidden
+          >
+            <div
+              className="px-3 py-2 text-sm font-medium"
+              style={{
+                backgroundColor: form.colors.headerBackgroundColor,
+                color: form.colors.headerTextColor,
+              }}
+            >
+              Cabeçalho
+            </div>
+            <div
+              className="px-3 py-5 text-sm"
+              style={{
+                backgroundColor: form.colors.backgroundColor,
+                color: form.colors.textColor,
+              }}
+            >
+              Conteúdo do catálogo
+            </div>
+            <div
+              className="px-3 py-2 text-xs"
+              style={{
+                backgroundColor: form.colors.footerBackgroundColor,
+                color: form.colors.footerTextColor,
+              }}
+            >
+              Rodapé
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {COLOR_FIELDS.map(({ key, label }) => (
+              <div key={key} className="space-y-1.5">
+                <Label htmlFor={`catalog-color-${key}`}>{label}</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id={`catalog-color-${key}`}
+                    type="color"
+                    value={
+                      HEX_COLOR_PATTERN.test(form.colors[key])
+                        ? form.colors[key]
+                        : DEFAULT_CATALOG_COLORS[key]
+                    }
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        colors: { ...prev.colors, [key]: e.target.value },
+                      }))
+                    }
+                    className="h-10 w-12 cursor-pointer rounded border"
+                    disabled={saving || toggling || !canToggle}
+                    aria-label={label}
+                  />
+                  <Input
+                    value={form.colors[key]}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        colors: { ...prev.colors, [key]: e.target.value },
+                      }))
+                    }
+                    className="font-mono"
+                    placeholder={DEFAULT_CATALOG_COLORS[key]}
+                    disabled={saving || toggling || !canToggle}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <Button
           onClick={handleSave}
           disabled={saving || toggling || !canToggle}
@@ -242,7 +351,7 @@ export function CatalogoSettings({ locked, lockReason }: CatalogoSettingsProps) 
           ) : (
             <>
               <Save className="mr-2 h-4 w-4" />
-              Salvar URL
+              Salvar configurações
             </>
           )}
         </Button>
@@ -256,8 +365,8 @@ export function CatalogoSettings({ locked, lockReason }: CatalogoSettingsProps) 
               Lista seus produtos com estoque disponível, com busca por
               nome/categoria/descrição, filtros (categoria, faixa de preço) e
               ordenação. O cliente adiciona produtos ao carrinho e finaliza o
-              pedido via WhatsApp da empresa. O layout é padrão do sistema —
-              não há personalização visual.
+              pedido via WhatsApp da empresa. O catálogo permanece no tema claro,
+              com as cores configuradas acima.
             </p>
             <a
               href={previewUrl ?? '#'}

@@ -11,6 +11,14 @@ export type BasicCatalogCompany = {
   email: string | null;
   logoUrl: string | null;
   brandColor: string | null;
+  catalogColors?: {
+    backgroundColor: string;
+    headerBackgroundColor: string;
+    headerTextColor: string;
+    footerBackgroundColor: string;
+    footerTextColor: string;
+    textColor: string;
+  } | null;
   address: string | null;
 };
 

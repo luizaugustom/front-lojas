@@ -45,7 +45,7 @@ export function CartDrawer({ open, onOpenChange, company }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-md">
+      <DialogContent className="catalog-root flex max-h-[90vh] flex-col sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Seu carrinho</DialogTitle>
           <DialogDescription>

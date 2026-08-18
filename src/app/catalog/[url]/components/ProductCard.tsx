@@ -45,7 +45,7 @@ export function ProductCard({ product, brandColor }: Props) {
         ) : null}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3">
-        <h3 className="line-clamp-2 text-sm font-medium text-slate-900">
+        <h3 className="line-clamp-2 text-sm font-medium text-[color:var(--catalog-text)]">
           {product.name}
         </h3>
         {product.description ? (
@@ -54,7 +54,7 @@ export function ProductCard({ product, brandColor }: Props) {
           </p>
         ) : null}
         <div className="mt-auto flex items-end justify-between pt-2">
-          <span className="text-base font-semibold text-slate-900">
+          <span className="text-base font-semibold text-[color:var(--catalog-text)]">
             {brl(product.price)}
           </span>
           <Button

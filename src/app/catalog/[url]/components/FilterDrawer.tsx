@@ -69,7 +69,7 @@ export function FilterDrawer(props: Props) {
           ) : null}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="catalog-root max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Filtros</DialogTitle>
           <DialogDescription>
@@ -89,7 +89,7 @@ export function FilterDrawer(props: Props) {
               <SelectTrigger id="sort" className="mt-1 w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="catalog-root">
                 <SelectItem value="name-asc">Nome (A → Z)</SelectItem>
                 <SelectItem value="price-asc">Menor preço</SelectItem>
                 <SelectItem value="price-desc">Maior preço</SelectItem>

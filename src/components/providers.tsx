@@ -32,6 +32,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // Initialize auth
     initialize();
 
+    // Catálogo público permanece sempre no tema claro, sem gravar preferência.
+    if (window.location.pathname.startsWith('/catalog/')) {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+      return;
+    }
+
     // Initialize theme
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
     if (savedTheme) {
