@@ -1,10 +1,15 @@
 'use client';
 
-import { Phone } from 'lucide-react';
+import { Phone, ShoppingCart } from 'lucide-react';
 import type { BasicCatalogCompany } from '@/hooks/useBasicCatalog';
+import {
+  usePublicCartStore,
+  selectCartCount,
+} from '@/store/public-cart-store';
 
 type Props = {
   company: BasicCatalogCompany;
+  onOpenCart: () => void;
 };
 
 function getInitials(name: string): string {
@@ -12,9 +17,14 @@ function getInitials(name: string): string {
   return parts.map((p) => p[0]?.toUpperCase() ?? '').join('') || '?';
 }
 
-export function BasicCatalogHeader({ company }: Props) {
+export function BasicCatalogHeader({ company, onOpenCart }: Props) {
   const displayName = company.fantasyName?.trim() || company.name;
   const phoneDigits = (company.phone ?? '').replace(/\D/g, '');
+  const count = usePublicCartStore(selectCartCount);
+  const accent =
+    company.brandColor && /^#[0-9a-fA-F]{6}$/.test(company.brandColor)
+      ? company.brandColor
+      : '#0F172A';
 
   return (
     <header
@@ -46,13 +56,31 @@ export function BasicCatalogHeader({ company }: Props) {
           {company.phone ? (
             <a
               href={phoneDigits ? `tel:+55${phoneDigits}` : undefined}
-              className="mt-0.5 inline-flex items-center gap-1 text-sm opacity-80 hover:opacity-100 md:text-base"
+              className="mt-0.5 inline-flex items-center gap-1 text-xs opacity-80 hover:opacity-100 md:text-sm"
             >
               <Phone className="h-4 w-4" aria-hidden />
               <span>{company.phone}</span>
             </a>
           ) : null}
         </div>
+        <button
+          type="button"
+          onClick={onOpenCart}
+          className="relative shrink-0 rounded-full p-2.5 text-white shadow-sm"
+          style={{ backgroundColor: accent }}
+          aria-label={
+            count > 0
+              ? `Abrir carrinho, ${count} ${count === 1 ? 'item' : 'itens'}`
+              : 'Abrir carrinho'
+          }
+        >
+          <ShoppingCart className="h-5 w-5" aria-hidden />
+          {count > 0 ? (
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-semibold leading-none text-white">
+              {count > 99 ? '99+' : count}
+            </span>
+          ) : null}
+        </button>
       </div>
     </header>
   );

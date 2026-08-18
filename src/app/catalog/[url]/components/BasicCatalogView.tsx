@@ -85,9 +85,14 @@ export function BasicCatalogView({ url }: Props) {
         color: 'var(--catalog-text)',
       }}
     >
-      {company ? <BasicCatalogHeader company={company} /> : null}
+      {company ? (
+        <BasicCatalogHeader
+          company={company}
+          onOpenCart={() => setCartOpen(true)}
+        />
+      ) : null}
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-4 md:px-6 md:py-6">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-4 pb-24 md:px-6 md:py-6 md:pb-6">
         <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center">
           <div className="md:flex-1">
             <SearchBar value={search} onChange={setSearch} />
@@ -147,6 +152,7 @@ export function BasicCatalogView({ url }: Props) {
           <CartBar
             brandColor={company.brandColor}
             onOpen={() => setCartOpen(true)}
+            hidden={cartOpen}
           />
           <CartDrawer
             open={cartOpen}
