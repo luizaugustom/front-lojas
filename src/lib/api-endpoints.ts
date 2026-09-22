@@ -1483,6 +1483,21 @@ export const reportsApi = {
     api.post('/reports/generate', data, {
       responseType: 'blob',
     }),
+
+  /**
+   * POST /reports/send-email
+   * Envia relatório + XMLs das NFs de saída do período por e-mail
+   */
+  sendEmail: (data: {
+    reportType: string;
+    format: string;
+    startDate: string;
+    endDate: string;
+    email: string;
+    recipientName?: string;
+    sellerId?: string;
+    companyId?: string;
+  }) => api.post('/reports/send-email', data),
 };
 
 // ============================================================================
@@ -1763,6 +1778,19 @@ export const adminApi = {
       ...(data.focusNfeEnvironment !== undefined && { nfeioEnvironment: data.focusNfeEnvironment }),
       ...(data.ibptToken !== undefined && { ibptToken: data.ibptToken }),
     }),
+
+  /**
+   * GET /admin/email-config
+   * Roles: ADMIN — Configuração global Resend (API key mascarada)
+   */
+  getEmailConfig: () => api.get('/admin/email-config'),
+
+  /**
+   * PATCH /admin/email-config
+   * Roles: ADMIN — Atualizar Resend API key e remetente
+   */
+  updateEmailConfig: (data: { resendApiKey?: string; resendFromEmail?: string }) =>
+    api.patch('/admin/email-config', data),
 
   /**
    * GET /admin/companies/unimake-overview

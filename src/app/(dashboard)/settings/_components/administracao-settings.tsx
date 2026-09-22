@@ -26,6 +26,13 @@ interface FocusNfeConfigResponse {
   hasIbptToken?: boolean;
 }
 
+interface EmailConfigResponse {
+  resendApiKey?: string | null;
+  resendFromEmail?: string | null;
+  hasResendApiKey?: boolean;
+  configured?: boolean;
+}
+
 interface ManagerCompany {
   id: string;
   name?: string;
@@ -61,6 +68,12 @@ export function AdministracaoSettings() {
   const [savingAdminIbpt, setSavingAdminIbpt] = useState(false);
   const [adminIbptForm, setAdminIbptForm] = useState({ ibptToken: '' });
 
+  // Admin: Resend global via /admin/email-config
+  const [emailConfig, setEmailConfig] = useState<EmailConfigResponse | null>(null);
+  const [loadingEmailConfig, setLoadingEmailConfig] = useState(false);
+  const [savingEmailConfig, setSavingEmailConfig] = useState(false);
+  const [emailForm, setEmailForm] = useState({ resendApiKey: '', resendFromEmail: '' });
+
   const loadAdminIbptConfig = useCallback(async () => {
     try {
       setLoadingAdminIbpt(true);
@@ -76,6 +89,24 @@ export function AdministracaoSettings() {
     }
   }, []);
 
+  const loadEmailConfig = useCallback(async () => {
+    try {
+      setLoadingEmailConfig(true);
+      const response = await adminApi.getEmailConfig();
+      const data = (response.data ?? {}) as EmailConfigResponse;
+      setEmailConfig(data);
+      setEmailForm({
+        resendApiKey: '',
+        resendFromEmail: data.resendFromEmail ?? '',
+      });
+    } catch (error) {
+      console.error('Erro ao carregar config de e-mail Resend:', error);
+      setEmailConfig(null);
+    } finally {
+      setLoadingEmailConfig(false);
+    }
+  }, []);
+
   const handleSaveAdminIbpt = async () => {
     try {
       setSavingAdminIbpt(true);
@@ -87,6 +118,26 @@ export function AdministracaoSettings() {
       handleApiError(error);
     } finally {
       setSavingAdminIbpt(false);
+    }
+  };
+
+  const handleSaveEmailConfig = async () => {
+    try {
+      setSavingEmailConfig(true);
+      const payload: { resendApiKey?: string; resendFromEmail?: string } = {
+        resendFromEmail: emailForm.resendFromEmail.trim(),
+      };
+      if (emailForm.resendApiKey.trim() && !emailForm.resendApiKey.includes('*')) {
+        payload.resendApiKey = emailForm.resendApiKey.trim();
+      }
+      await adminApi.updateEmailConfig(payload);
+      toast.success('Configuração Resend salva com sucesso!');
+      await loadEmailConfig();
+    } catch (error) {
+      console.error('Erro ao salvar config Resend:', error);
+      handleApiError(error);
+    } finally {
+      setSavingEmailConfig(false);
     }
   };
 
@@ -143,8 +194,9 @@ export function AdministracaoSettings() {
   useEffect(() => {
     if (isAdmin) {
       void loadAdminIbptConfig();
+      void loadEmailConfig();
     }
-  }, [isAdmin, loadAdminIbptConfig]);
+  }, [isAdmin, loadAdminIbptConfig, loadEmailConfig]);
 
   if (!isAdmin && !isGestor) {
     // Defesa explicita: shell ja guarda, mas o componente tambem deve ser defensivo.
@@ -165,6 +217,99 @@ export function AdministracaoSettings() {
 
   return (
     <div className="space-y-4">
+      {isAdmin ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <SettingsIcon className="h-5 w-5" />
+              E-mail (Resend) — global
+            </CardTitle>
+            <CardDescription>
+              API Key e remetente únicos para todas as empresas (NFs, relatórios e demais e-mails do sistema).
+              O domínio do remetente precisa estar verificado na Resend.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {loadingEmailConfig ? (
+              <LoaderBlock label="Carregando..." />
+            ) : (
+              <>
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="administracao-resendApiKey">API Key Resend</Label>
+                    <Input
+                      id="administracao-resendApiKey"
+                      type="password"
+                      value={emailForm.resendApiKey}
+                      onChange={(e) =>
+                        setEmailForm({ ...emailForm, resendApiKey: e.target.value })
+                      }
+                      placeholder={
+                        emailConfig?.hasResendApiKey
+                          ? 'Deixe em branco para manter a chave atual'
+                          : 're_xxxxxxxx'
+                      }
+                      autoComplete="off"
+                    />
+                    {emailConfig?.hasResendApiKey ? (
+                      <p className="text-xs text-green-600 dark:text-green-400">
+                        OK API Key configurada
+                        {emailConfig.resendApiKey ? ` (${emailConfig.resendApiKey})` : ''}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="administracao-resendFromEmail">Remetente (From)</Label>
+                    <Input
+                      id="administracao-resendFromEmail"
+                      type="text"
+                      value={emailForm.resendFromEmail}
+                      onChange={(e) =>
+                        setEmailForm({ ...emailForm, resendFromEmail: e.target.value })
+                      }
+                      placeholder="MontShop &lt;noreply@seu-dominio.com&gt;"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Ex.: <code>noreply@seu-dominio.com</code> ou{' '}
+                      <code>MontShop &lt;noreply@seu-dominio.com&gt;</code>
+                    </p>
+                  </div>
+                  {emailConfig?.configured ? (
+                    <p
+                      className="text-xs text-green-600 dark:text-green-400"
+                      data-testid="resend-configured-flag"
+                    >
+                      OK Resend configurado e pronto para envio
+                    </p>
+                  ) : (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      Informe API Key e remetente para habilitar o envio de e-mails.
+                    </p>
+                  )}
+                  <Button
+                    onClick={handleSaveEmailConfig}
+                    disabled={savingEmailConfig}
+                    className="w-full"
+                  >
+                    {savingEmailConfig ? (
+                      <>
+                        <Save className="mr-2 h-4 w-4 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Salvar configuração Resend
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {isAdmin ? (
         <Card>
           <CardHeader>

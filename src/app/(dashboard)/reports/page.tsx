@@ -5,9 +5,10 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { Download, FileText, Package, ShoppingCart, FileBarChart, Users, DollarSign, Info, XCircle, HelpCircle, Clock } from 'lucide-react';
+import { Download, FileText, Package, ShoppingCart, FileBarChart, Users, DollarSign, Info, XCircle, HelpCircle, Clock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,10 +19,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useDateRange } from '@/hooks/useDateRange';
 import { handleApiError } from '@/lib/handleApiError';
-import { managerApi } from '@/lib/api-endpoints';
+import { managerApi, reportsApi, companyApi } from '@/lib/api-endpoints';
 import { reportSchema } from '@/lib/validations';
 import { downloadFile, getFileExtension } from '@/lib/utils';
 import type { GenerateReportDto, Seller } from '@/types';
@@ -50,8 +59,12 @@ export default function ReportsPage() {
   const { api, user } = useAuth();
   const { queryKeyPart } = useDateRange();
   const [loading, setLoading] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [reportCompanyId, setReportCompanyId] = useState('');
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [recipientName, setRecipientName] = useState('');
 
   // Carregar vendedores para o filtro (empresa: da loja; gestor: das lojas selecionadas)
   const { data: sellersData } = useQuery({
@@ -76,12 +89,19 @@ export default function ReportsPage() {
   });
   const reportCompanies = Array.isArray(myCompaniesData) ? myCompaniesData : [];
 
+  const { data: myCompanyData } = useQuery({
+    queryKey: ['company', 'my-company', 'accountant-email'],
+    queryFn: () => companyApi.myCompany().then((r) => r.data),
+    enabled: user?.role === 'empresa',
+  });
+
   const {
     handleSubmit,
     formState: { errors },
     setValue,
     control,
     watch,
+    getValues,
   } = useForm<GenerateReportDto>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
@@ -93,6 +113,74 @@ export default function ReportsPage() {
   });
 
   const reportTypeValue = watch('reportType', 'complete') || 'complete';
+  const watchedStart = watch('startDate');
+  const watchedEnd = watch('endDate');
+
+  const openEmailDialog = () => {
+    const data = getValues();
+    if (!data.startDate || !data.endDate) {
+      toast.error('Informe data inicial e final para enviar por e-mail.');
+      return;
+    }
+    if (user?.role === 'gestor' && !reportCompanyId) {
+      toast.error('Selecione a loja antes de enviar.');
+      return;
+    }
+
+    let defaultEmail = '';
+    if (user?.role === 'empresa') {
+      defaultEmail = myCompanyData?.accountantEmail || '';
+    } else if (user?.role === 'gestor' && reportCompanyId && reportCompanyId !== 'all') {
+      const company = reportCompanies.find((c: any) => c.id === reportCompanyId);
+      defaultEmail = company?.accountantEmail || '';
+    }
+    setEmailTo(defaultEmail);
+    setRecipientName('');
+    setEmailDialogOpen(true);
+  };
+
+  const handleSendEmail = async () => {
+    const data = getValues();
+    if (!emailTo.trim()) {
+      toast.error('Informe o e-mail do destinatário.');
+      return;
+    }
+    if (!data.startDate || !data.endDate) {
+      toast.error('Informe data inicial e final.');
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      const payload: any = {
+        reportType: data.reportType,
+        format: data.format,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        email: emailTo.trim(),
+        recipientName: recipientName.trim() || undefined,
+        sellerId: data.sellerId === 'all' ? undefined : data.sellerId || undefined,
+      };
+      if (user?.role === 'gestor' && reportCompanyId) {
+        payload.companyId = reportCompanyId;
+      }
+
+      const res = await reportsApi.sendEmail(payload);
+      const result = res.data;
+      const missing =
+        result?.xmlsMissing > 0
+          ? ` (${result.xmlsMissing} XML(s) indisponíveis)`
+          : '';
+      toast.success(
+        `${result?.message || 'E-mail enviado!'}${result?.xmlsAttached != null ? ` — ${result.xmlsAttached} XML(s)` : ''}${missing}`,
+      );
+      setEmailDialogOpen(false);
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   const onSubmit = async (data: GenerateReportDto) => {
     setLoading(true);
@@ -395,19 +483,31 @@ export default function ReportsPage() {
                 )}
               />
 
-              <Button type="submit" disabled={loading || (user.role === 'gestor' && !reportCompanyId)} className="w-full">
-                {loading ? (
-                  <>
-                    <span className="animate-spin mr-2">⏳</span>
-                    Gerando...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Gerar e Baixar Relatório
-                  </>
-                )}
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button type="submit" disabled={loading || sendingEmail || (user.role === 'gestor' && !reportCompanyId)} className="flex-1">
+                  {loading ? (
+                    <>
+                      <span className="animate-spin mr-2">⏳</span>
+                      Gerando...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 mr-2" />
+                      Gerar e Baixar Relatório
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading || sendingEmail || (user.role === 'gestor' && !reportCompanyId)}
+                  className="flex-1"
+                  onClick={openEmailDialog}
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Enviar por e-mail
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
@@ -446,6 +546,64 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enviar relatório por e-mail</DialogTitle>
+            <DialogDescription>
+              Envia o relatório selecionado e os XMLs das notas fiscais de saída do período.
+              {watchedStart && watchedEnd ? (
+                <span className="block mt-1 text-foreground">
+                  Período: {String(watchedStart).slice(0, 10)} a {String(watchedEnd).slice(0, 10)}
+                </span>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="report-email-to">E-mail do destinatário</Label>
+              <Input
+                id="report-email-to"
+                type="email"
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                placeholder="contador@empresa.com"
+                disabled={sendingEmail}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="report-email-name">Nome (opcional)</Label>
+              <Input
+                id="report-email-name"
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+                placeholder="Contador"
+                disabled={sendingEmail}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={sendingEmail}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSendEmail} disabled={sendingEmail}>
+              {sendingEmail ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Enviar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PageHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} title={reportsHelpTitle} description={reportsHelpDescription} icon={reportsHelpIcon} tabs={getReportsHelpTabs()} />
     </div>
   );

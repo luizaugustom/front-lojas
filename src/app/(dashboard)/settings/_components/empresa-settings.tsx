@@ -32,6 +32,7 @@ interface CompanyResponse {
   brandColor?: string;
   fantasyName?: string;
   logoUrl?: string | null;
+  accountantEmail?: string | null;
 }
 
 const passthroughLoader = ({ src }: { src: string }) => src;
@@ -79,6 +80,8 @@ export function EmpresaSettings() {
   const [savingBrandColor, setSavingBrandColor] = useState(false);
   const [companyNickname, setCompanyNickname] = useState('');
   const [savingNickname, setSavingNickname] = useState(false);
+  const [accountantEmail, setAccountantEmail] = useState('');
+  const [savingAccountantEmail, setSavingAccountantEmail] = useState(false);
 
   const loadCompanyData = useCallback(async () => {
     try {
@@ -92,6 +95,9 @@ export function EmpresaSettings() {
       }
       if (data.fantasyName !== undefined) {
         setCompanyNickname(data.fantasyName ?? '');
+      }
+      if (data.accountantEmail !== undefined) {
+        setAccountantEmail(data.accountantEmail ?? '');
       }
       if (data.logoUrl !== undefined) {
         setCompanyLogo(data.logoUrl ?? null);
@@ -276,6 +282,21 @@ export function EmpresaSettings() {
       handleApiError(error);
     } finally {
       setSavingNickname(false);
+    }
+  };
+
+  const handleSaveAccountantEmail = async () => {
+    try {
+      setSavingAccountantEmail(true);
+      await companyApi.updateMyCompany({
+        accountantEmail: accountantEmail.trim() || null,
+      });
+      toast.success('E-mail do contador atualizado!');
+      await loadCompanyData();
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setSavingAccountantEmail(false);
     }
   };
 
@@ -527,6 +548,36 @@ export function EmpresaSettings() {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Define um nome amigavel para identificar a empresa no sistema.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="empresa-accountantEmail">E-mail do contador</Label>
+                    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                      <Input
+                        id="empresa-accountantEmail"
+                        type="email"
+                        value={accountantEmail}
+                        onChange={(e) => setAccountantEmail(e.target.value)}
+                        placeholder="contador@empresa.com"
+                        className="flex-1"
+                      />
+                      <Button onClick={handleSaveAccountantEmail} disabled={savingAccountantEmail}>
+                        {savingAccountantEmail ? (
+                          <>
+                            <Save className="mr-2 h-4 w-4 animate-spin" />
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Salvar e-mail
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Usado para pré-preencher o destinatário ao enviar relatórios e XMLs por e-mail.
                     </p>
                   </div>
 
