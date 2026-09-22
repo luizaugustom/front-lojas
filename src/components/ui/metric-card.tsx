@@ -62,7 +62,7 @@ export function MetricCard({
               {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-500 shrink-0" />}
               <span className={trend === 'up' ? 'text-green-500' : trend === 'down' ? 'text-red-500' : ''}>
                 {change > 0 ? '+' : ''}
-                {change}%
+                {Number(change).toLocaleString('pt-BR', { maximumFractionDigits: 1, minimumFractionDigits: 0 })}%
               </span>
               <span>vs. mês anterior</span>
             </p>

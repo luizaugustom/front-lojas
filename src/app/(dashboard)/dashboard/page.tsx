@@ -482,7 +482,7 @@ export default function DashboardPage() {
                   <dd className="tabular-nums">− {formatCurrency(m.financial?.totalCostOfSales ?? 0)}</dd>
                 </div>
                 <div className="flex justify-between gap-4 text-red-600 dark:text-red-400">
-                  <dt>(−) Contas a pagar este mês</dt>
+                  <dt>(−) Contas a pagar{hasDateFilter ? ' no período' : ' este mês'}</dt>
                   <dd className="tabular-nums">− {formatCurrency(m.financial?.billsToPayThisMonth ?? 0)}</dd>
                 </div>
                 <div className="flex justify-between gap-4 text-red-600 dark:text-red-400">
@@ -496,7 +496,7 @@ export default function DashboardPage() {
                 <div className="flex justify-between gap-4 text-red-600 dark:text-red-400">
                   <dt>(−) Juros de parcelamento</dt>
                   <dd className="tabular-nums">
-                    − {formatCurrency(Math.max(0, (m.financial?.totalSalesValue ?? 0) - (m.financial?.totalCostOfSales ?? 0) - (m.financial?.billsToPayThisMonth ?? 0) - (m.financial?.totalLossesValue ?? 0) - (m.financial?.totalCardFees ?? 0) - (m.financial?.netProfit ?? 0)))}
+                    − {formatCurrency(m.financial?.totalInstallmentInterest ?? 0)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4 border-t pt-3 font-semibold">
