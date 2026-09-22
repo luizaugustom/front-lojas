@@ -167,12 +167,9 @@ export default function ReportsPage() {
 
       const res = await reportsApi.sendEmail(payload);
       const result = res.data;
-      const missing =
-        result?.xmlsMissing > 0
-          ? ` (${result.xmlsMissing} XML(s) indisponíveis)`
-          : '';
       toast.success(
-        `${result?.message || 'E-mail enviado!'}${result?.xmlsAttached != null ? ` — ${result.xmlsAttached} XML(s)` : ''}${missing}`,
+        result?.message ||
+          'Pedido recebido. O e-mail chegará em alguns minutos. Você será avisado aqui.',
       );
       setEmailDialogOpen(false);
     } catch (error) {
@@ -552,7 +549,8 @@ export default function ReportsPage() {
           <DialogHeader>
             <DialogTitle>Enviar relatório por e-mail</DialogTitle>
             <DialogDescription>
-              Envia o relatório selecionado e os XMLs das notas fiscais de saída do período.
+              Envia o relatório e os XMLs das notas de saída do período. A recuperação na Focus
+              pode levar alguns minutos — você será avisado no sino de notificações ao concluir.
               {watchedStart && watchedEnd ? (
                 <span className="block mt-1 text-foreground">
                   Período: {String(watchedStart).slice(0, 10)} a {String(watchedEnd).slice(0, 10)}
@@ -591,7 +589,7 @@ export default function ReportsPage() {
               {sendingEmail ? (
                 <>
                   <span className="animate-spin mr-2">⏳</span>
-                  Enviando...
+                  Agendando...
                 </>
               ) : (
                 <>
