@@ -201,11 +201,12 @@ export default function ProductsPage() {
     const params: { page: number; limit: number; search: string; companyId?: string } = {
       page: 1,
       limit: 100000,
-      search: '',
+      search: search.trim(),
     };
     if (isGestor && selectedCompanyId) params.companyId = selectedCompanyId;
     const res = await api.get('/product', { params });
-    return res.data?.products ?? [];
+    const products = res.data?.products ?? [];
+    return applyProductFilters(products, filters);
   };
 
   const getCompanyForExport = async (): Promise<{ name: string; brandColor?: string }> => {
