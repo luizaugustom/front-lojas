@@ -208,6 +208,8 @@ export const customerSchema = z.object({
   email: optionalString(),
   phone: optionalString(),
   cpfCnpj: optionalString(),
+  // IE do cliente (NF-e) — vazio = não contribuinte; "ISENTO" = isento
+  stateRegistration: optionalString(),
   // Campos de endereço individuais para o formulário
   street: optionalString(),
   number: optionalString(),

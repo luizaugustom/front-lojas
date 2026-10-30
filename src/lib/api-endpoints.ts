@@ -442,7 +442,7 @@ export const saleApi = {
   /**
    * GET /sale
    * Roles: ADMIN, COMPANY, SELLER
-   * Query: page, limit, sellerId, startDate, endDate
+   * Query: page, limit, sellerId, startDate, endDate, withoutRealFiscal
    */
   list: (params?: {
     page?: number;
@@ -450,6 +450,10 @@ export const saleApi = {
     sellerId?: string;
     startDate?: string;
     endDate?: string;
+    clientName?: string;
+    clientCpfCnpj?: string;
+    paymentMethod?: string;
+    withoutRealFiscal?: boolean;
   }) => api.get('/sale', { params }),
 
   /**
@@ -461,8 +465,15 @@ export const saleApi = {
   /**
    * GET /sale/my-sales
    * Roles: SELLER
+   * Query: page, limit, startDate, endDate, withoutRealFiscal
    */
-  mySales: () => api.get('/sale/my-sales'),
+  mySales: (params?: {
+    page?: number;
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+    withoutRealFiscal?: boolean;
+  }) => api.get('/sale/my-sales', { params }),
 
   /**
    * GET /sale/my-stats

@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { handleApiError } from '@/lib/handleApiError';
 import { formatCurrency, formatDateTime, downloadFile, getBlobErrorMessage } from '@/lib/utils';
-import { fiscalApi, customerApi } from '@/lib/api-endpoints';
+import { fiscalApi, customerApi, saleApi } from '@/lib/api-endpoints';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { AcquirerCnpjSelect } from '@/components/ui/acquirer-cnpj-select';
 import { isValidCPF, isValidCNPJ, isValidCPFOrCNPJ } from '@/lib/validations';
@@ -101,6 +101,8 @@ export default function InvoicesPage() {
   // Opção de vincular a uma venda existente OU preencher dados manualmente
   const [emissionMode, setEmissionMode] = useState<'sale' | 'manual'>('sale');
   const [saleId, setSaleId] = useState('');
+  const [eligibleSalesPage, setEligibleSalesPage] = useState(1);
+  const eligibleSalesPageSize = 20;
   
   // Dados do destinatário
   const [recipientType, setRecipientType] = useState<'cpf' | 'cnpj'>('cpf');
@@ -243,6 +245,39 @@ export default function InvoicesPage() {
     enabled: emitOpen && !!user?.companyId,
   });
 
+  // Vendas sem NF-e/NFC-e real para emissão vinculada
+  const {
+    data: eligibleSalesData,
+    isLoading: isLoadingEligibleSales,
+    isFetching: isFetchingEligibleSales,
+  } = useQuery({
+    queryKey: ['sales-without-real-fiscal', eligibleSalesPage, eligibleSalesPageSize],
+    queryFn: async () => {
+      const res = await saleApi.list({
+        page: eligibleSalesPage,
+        limit: eligibleSalesPageSize,
+        withoutRealFiscal: true,
+      });
+      return res.data as {
+        sales?: Array<{
+          id: string;
+          saleDate?: string;
+          clientName?: string | null;
+          clientCpfCnpj?: string | null;
+          total?: number | string;
+          seller?: { id: string; name: string } | null;
+        }>;
+        total?: number;
+        totalPages?: number;
+        page?: number;
+      };
+    },
+    enabled: emitOpen && emissionMode === 'sale',
+  });
+
+  const eligibleSales = eligibleSalesData?.sales ?? [];
+  const eligibleSalesTotalPages = Math.max(1, eligibleSalesData?.totalPages ?? 1);
+
   // Protege rota: empresa ou vendedor com nfeEmissionEnabled
   useEffect(() => {
     if (user) {
@@ -364,6 +399,7 @@ export default function InvoicesPage() {
     // Reset todos os campos
     setEmissionMode('sale');
     setSaleId('');
+    setEligibleSalesPage(1);
     setRecipientType('cpf');
     setRecipientDocument('');
     setRecipientName('');
@@ -401,7 +437,7 @@ export default function InvoicesPage() {
     
     // Validações básicas
     if (emissionMode === 'sale' && !saleId.trim()) {
-      toast.error('Informe o ID da venda');
+      toast.error('Selecione uma venda na lista');
       return;
     }
     
@@ -1000,18 +1036,81 @@ export default function InvoicesPage() {
 
             <TabsContent value="sale" className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="saleId">ID da Venda *</Label>
-                <Input
-                  id="saleId"
-                  placeholder="Ex.: 123"
-                  value={saleId}
-                  onChange={(e) => setSaleId(e.target.value)}
-                />
+                <Label>Venda sem NF-e/NFC-e *</Label>
                 <p className="text-xs text-muted-foreground">
-                  Informe o ID de uma venda existente para emitir a NF-e com os dados dela.
-                  Os campos abaixo complementam o frete; quantidade, preço e itens sempre vêm da
-                  venda.
+                  Selecione uma venda para emitir a NF-e. Itens e valores vêm da venda; o endereço
+                  do destinatário é preenchido pelo cadastro do cliente.
                 </p>
+                <div className="max-h-56 overflow-y-auto rounded-md border divide-y">
+                  {isLoadingEligibleSales || isFetchingEligibleSales ? (
+                    <div className="p-4 text-sm text-muted-foreground text-center">
+                      Carregando vendas...
+                    </div>
+                  ) : eligibleSales.length === 0 ? (
+                    <div className="p-4 text-sm text-muted-foreground text-center">
+                      Nenhuma venda sem NF-e/NFC-e
+                    </div>
+                  ) : (
+                    eligibleSales.map((sale) => {
+                      const selected = saleId === sale.id;
+                      return (
+                        <button
+                          key={sale.id}
+                          type="button"
+                          onClick={() => setSaleId(sale.id)}
+                          className={`w-full text-left px-3 py-2.5 transition-colors hover:bg-muted/60 ${
+                            selected ? 'bg-primary/10 ring-1 ring-inset ring-primary/40' : ''
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 space-y-0.5">
+                              <p className="text-sm font-medium truncate">
+                                {sale.clientName?.trim() || 'Cliente não informado'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {sale.saleDate ? formatDateTime(sale.saleDate) : '—'}
+                                {sale.clientCpfCnpj ? ` · ${sale.clientCpfCnpj}` : ''}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground font-mono truncate">
+                                ID: {sale.id}
+                              </p>
+                            </div>
+                            <div className="text-sm font-semibold whitespace-nowrap">
+                              {formatCurrency(Number(sale.total ?? 0))}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+                {eligibleSalesTotalPages > 1 && (
+                  <div className="flex items-center justify-between pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={eligibleSalesPage <= 1 || isFetchingEligibleSales}
+                      onClick={() => setEligibleSalesPage((p) => Math.max(1, p - 1))}
+                    >
+                      Anterior
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Página {eligibleSalesPage} de {eligibleSalesTotalPages}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={
+                        eligibleSalesPage >= eligibleSalesTotalPages || isFetchingEligibleSales
+                      }
+                      onClick={() => setEligibleSalesPage((p) => p + 1)}
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <Card className="p-4">

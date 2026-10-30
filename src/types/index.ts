@@ -478,6 +478,10 @@ export interface Customer {
   phone?: string;
   email?: string;
   cpfCnpj?: string;
+  /** Inscrição Estadual (quando contribuinte ICMS) */
+  stateRegistration?: string | null;
+  /** 1=Contribuinte ICMS, 2=Isento, 9=Não contribuinte */
+  indIEDest?: number | null;
   storeCreditBalance?: number;
   address?: CustomerAddress;
   companyId: string;
@@ -490,6 +494,8 @@ export interface CreateCustomerDto {
   email?: string;
   phone?: string;
   cpfCnpj?: string;
+  stateRegistration?: string;
+  indIEDest?: 1 | 2 | 9;
   street?: string;
   number?: string;
   complement?: string;

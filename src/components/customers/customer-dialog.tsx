@@ -68,6 +68,7 @@ export function CustomerDialog({ open, onClose, customer }: CustomerDialogProps)
         email: customer.email,
         phone: customer.phone,
         cpfCnpj: customer.cpfCnpj,
+        stateRegistration: customer.stateRegistration || '',
         street: customer.address?.street,
         number: customer.address?.number,
         complement: customer.address?.complement,
@@ -81,6 +82,7 @@ export function CustomerDialog({ open, onClose, customer }: CustomerDialogProps)
         email: '',
         phone: '',
         cpfCnpj: '',
+        stateRegistration: '',
         street: '',
         number: '',
         complement: '',
@@ -94,12 +96,23 @@ export function CustomerDialog({ open, onClose, customer }: CustomerDialogProps)
   const onSubmit = async (data: CreateCustomerDto) => {
     setLoading(true);
     try {
+      const ieRaw = data.stateRegistration?.trim() || '';
+      const stateRegistration =
+        ieRaw.toUpperCase() === 'ISENTO' ? 'ISENTO' : ieRaw;
+      const indIEDest: 1 | 2 | 9 = !stateRegistration
+        ? 9
+        : stateRegistration === 'ISENTO'
+          ? 2
+          : 1;
+
       // Preparar dados: enviar apenas nome (obrigatório) e campos preenchidos
       const customerData: CreateCustomerDto = {
         name: data.name.trim(),
         ...(data.email && data.email.trim() && { email: data.email.trim() }),
         ...(data.phone && data.phone.trim() && { phone: data.phone.trim() }),
         ...(data.cpfCnpj && data.cpfCnpj.trim() && { cpfCnpj: data.cpfCnpj.trim() }),
+        stateRegistration,
+        indIEDest,
         ...(data.zipCode && data.zipCode.trim() && { zipCode: data.zipCode.trim() }),
         ...(data.state && data.state.trim() && { state: data.state.trim() }),
         ...(data.city && data.city.trim() && { city: data.city.trim() }),
@@ -188,7 +201,7 @@ export function CustomerDialog({ open, onClose, customer }: CustomerDialogProps)
               {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
             </div>
 
-            <div className="col-span-2 space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="cpfCnpj" className="text-foreground">CPF/CNPJ</Label>
               <Input 
                 id="cpfCnpj" 
@@ -201,10 +214,34 @@ export function CustomerDialog({ open, onClose, customer }: CustomerDialogProps)
               )}
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="stateRegistration" className="text-foreground">
+                Inscrição Estadual
+              </Label>
+              <Input
+                id="stateRegistration"
+                placeholder="Número da IE ou ISENTO"
+                maxLength={20}
+                {...register('stateRegistration')}
+                disabled={loading}
+                className="text-foreground"
+                onChange={(e) => {
+                  e.target.value = e.target.value.toUpperCase();
+                  register('stateRegistration').onChange(e);
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Usada na NF-e. Deixe vazio se não contribuinte; informe ISENTO se isento.
+              </p>
+              {errors.stateRegistration && (
+                <p className="text-sm text-destructive">{errors.stateRegistration.message}</p>
+              )}
+            </div>
+
             {/* Endereço */}
             <div className="col-span-2 mt-6">
               <h3 className="text-lg font-medium text-foreground mb-4">Endereço</h3>
-              <p className="text-sm text-muted-foreground mb-2">Para emissão de boletos, é necessário CPF/CNPJ e endereço completo (logradouro, número, bairro, cidade, estado, CEP).</p>
+              <p className="text-sm text-muted-foreground mb-2">Para emissão de boletos e NF-e, é necessário CPF/CNPJ e endereço completo (logradouro, número, bairro, cidade, estado, CEP).</p>
             </div>
 
             <div className="space-y-2">
