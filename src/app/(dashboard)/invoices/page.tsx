@@ -105,6 +105,7 @@ export default function InvoicesPage() {
   const eligibleSalesPageSize = 20;
   
   // Dados do destinatário
+  const [manualCustomerId, setManualCustomerId] = useState('');
   const [recipientType, setRecipientType] = useState<'cpf' | 'cnpj'>('cpf');
   const [recipientDocument, setRecipientDocument] = useState('');
   const [recipientName, setRecipientName] = useState('');
@@ -235,15 +236,34 @@ export default function InvoicesPage() {
     enabled: productSearchOpen,
   });
 
-  // Clientes para seleção no boleto da NFe
-  const { data: boletoCustomersData } = useQuery({
-    queryKey: ['customers-boleto-nfe', user?.companyId],
+  type NfeCustomerOption = {
+    id: string;
+    name: string;
+    cpfCnpj?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    stateRegistration?: string | null;
+    zipCode?: string | null;
+    street?: string | null;
+    number?: string | null;
+    complement?: string | null;
+    district?: string | null;
+    city?: string | null;
+    state?: string | null;
+  };
+
+  // Clientes para boleto e preenchimento automático na emissão manual
+  const { data: nfeCustomersData } = useQuery({
+    queryKey: ['customers-nfe-emit', user?.companyId],
     queryFn: async () => {
       const res = await customerApi.list({ limit: 500, companyId: user?.companyId ?? undefined });
-      return res.data as { data?: { id: string; name: string; cpfCnpj?: string }[] };
+      const raw = res.data as { customers?: NfeCustomerOption[]; data?: NfeCustomerOption[] };
+      return (raw?.customers ?? raw?.data ?? []) as NfeCustomerOption[];
     },
     enabled: emitOpen && !!user?.companyId,
   });
+
+  const nfeCustomers = nfeCustomersData ?? [];
 
   // Vendas sem NF-e/NFC-e real para emissão vinculada
   const {
@@ -277,6 +297,11 @@ export default function InvoicesPage() {
 
   const eligibleSales = eligibleSalesData?.sales ?? [];
   const eligibleSalesTotalPages = Math.max(1, eligibleSalesData?.totalPages ?? 1);
+  const selectedSale = eligibleSales.find((s) => s.id === saleId) ?? null;
+  const saleNeedsRecipient = Boolean(
+    selectedSale &&
+      (!selectedSale.clientName?.trim() || !selectedSale.clientCpfCnpj?.trim()),
+  );
 
   // Protege rota: empresa ou vendedor com nfeEmissionEnabled
   useEffect(() => {
@@ -394,17 +419,48 @@ export default function InvoicesPage() {
   const isProductSelected = (productId: string) =>
     selectedProducts.some((p) => p.id === productId);
 
+  const fillRecipientFromCustomer = (customer: NfeCustomerOption) => {
+    const docDigits = (customer.cpfCnpj || '').replace(/\D/g, '');
+    setRecipientType(docDigits.length === 14 ? 'cnpj' : 'cpf');
+    setRecipientDocument(customer.cpfCnpj || '');
+    setRecipientName(customer.name || '');
+    setRecipientEmail(customer.email || '');
+    setRecipientPhone(customer.phone || '');
+    setRecipientStateRegistration(customer.stateRegistration || '');
+    setRecipientZipCode(customer.zipCode || '');
+    setRecipientStreet(customer.street || '');
+    setRecipientNumber(customer.number || '');
+    setRecipientComplement(customer.complement || '');
+    setRecipientDistrict(customer.district || '');
+    setRecipientCity(customer.city || '');
+    setRecipientState((customer.state || '').toUpperCase());
+  };
+
+  const handleManualCustomerSelect = (customerId: string) => {
+    if (!customerId || customerId === '_') {
+      setManualCustomerId('');
+      return;
+    }
+    setManualCustomerId(customerId);
+    const customer = nfeCustomers.find((c) => c.id === customerId);
+    if (customer) {
+      fillRecipientFromCustomer(customer);
+    }
+  };
+
   const openEmitDialog = (type: 'nfe' | 'nfce') => {
     setEmitType(type);
     // Reset todos os campos
     setEmissionMode('sale');
     setSaleId('');
     setEligibleSalesPage(1);
+    setManualCustomerId('');
     setRecipientType('cpf');
     setRecipientDocument('');
     setRecipientName('');
     setRecipientEmail('');
     setRecipientPhone('');
+    setRecipientStateRegistration('');
     setRecipientZipCode('');
     setRecipientStreet('');
     setRecipientNumber('');
@@ -432,6 +488,68 @@ export default function InvoicesPage() {
     setEmitOpen(true);
   };
 
+  const validateRecipientForNfe = (): boolean => {
+    const documentCleaned = recipientDocument.replace(/\D/g, '');
+    if (!documentCleaned || documentCleaned.length < 11) {
+      toast.error('Informe um CPF/CNPJ válido do destinatário');
+      return false;
+    }
+    if (recipientType === 'cpf') {
+      if (documentCleaned.length !== 11) {
+        toast.error('CPF deve ter 11 dígitos');
+        return false;
+      }
+      if (!isValidCPF(recipientDocument)) {
+        toast.error('CPF inválido. Verifique os dígitos verificadores');
+        return false;
+      }
+    }
+    if (recipientType === 'cnpj') {
+      if (documentCleaned.length !== 14) {
+        toast.error('CNPJ deve ter 14 dígitos');
+        return false;
+      }
+      if (!isValidCNPJ(recipientDocument)) {
+        toast.error('CNPJ inválido. Verifique os dígitos verificadores');
+        return false;
+      }
+    }
+    if (!recipientName.trim()) {
+      toast.error('Informe o nome do destinatário');
+      return false;
+    }
+    if (!recipientStreet.trim()) {
+      toast.error('Informe o endereço do destinatário');
+      return false;
+    }
+    if (!recipientCity.trim()) {
+      toast.error('Informe a cidade do destinatário');
+      return false;
+    }
+    if (!recipientState.trim() || recipientState.length !== 2) {
+      toast.error('Informe o estado (UF) do destinatário');
+      return false;
+    }
+    return true;
+  };
+
+  const buildRecipientPayload = () => ({
+    document: recipientDocument.replace(/\D/g, '') || undefined,
+    name: recipientName.trim() || undefined,
+    email: recipientEmail?.trim() || undefined,
+    phone: recipientPhone?.replace(/\D/g, '') || undefined,
+    stateRegistration: recipientStateRegistration.trim() || undefined,
+    address: {
+      zipCode: recipientZipCode?.replace(/\D/g, '') || undefined,
+      street: recipientStreet?.trim() || undefined,
+      number: recipientNumber?.trim() || undefined,
+      complement: recipientComplement?.trim() || undefined,
+      district: recipientDistrict?.trim() || undefined,
+      city: recipientCity?.trim() || undefined,
+      state: recipientState?.trim().toUpperCase() || undefined,
+    },
+  });
+
   const submitEmit = async () => {
     if (!emitType) return;
     
@@ -440,53 +558,13 @@ export default function InvoicesPage() {
       toast.error('Selecione uma venda na lista');
       return;
     }
+
+    if (emissionMode === 'sale' && saleNeedsRecipient) {
+      if (!validateRecipientForNfe()) return;
+    }
     
     if (emissionMode === 'manual') {
-      // Validar CPF/CNPJ (remover formatação e verificar formato e dígitos verificadores)
-      const documentCleaned = recipientDocument.replace(/\D/g, '');
-      if (!documentCleaned || documentCleaned.length < 11) {
-        toast.error('Informe um CPF/CNPJ válido do destinatário');
-        return;
-      }
-      if (recipientType === 'cpf') {
-        if (documentCleaned.length !== 11) {
-          toast.error('CPF deve ter 11 dígitos');
-          return;
-        }
-        if (!isValidCPF(recipientDocument)) {
-          toast.error('CPF inválido. Verifique os dígitos verificadores');
-          return;
-        }
-      }
-      if (recipientType === 'cnpj') {
-        if (documentCleaned.length !== 14) {
-          toast.error('CNPJ deve ter 14 dígitos');
-          return;
-        }
-        if (!isValidCNPJ(recipientDocument)) {
-          toast.error('CNPJ inválido. Verifique os dígitos verificadores');
-          return;
-        }
-      }
-      
-      if (!recipientName.trim()) {
-        toast.error('Informe o nome do destinatário');
-        return;
-      }
-      
-      // Validação de endereço para NF-e (obrigatório pela Receita Federal)
-      if (!recipientStreet.trim()) {
-        toast.error('Informe o endereço do destinatário');
-        return;
-      }
-      if (!recipientCity.trim()) {
-        toast.error('Informe a cidade do destinatário');
-        return;
-      }
-      if (!recipientState.trim() || recipientState.length !== 2) {
-        toast.error('Informe o estado (UF) do destinatário');
-        return;
-      }
+      if (!validateRecipientForNfe()) return;
       
       if (emitBoleto && !boletoCustomerId) {
         toast.error('Para emitir boleto, selecione o cliente cadastrado');
@@ -547,30 +625,18 @@ export default function InvoicesPage() {
       if (emissionMode === 'sale') {
         // Emissão vinculada a uma venda
         payload.saleId = saleId.trim();
-        // Overrides opcionais do destinatário (IE, endereço, contato) e frete:
-        // venda é a fonte dos dados comerciais; modal pode complementar o fiscal.
+        // Venda sem cliente: recipient obrigatório. Com cliente: overrides opcionais.
         const documentCleanedSale = recipientDocument.replace(/\D/g, '');
-        if (documentCleanedSale || recipientName.trim() || recipientStateRegistration.trim()) {
-          payload.recipient = {
-            document: documentCleanedSale || undefined,
-            name: recipientName.trim() || undefined,
-            email: recipientEmail?.trim() || undefined,
-            phone: recipientPhone?.replace(/\D/g, '') || undefined,
-            stateRegistration: recipientStateRegistration.trim() || undefined,
-            address: {
-              zipCode: recipientZipCode?.replace(/\D/g, '') || undefined,
-              street: recipientStreet?.trim() || undefined,
-              number: recipientNumber?.trim() || undefined,
-              complement: recipientComplement?.trim() || undefined,
-              district: recipientDistrict?.trim() || undefined,
-              city: recipientCity?.trim() || undefined,
-              state: recipientState?.trim().toUpperCase() || undefined,
-            },
-          };
+        if (
+          saleNeedsRecipient ||
+          documentCleanedSale ||
+          recipientName.trim() ||
+          recipientStateRegistration.trim()
+        ) {
+          payload.recipient = buildRecipientPayload();
         }
       } else {
         // Emissão manual com dados completos
-        // Limpar formatação do documento (CPF/CNPJ)
         const documentCleaned = recipientDocument.replace(/\D/g, '');
 
         payload.recipient = {
@@ -1113,6 +1179,167 @@ export default function InvoicesPage() {
                 )}
               </div>
 
+              {saleNeedsRecipient && (
+                <Card className="p-4">
+                  <h3 className="font-semibold mb-1">Dados do Destinatário *</h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Esta venda não tem cliente. Preencha o destinatário para emitir a NF-e.
+                    Itens e valores continuam vindo da venda.
+                  </p>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Tipo de Documento *</Label>
+                        <Select
+                          value={recipientType}
+                          onValueChange={(v) => setRecipientType(v as 'cpf' | 'cnpj')}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cpf">CPF</SelectItem>
+                            <SelectItem value="cnpj">CNPJ</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="saleRecipientDocument">
+                          {recipientType === 'cpf' ? 'CPF' : 'CNPJ'} *
+                        </Label>
+                        <Input
+                          id="saleRecipientDocument"
+                          placeholder={
+                            recipientType === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'
+                          }
+                          value={recipientDocument}
+                          onChange={(e) => setRecipientDocument(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="saleRecipientName">Nome/Razão Social *</Label>
+                      <Input
+                        id="saleRecipientName"
+                        placeholder="Nome completo ou razão social"
+                        value={recipientName}
+                        onChange={(e) => setRecipientName(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="saleRecipientEmail">Email</Label>
+                        <Input
+                          id="saleRecipientEmail"
+                          type="email"
+                          placeholder="email@exemplo.com"
+                          value={recipientEmail}
+                          onChange={(e) => setRecipientEmail(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="saleRecipientPhone">Telefone</Label>
+                        <Input
+                          id="saleRecipientPhone"
+                          placeholder="(00) 00000-0000"
+                          value={recipientPhone}
+                          onChange={(e) => setRecipientPhone(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="saleRecipientZipCode">CEP</Label>
+                        <Input
+                          id="saleRecipientZipCode"
+                          placeholder="00000-000"
+                          value={recipientZipCode}
+                          onChange={(e) => setRecipientZipCode(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2 col-span-2">
+                        <Label htmlFor="saleRecipientStreet">Logradouro *</Label>
+                        <Input
+                          id="saleRecipientStreet"
+                          placeholder="Rua, Avenida, etc."
+                          value={recipientStreet}
+                          onChange={(e) => setRecipientStreet(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="saleRecipientNumber">Número</Label>
+                        <Input
+                          id="saleRecipientNumber"
+                          placeholder="123"
+                          value={recipientNumber}
+                          onChange={(e) => setRecipientNumber(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="saleRecipientComplement">Complemento</Label>
+                        <Input
+                          id="saleRecipientComplement"
+                          placeholder="Apto 101"
+                          value={recipientComplement}
+                          onChange={(e) => setRecipientComplement(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="saleRecipientDistrict">Bairro</Label>
+                        <Input
+                          id="saleRecipientDistrict"
+                          placeholder="Centro"
+                          value={recipientDistrict}
+                          onChange={(e) => setRecipientDistrict(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="saleRecipientState">UF *</Label>
+                        <Input
+                          id="saleRecipientState"
+                          placeholder="SC"
+                          maxLength={2}
+                          value={recipientState}
+                          onChange={(e) => setRecipientState(e.target.value.toUpperCase())}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="saleRecipientCity">Cidade *</Label>
+                      <Input
+                        id="saleRecipientCity"
+                        placeholder="Nome da cidade"
+                        value={recipientCity}
+                        onChange={(e) => setRecipientCity(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="saleRecipientStateRegistration">
+                          Inscrição Estadual
+                        </Label>
+                        <Input
+                          id="saleRecipientStateRegistration"
+                          placeholder="000.000.000.000 ou ISENTO"
+                          value={recipientStateRegistration}
+                          onChange={(e) =>
+                            setRecipientStateRegistration(e.target.value.toUpperCase())
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
               <Card className="p-4">
                 <h3 className="font-semibold mb-4">Frete da NF-e</h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -1171,6 +1398,30 @@ export default function InvoicesPage() {
               <Card className="p-4">
                 <h3 className="font-semibold mb-4">Dados do Destinatário</h3>
                 <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Cliente cadastrado</Label>
+                    <Select
+                      value={manualCustomerId || '_'}
+                      onValueChange={handleManualCustomerSelect}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecionar cliente para preencher" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_">Preencher manualmente</SelectItem>
+                        {nfeCustomers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                            {c.cpfCnpj ? ` · ${c.cpfCnpj}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Selecione um cliente para preencher automaticamente nome, documento, endereço e IE.
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Tipo de Documento *</Label>
@@ -1682,7 +1933,7 @@ export default function InvoicesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="_">Selecione...</SelectItem>
-                      {(boletoCustomersData?.data ?? []).map((c: any) => (
+                      {nfeCustomers.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name || c.cpfCnpj || c.id}</SelectItem>
                       ))}
                     </SelectContent>
