@@ -1106,10 +1106,10 @@ export default function InvoicesPage() {
 
             <TabsContent value="sale" className="space-y-4">
               <div className="space-y-2">
-                <Label>Venda sem NF-e/NFC-e *</Label>
+                <Label>Venda sem NF-e/NFC-e autorizada *</Label>
                 <p className="text-xs text-muted-foreground">
-                  Selecione uma venda para emitir a NF-e. Itens e valores vêm da venda; o endereço
-                  do destinatário é preenchido pelo cadastro do cliente.
+                  Inclui vendas sem nota e com erro de autorização. Itens e valores vêm da venda;
+                  o endereço do destinatário é preenchido pelo cadastro do cliente.
                 </p>
                 <div className="max-h-56 overflow-y-auto rounded-md border divide-y">
                   {isLoadingEligibleSales || isFetchingEligibleSales ? (
