@@ -72,6 +72,7 @@ export function CustomerDialog({ open, onClose, customer }: CustomerDialogProps)
         street: customer.address?.street,
         number: customer.address?.number,
         complement: customer.address?.complement,
+        district: customer.address?.neighborhood,
         city: customer.address?.city,
         state: customer.address?.state,
         zipCode: customer.address?.zipCode,
@@ -86,6 +87,7 @@ export function CustomerDialog({ open, onClose, customer }: CustomerDialogProps)
         street: '',
         number: '',
         complement: '',
+        district: '',
         city: '',
         state: '',
         zipCode: '',
@@ -119,6 +121,7 @@ export function CustomerDialog({ open, onClose, customer }: CustomerDialogProps)
         ...(data.street && data.street.trim() && { street: data.street.trim() }),
         ...(data.number && data.number.trim() && { number: data.number.trim() }),
         ...(data.complement && data.complement.trim() && { complement: data.complement.trim() }),
+        ...(data.district && data.district.trim() && { district: data.district.trim() }),
       };
 
       if (isEditing) {
@@ -309,6 +312,20 @@ export function CustomerDialog({ open, onClose, customer }: CustomerDialogProps)
               />
               {errors.number && (
                 <p className="text-sm text-destructive">{errors.number.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="district" className="text-foreground">Bairro</Label>
+              <Input
+                id="district"
+                placeholder="Centro"
+                {...register('district')}
+                disabled={loading}
+                className="text-foreground"
+              />
+              {errors.district && (
+                <p className="text-sm text-destructive">{errors.district.message}</p>
               )}
             </div>
 

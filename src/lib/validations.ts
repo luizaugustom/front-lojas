@@ -214,6 +214,7 @@ export const customerSchema = z.object({
   street: optionalString(),
   number: optionalString(),
   complement: optionalString(),
+  district: optionalString(),
   city: optionalString(),
   state: optionalString(),
   zipCode: optionalString(),

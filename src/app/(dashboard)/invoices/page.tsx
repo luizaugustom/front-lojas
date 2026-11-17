@@ -522,6 +522,10 @@ export default function InvoicesPage() {
       toast.error('Informe o endereço do destinatário');
       return false;
     }
+    if (!recipientDistrict.trim()) {
+      toast.error('Informe o bairro do destinatário');
+      return false;
+    }
     if (!recipientCity.trim()) {
       toast.error('Informe a cidade do destinatário');
       return false;
